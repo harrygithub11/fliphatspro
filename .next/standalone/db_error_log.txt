@@ -1,0 +1,130 @@
+Time: 2025-12-28T16:45:46.931Z
+Error: Data truncated for column 'type' at row 1
+Stack: Error: Data truncated for column 'type' at row 1
+    at PromisePoolConnection.execute (webpack-internal:///(rsc)/./node_modules/mysql2/lib/promise/connection.js:40:26)
+    at POST (webpack-internal:///(rsc)/./app/api/branding/route.ts:99:34)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:63809
+    at async eU.execute (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:53964)
+    at async eU.handle (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:65062)
+    at async doRender (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:1333:42)
+    at async cacheEntry.responseCache.get.routeKind (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:1555:28)
+    at async DevServer.renderToResponseWithComponentsImpl (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:1463:28)
+    at async DevServer.renderPageComponent (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:1856:24)
+    at async DevServer.renderToResponseImpl (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:1894:32)
+    at async DevServer.pipeImpl (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:911:25)
+    at async NextNodeServer.handleCatchallRenderRequest (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\next-server.js:271:17)
+    at async DevServer.handleRequestImpl (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:807:17)
+    at async C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\dev\next-dev-server.js:331:20
+    at async Span.traceAsyncFn (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\trace\trace.js:151:20)
+    at async DevServer.handleRequest (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\dev\next-dev-server.js:328:24)
+    at async invokeRender (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\lib\router-server.js:163:21)
+    at async handleRequest (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\lib\router-server.js:342:24)
+    at async requestHandlerImpl (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\lib\router-server.js:366:13)
+    at async Server.requestListener (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\lib\start-server.js:140:13)
+Details: {"message":"Data truncated for column 'type' at row 1","code":"WARN_DATA_TRUNCATED","errno":1265,"sql":"INSERT INTO interactions (customer_id, order_id, type, content, sentiment) VALUES (?, ?, ?, ?, ?)","sqlState":"01000","sqlMessage":"Data truncated for column 'type' at row 1"}
+
+Time: 2025-12-28T16:46:22.309Z
+Error: Data truncated for column 'type' at row 1
+Stack: Error: Data truncated for column 'type' at row 1
+    at PromisePoolConnection.execute (webpack-internal:///(rsc)/./node_modules/mysql2/lib/promise/connection.js:40:26)
+    at POST (webpack-internal:///(rsc)/./app/api/branding/route.ts:99:34)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:63809
+    at async eU.execute (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:53964)
+    at async eU.handle (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:65062)
+    at async doRender (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:1333:42)
+    at async cacheEntry.responseCache.get.routeKind (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:1555:28)
+    at async DevServer.renderToResponseWithComponentsImpl (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:1463:28)
+    at async DevServer.renderPageComponent (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:1856:24)
+    at async DevServer.renderToResponseImpl (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:1894:32)
+    at async DevServer.pipeImpl (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:911:25)
+    at async NextNodeServer.handleCatchallRenderRequest (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\next-server.js:271:17)
+    at async DevServer.handleRequestImpl (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:807:17)
+    at async C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\dev\next-dev-server.js:331:20
+    at async Span.traceAsyncFn (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\trace\trace.js:151:20)
+    at async DevServer.handleRequest (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\dev\next-dev-server.js:328:24)
+    at async invokeRender (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\lib\router-server.js:163:21)
+    at async handleRequest (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\lib\router-server.js:342:24)
+    at async requestHandlerImpl (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\lib\router-server.js:366:13)
+    at async Server.requestListener (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\lib\start-server.js:140:13)
+Details: {"message":"Data truncated for column 'type' at row 1","code":"WARN_DATA_TRUNCATED","errno":1265,"sql":"INSERT INTO interactions (customer_id, order_id, type, content, sentiment) VALUES (?, ?, ?, ?, ?)","sqlState":"01000","sqlMessage":"Data truncated for column 'type' at row 1"}
+
+Time: 2025-12-28T16:48:54.582Z
+Error: Data truncated for column 'type' at row 1
+Stack: Error: Data truncated for column 'type' at row 1
+    at PromisePoolConnection.execute (webpack-internal:///(rsc)/./node_modules/mysql2/lib/promise/connection.js:40:26)
+    at POST (webpack-internal:///(rsc)/./app/api/branding/route.ts:102:34)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:63809
+    at async eU.execute (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:53964)
+    at async eU.handle (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:65062)
+    at async doRender (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:1333:42)
+    at async cacheEntry.responseCache.get.routeKind (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:1555:28)
+    at async DevServer.renderToResponseWithComponentsImpl (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:1463:28)
+    at async DevServer.renderPageComponent (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:1856:24)
+    at async DevServer.renderToResponseImpl (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:1894:32)
+    at async DevServer.pipeImpl (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:911:25)
+    at async NextNodeServer.handleCatchallRenderRequest (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\next-server.js:271:17)
+    at async DevServer.handleRequestImpl (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:807:17)
+    at async C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\dev\next-dev-server.js:331:20
+    at async Span.traceAsyncFn (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\trace\trace.js:151:20)
+    at async DevServer.handleRequest (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\dev\next-dev-server.js:328:24)
+    at async invokeRender (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\lib\router-server.js:163:21)
+    at async handleRequest (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\lib\router-server.js:342:24)
+    at async requestHandlerImpl (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\lib\router-server.js:366:13)
+    at async Server.requestListener (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\lib\start-server.js:140:13)
+Details: {"message":"Data truncated for column 'type' at row 1","code":"WARN_DATA_TRUNCATED","errno":1265,"sql":"INSERT INTO interactions (customer_id, order_id, type, content, sentiment) VALUES (?, ?, ?, ?, ?)","sqlState":"01000","sqlMessage":"Data truncated for column 'type' at row 1"}
+
+Time: 2025-12-28T18:30:50.632Z
+Error: Unknown column 'related_customer_id' in 'field list'
+Stack: Error: Unknown column 'related_customer_id' in 'field list'
+    at PromisePoolConnection.execute (webpack-internal:///(rsc)/./node_modules/mysql2/lib/promise/connection.js:40:26)
+    at POST (webpack-internal:///(rsc)/./app/api/branding/route.ts:129:34)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:63809
+    at async eU.execute (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:53964)
+    at async eU.handle (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:65062)
+    at async doRender (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:1333:42)
+    at async cacheEntry.responseCache.get.routeKind (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:1555:28)
+    at async DevServer.renderToResponseWithComponentsImpl (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:1463:28)
+    at async DevServer.renderPageComponent (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:1856:24)
+    at async DevServer.renderToResponseImpl (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:1894:32)
+    at async DevServer.pipeImpl (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:911:25)
+    at async NextNodeServer.handleCatchallRenderRequest (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\next-server.js:271:17)
+    at async DevServer.handleRequestImpl (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:807:17)
+    at async C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\dev\next-dev-server.js:331:20
+    at async Span.traceAsyncFn (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\trace\trace.js:151:20)
+    at async DevServer.handleRequest (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\dev\next-dev-server.js:328:24)
+    at async invokeRender (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\lib\router-server.js:163:21)
+    at async handleRequest (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\lib\router-server.js:342:24)
+    at async requestHandlerImpl (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\lib\router-server.js:366:13)
+    at async Server.requestListener (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\lib\start-server.js:140:13)
+Details: {"message":"Unknown column 'related_customer_id' in 'field list'","code":"ER_BAD_FIELD_ERROR","errno":1054,"sql":"INSERT INTO tasks (title, description, priority, status, related_order_id, related_customer_id) VALUES (?, ?, ?, ?, ?, ?)","sqlState":"42S22","sqlMessage":"Unknown column 'related_customer_id' in 'field list'"}
+
+Time: 2025-12-28T18:32:17.119Z
+Error: Data truncated for column 'status' at row 1
+Stack: Error: Data truncated for column 'status' at row 1
+    at PromisePoolConnection.execute (webpack-internal:///(rsc)/./node_modules/mysql2/lib/promise/connection.js:40:26)
+    at POST (webpack-internal:///(rsc)/./app/api/branding/route.ts:129:34)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:63809
+    at async eU.execute (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:53964)
+    at async eU.handle (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:65062)
+    at async doRender (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:1333:42)
+    at async cacheEntry.responseCache.get.routeKind (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:1555:28)
+    at async DevServer.renderToResponseWithComponentsImpl (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:1463:28)
+    at async DevServer.renderPageComponent (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:1856:24)
+    at async DevServer.renderToResponseImpl (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:1894:32)
+    at async DevServer.pipeImpl (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:911:25)
+    at async NextNodeServer.handleCatchallRenderRequest (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\next-server.js:271:17)
+    at async DevServer.handleRequestImpl (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\base-server.js:807:17)
+    at async C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\dev\next-dev-server.js:331:20
+    at async Span.traceAsyncFn (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\trace\trace.js:151:20)
+    at async DevServer.handleRequest (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\dev\next-dev-server.js:328:24)
+    at async invokeRender (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\lib\router-server.js:163:21)
+    at async handleRequest (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\lib\router-server.js:342:24)
+    at async requestHandlerImpl (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\lib\router-server.js:366:13)
+    at async Server.requestListener (C:\Users\MISHTY5626\Desktop\Webhost\newyearlp\node_modules\next\dist\server\lib\start-server.js:140:13)
+Details: {"message":"Data truncated for column 'status' at row 1","code":"WARN_DATA_TRUNCATED","errno":1265,"sql":"INSERT INTO tasks (title, description, priority, status, related_order_id) VALUES (?, ?, ?, ?, ?)","sqlState":"01000","sqlMessage":"Data truncated for column 'status' at row 1"}
+

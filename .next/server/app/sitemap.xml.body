@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<url>
+<loc>https://ecom.fliphatmedia.com/</loc>
+<lastmod>2026-01-05T07:53:16.993Z</lastmod>
+<changefreq>daily</changefreq>
+<priority>1</priority>
+</url>
+<url>
+<loc>https://ecom.fliphatmedia.com//newyearonly</loc>
+<lastmod>2026-01-05T07:53:16.993Z</lastmod>
+<changefreq>weekly</changefreq>
+<priority>0.9</priority>
+</url>
+<url>
+<loc>https://ecom.fliphatmedia.com//lifetimeoffer</loc>
+<lastmod>2026-01-05T07:53:16.993Z</lastmod>
+<changefreq>weekly</changefreq>
+<priority>0.9</priority>
+</url>
+</urlset>

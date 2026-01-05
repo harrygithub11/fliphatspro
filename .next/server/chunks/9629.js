@@ -1,0 +1,3 @@
+"use strict";exports.id=9629,exports.ids=[9629],exports.modules={79629:(t,i,e)=>{e.d(i,{logAdminActivity:()=>n});var a=e(47033);async function n(t,i,e,n,o,l){try{let c=await a.Z.getConnection();try{await c.execute(`INSERT INTO admin_activity_logs 
+                (admin_id, action_type, action_description, entity_type, entity_id, ip_address, created_at) 
+                VALUES (?, ?, ?, ?, ?, ?, NOW())`,[t,i,e,n||null,o||null,l||null])}finally{c.release()}}catch(t){console.error("Failed to log activity:",t)}}}};
