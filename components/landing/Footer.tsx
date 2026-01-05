@@ -76,11 +76,18 @@ export function Footer({ source = 'website' }: { source?: string }) {
                     <div className="col-span-1 md:col-span-2">
                         <h4 className="font-bold mb-6 text-white">Company</h4>
                         <ul className="space-y-4 text-zinc-500">
-                            {['About Us', 'Contact', 'Privacy Policy', 'Terms'].map((item) => (
-                                <li key={item}>
-                                    <a href="#" className="hover:text-red-500 transition-colors">{item}</a>
-                                </li>
-                            ))}
+                            <li>
+                                <a href="#" className="hover:text-red-500 transition-colors">About Us</a>
+                            </li>
+                            <li>
+                                <a href="#" className="hover:text-red-500 transition-colors">Contact</a>
+                            </li>
+                            <li>
+                                <a href="/privacy" className="hover:text-red-500 transition-colors">Privacy Policy</a>
+                            </li>
+                            <li>
+                                <a href="#" className="hover:text-red-500 transition-colors">Terms</a>
+                            </li>
                         </ul>
                     </div>
 

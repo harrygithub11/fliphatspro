@@ -254,6 +254,21 @@ export function BookingModal({
                             <p className="text-xs text-red-400">Secure payment via UPI/Card/NetBanking</p>
                         </div>
                     )}
+                    <div className="flex items-start gap-2 text-xs text-zinc-400">
+                        <input
+                            type="checkbox"
+                            id="privacy-consent"
+                            required
+                            className="mt-0.5 h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-red-600 focus:ring-red-600 focus:ring-offset-0"
+                        />
+                        <label htmlFor="privacy-consent" className="leading-tight">
+                            I agree to the{' '}
+                            <a href="/privacy" target="_blank" className="text-red-500 hover:text-red-400 underline">
+                                Privacy Policy
+                            </a>
+                            {' '}and consent to the collection of my personal data.
+                        </label>
+                    </div>
                     <Button
                         type="submit"
                         className="w-full mt-2 h-12 text-base font-bold bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg shadow-red-900/20 transition-all hover:scale-[1.02] rounded-xl"
