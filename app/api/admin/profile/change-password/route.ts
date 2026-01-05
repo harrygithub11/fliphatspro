@@ -52,6 +52,16 @@ export async function POST(request: Request) {
                 [newPasswordHash, session.id]
             );
 
+            // Log Admin Activity
+            const { logAdminActivity } = await import('@/lib/activity-logger');
+            await logAdminActivity(
+                session.id,
+                'security_update',
+                'Changed own password',
+                'admin',
+                session.id
+            );
+
             return NextResponse.json({
                 success: true,
                 message: 'Password changed successfully'

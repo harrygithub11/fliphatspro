@@ -111,12 +111,21 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
             // Log other field updates
             if (session && Object.keys(updateFields).length > 0) {
+                // Fetch customer name for better logging
+                const [rows]: any = await connection.execute('SELECT name FROM customers WHERE id = ?', [id]);
+                const customerName = rows[0]?.name || 'Unknown Lead';
+
                 const { logAdminActivity } = await import('@/lib/activity-logger');
-                const fieldNames = Object.keys(updateFields).join(', ');
+
+                // Create a descriptive string: "score to 'hot', stage to 'won'"
+                const changes = Object.entries(updateFields)
+                    .map(([key, value]) => `${key} to '${value}'`)
+                    .join(', ');
+
                 await logAdminActivity(
                     session.id,
                     'lead_update',
-                    `Updated lead fields: ${fieldNames}`,
+                    `Updated lead "${customerName}": ${changes}`,
                     'customer',
                     parseInt(id)
                 );

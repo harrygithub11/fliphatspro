@@ -14,7 +14,7 @@ declare global {
     }
 }
 
-type ModalType = 'book' | 'pay';
+type ModalType = 'book' | 'pay' | 'link';
 
 interface BookingModalProps {
     children?: React.ReactNode;
@@ -44,6 +44,7 @@ export function BookingModal({
     const [store, setStore] = useState('');
 
     const loadRazorpay = () => {
+        // ... (existing implementation)
         return new Promise((resolve) => {
             const script = document.createElement('script');
             script.src = 'https://checkout.razorpay.com/v1/checkout.js';
@@ -54,28 +55,20 @@ export function BookingModal({
     };
 
     const handlePayment = async () => {
+        // ... (existing implementation)
         const res = await loadRazorpay();
-
         if (!res) {
             alert('Razorpay SDK failed to load. Are you online?');
             return;
         }
 
         try {
-            // 1. Create Order
             const orderRes = await fetch('/api/create-order', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    amount,
-                    name,
-                    email,
-                    phone,
-                    store_name: store,
-                    source
-                }),
+                body: JSON.stringify({ amount, name, email, phone, store_name: store, source }),
             });
-
+            // ... (rest of payment logic)
             if (!orderRes.ok) {
                 alert("Error creating order");
                 return;
@@ -93,9 +86,6 @@ export function BookingModal({
                 image: "/Photos/logo.png",
                 order_id: orderData.id,
                 handler: async function (response: any) {
-                    // Success Handler
-
-                    // Verify Payment Backend
                     await fetch('/api/payment-success', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -105,43 +95,16 @@ export function BookingModal({
                             razorpay_signature: response.razorpay_signature
                         })
                     });
-
-                    // Submit booking details (Legacy/Backup)
-                    await fetch('/api/bookings', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            name, email, phone, store, type: 'pay',
-                            paymentId: response.razorpay_payment_id,
-                            amount,
-                            source
-                        }),
-                    });
-
-                    // Redirect to Onboarding
                     setOpen(false);
                     router.push(`/onboarding?payment_id=${response.razorpay_payment_id}&email=${encodeURIComponent(email)}`);
                 },
-                prefill: {
-                    name: name,
-                    email: email,
-                    contact: phone,
-                },
-                notes: {
-                    address: "FliphatMedia Corporate Office",
-                    source: source
-                },
-                theme: {
-                    color: "#DC2626", // Red-600
-                },
+                prefill: { name, email, contact: phone },
+                theme: { color: "#DC2626" }
             };
-
             const paymentObject = new window.Razorpay(options);
             paymentObject.open();
-
         } catch (error) {
             console.error(error);
-            alert("Payment failed or cancelled");
         } finally {
             setLoading(false);
         }
@@ -151,29 +114,20 @@ export function BookingModal({
         e.preventDefault();
         setLoading(true);
 
-        if (type === 'pay') {
+        if (type === 'pay' && !paymentLink) {
             await handlePayment();
         } else {
-            // Regular Booking Flow
+            // Regular Booking / Lead Form
             try {
                 const res = await fetch('/api/bookings', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        name,
-                        email,
-                        phone,
-                        store,
-                        type: 'book',
-                        source
-                    }),
+                    body: JSON.stringify({ name, email, phone, store, type: 'book', source }),
                 });
 
                 if (res.ok) {
-                    setName('');
-                    setEmail('');
-                    setPhone('');
-                    setStore('');
+                    // Tracking handled by API
+                    setName(''); setEmail(''); setPhone(''); setStore('');
                     setOpen(false);
                     alert("Thanks! We've received your inquiry. We'll call you shortly.");
                 } else {
@@ -188,15 +142,25 @@ export function BookingModal({
         }
     };
 
-    const handleDirectPayment = () => {
+    const handleDirectLink = async () => {
         if (paymentLink) {
-            window.location.href = paymentLink;
+            // Track Click
+            try {
+                navigator.sendBeacon('/api/track-click', JSON.stringify({ source, url: paymentLink }));
+            } catch (e) {
+                // Ignore tracking error
+            }
+
+            const isAbsolute = paymentLink.startsWith('http://') || paymentLink.startsWith('https://');
+            const finalUrl = isAbsolute ? paymentLink : `https://${paymentLink}`;
+            window.location.href = finalUrl;
         }
     };
 
-    if (type === 'pay' && paymentLink) {
+    // If type is link OR (pay + link), render direct button
+    if ((type === 'link' || (type === 'pay' && paymentLink))) {
         return (
-            <div onClick={handleDirectPayment} className="cursor-pointer">
+            <div onClick={handleDirectLink} className="cursor-pointer">
                 {children || (
                     <HoverButton
                         className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-lg h-14 rounded-2xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300"

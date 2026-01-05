@@ -8,11 +8,14 @@ import { Play } from 'lucide-react';
 
 interface StickyCTAProps {
     price: number;
+    originalPrice?: number;
     source: string;
-    paymentLink: string;
+    ctaConfig?: any; // { primary_mode, modes }
+    paymentLink?: string; // Fallback
+    offerEndDate?: string | null;
 }
 
-export function StickyCTA({ price, source, paymentLink }: StickyCTAProps) {
+export function StickyCTA({ price, originalPrice = 12000, source, ctaConfig, paymentLink, offerEndDate }: StickyCTAProps) {
     const [show, setShow] = useState(false);
     const [mounted, setMounted] = useState(false);
 
@@ -30,6 +33,8 @@ export function StickyCTA({ price, source, paymentLink }: StickyCTAProps) {
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
+
+    const dateStr = offerEndDate ? new Date(offerEndDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Limited Time Offer';
 
     if (!mounted) return null;
 
@@ -53,27 +58,62 @@ export function StickyCTA({ price, source, paymentLink }: StickyCTAProps) {
                         {/* Left: Pricing Info */}
                         <div className="flex flex-col pl-3">
                             <div className="flex items-center gap-2 text-sm md:text-base">
-                                <span className="text-zinc-500 line-through font-medium">Rs. 15,000/-</span>
+                                <span className="text-zinc-500 line-through font-medium">Rs. {originalPrice.toLocaleString()}/-</span>
                                 <span className="text-white font-bold">Rs. {price.toLocaleString()}/- Only</span>
                             </div>
                             <span className="text-[10px] md:text-xs text-zinc-400 font-medium tracking-wide">
-                                Offer Valid Until 15th January 2026
+                                Offer Valid Until {dateStr}
                             </span>
                         </div>
 
                         {/* Right: Action Button */}
                         <div>
-                            <BookingModal
-                                type="book"
-                                source={source}
-                            >
-                                <button className="group relative flex items-center gap-2 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white px-6 py-3 rounded-xl font-bold text-sm md:text-base shadow-lg shadow-orange-900/20 transition-all hover:scale-[1.02]">
-                                    <span>Book a Call</span>
-                                    <div className="bg-white/20 rounded-md p-1 group-hover:translate-x-0.5 transition-transform">
-                                        <Play className="w-3 h-3 fill-current" />
-                                    </div>
-                                </button>
-                            </BookingModal>
+                            {(() => {
+                                const mode = ctaConfig?.primary_mode || 'booking';
+                                const modes = ctaConfig?.modes || {};
+                                const currentConfig = modes[mode] || {};
+
+                                let modalType: 'book' | 'pay' | 'link' = 'book';
+                                let targetLink = paymentLink;
+                                let btnText = 'Book a Call';
+
+                                if (mode === 'razorpay_api') {
+                                    modalType = 'pay';
+                                    targetLink = undefined;
+                                    btnText = currentConfig.button_text || 'Buy Now';
+                                } else if (mode === 'payment_link') {
+                                    modalType = 'link';
+                                    targetLink = currentConfig.url || paymentLink;
+                                    btnText = currentConfig.button_text || 'Buy Now';
+                                } else if (mode === 'booking') {
+                                    modalType = 'link';
+                                    targetLink = currentConfig.url;
+                                    btnText = currentConfig.button_text || 'Book Strategy Call';
+                                } else if (mode === 'lead_form') {
+                                    modalType = 'book';
+                                    targetLink = undefined;
+                                    btnText = currentConfig.button_text || 'Get Access';
+                                }
+
+                                const cta_amount = modes.razorpay_api?.amount ? modes.razorpay_api.amount / 100 : price;
+
+                                return (
+                                    <BookingModal
+                                        type={modalType}
+                                        source={`${source}:sticky`}
+                                        paymentLink={targetLink}
+                                        amount={cta_amount}
+                                        triggerText={btnText}
+                                    >
+                                        <button className="group relative flex items-center gap-2 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white px-6 py-3 rounded-xl font-bold text-sm md:text-base shadow-lg shadow-orange-900/20 transition-all hover:scale-[1.02]">
+                                            <span>{btnText}</span>
+                                            <div className="bg-white/20 rounded-md p-1 group-hover:translate-x-0.5 transition-transform">
+                                                <Play className="w-3 h-3 fill-current" />
+                                            </div>
+                                        </button>
+                                    </BookingModal>
+                                );
+                            })()}
                         </div>
 
                     </div>

@@ -58,10 +58,28 @@ export async function PUT(request: Request) {
             await connection.execute('UPDATE orders SET status = ? WHERE id = ?', [newStatus, orderId]);
 
             // Log this move
-            const [rows]: any = await connection.execute('SELECT customer_id FROM orders WHERE id = ?', [orderId]);
+            const [rows]: any = await connection.execute(
+                'SELECT o.customer_id, c.name as customer_name FROM orders o LEFT JOIN customers c ON o.customer_id = c.id WHERE o.id = ?',
+                [orderId]
+            );
             const customerId = rows[0]?.customer_id || null;
+            const customerName = rows[0]?.customer_name || 'Unknown Customer';
 
             await logInteraction(customerId, orderId, 'system_event', `Order status updated to ${newStatus} `);
+
+            // Log Admin Activity
+            const { getSession } = await import('@/lib/auth');
+            const session = await getSession();
+            if (session) {
+                const { logAdminActivity } = await import('@/lib/activity-logger');
+                await logAdminActivity(
+                    session.id,
+                    'order_update',
+                    `Updated order #${orderId} (Customer: ${customerName}) to '${newStatus}' via Kanban`,
+                    'order',
+                    orderId
+                );
+            }
 
             return NextResponse.json({ success: true });
         } finally {

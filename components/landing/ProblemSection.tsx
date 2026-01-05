@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 
-const cards = [
+const defaultCards = [
     {
         title: "CHAOTIC SALES",
         heading: "Relying on Instagram, WhatsApp & random ads for sales?",
@@ -23,7 +23,19 @@ const cards = [
     }
 ];
 
-export function ProblemSection() {
+interface ProblemSectionProps {
+    title?: string;
+    subtitle?: string;
+    cards?: any[];
+}
+
+export function ProblemSection({
+    title = "Does This Sound Like You?",
+    subtitle = "Sounds familiar?",
+    cards = []
+}: ProblemSectionProps) {
+    const displayCards = cards.length > 0 ? cards : defaultCards;
+
     return (
         <section className="py-20 bg-zinc-950 text-white overflow-hidden relative">
             {/* Background Ambience */}
@@ -39,7 +51,9 @@ export function ProblemSection() {
                         viewport={{ once: true }}
                         className="text-4xl md:text-5xl font-black tracking-tight mb-2"
                     >
-                        Does This <span className="text-red-600">Sound Like You?</span>
+                        {title.split(' ').map((word, i) => (
+                            <span key={i} className={i === title.split(' ').length - 1 || i === title.split(' ').length - 2 ? "text-red-600" : ""}> {word} </span>
+                        ))}
                     </motion.h2>
 
                     {/* Handwritten annotation */}
@@ -51,7 +65,7 @@ export function ProblemSection() {
                         className="absolute -top-8 right-[5%] md:right-[25%] hidden md:block"
                     >
                         <div className="relative">
-                            <span className="font-handwriting text-2xl text-zinc-300">Sounds familiar?</span>
+                            <span className="font-handwriting text-2xl text-zinc-300">{subtitle}</span>
                             <svg className="absolute top-8 right-[-20px] w-12 h-12 text-zinc-300 fill-none stroke-current stroke-2" viewBox="0 0 50 50">
                                 <path d="M10,0 Q30,20 10,40" markerEnd="url(#arrow-problem)" />
                                 <defs>
@@ -66,7 +80,7 @@ export function ProblemSection() {
 
                 {/* Cards Grid */}
                 <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-                    {cards.map((card, idx) => (
+                    {displayCards.map((card, idx) => (
                         <motion.div
                             key={idx}
                             initial={{ opacity: 0, y: 30 }}

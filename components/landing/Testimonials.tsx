@@ -1,61 +1,43 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Star, Quote, MapPin, CheckCircle2 } from 'lucide-react';
+import { Star, Quote, MapPin, CheckCircle2, User } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
-const testimonials = [
-    {
-        name: "Rajesh S.",
-        role: "Founder, UrbanKicks Delhi",
-        content: "I was paying ₹2000/month just for Shopify. With FliphatMedia, I paid once and now I own my store completely. The UPI integration is flawless for my customers.",
-        location: "New Delhi",
-        initials: "RS",
-        color: "bg-red-900/20 text-red-500 border-red-900/30"
-    },
-    {
-        name: "Priya Patel",
-        role: "Owner, EthnicWeave",
-        content: "My saree business needed a premium website. The team helped me setup everything in 24 hours. My sales have increased by 40% since launching.",
-        location: "Ahmedabad",
-        initials: "PP",
-        color: "bg-zinc-900 text-zinc-400 border-zinc-800"
-    },
-    {
-        name: "Amit Verma",
-        role: "CEO, TechGadgets Hub",
-        content: "The admin dashboard is actually better than what I used before. I can track my inventory and fulfill orders from my phone. Highly recommended.",
-        location: "Mumbai",
-        initials: "AV",
-        color: "bg-zinc-900 text-zinc-400 border-zinc-800"
-    },
-    {
-        name: "Sneha Reddy",
-        role: "Co-founder, OrganicLife",
-        content: "Finally a platform that understands Indian e-commerce. The shipping integration with Shiprocket was a lifesaver for our delivery process.",
-        location: "Bangalore",
-        initials: "SR",
-        color: "bg-red-900/20 text-red-500 border-red-900/30"
-    },
-    {
-        name: "Vikram Malhotra",
-        role: "Director, VMFitness",
-        content: "Zero monthly fees is a game changer. I used that extra money to run more ads. The site speed is blazing fast even with 500+ products.",
-        location: "Gurgaon",
-        initials: "VM",
-        color: "bg-zinc-900 text-zinc-400 border-zinc-800"
-    },
-    {
-        name: "Anjali Gupta",
-        role: "Owner, DecorDreams",
-        content: "I was skeptical about the 'one-time cost' but it's real. No hidden fees. The support team is very helpful and they speak Hindi too!",
-        location: "Pune",
-        initials: "AG",
-        color: "bg-zinc-900 text-zinc-400 border-zinc-800"
-    }
-];
+interface TestimonialItem {
+    name: string;
+    role: string;
+    content: string;
+    location?: string;
+    initials?: string;
+    color?: string;
+}
 
-export function Testimonials() {
+interface TestimonialsProps {
+    testimonials?: TestimonialItem[];
+}
+
+export function Testimonials({ testimonials = [] }: TestimonialsProps) {
+    // Fallback data
+    const data = (testimonials && testimonials.length > 0) ? testimonials : [
+        {
+            name: "Rajesh S.",
+            role: "Founder, UrbanKicks Delhi",
+            content: "I was paying ₹2000/month just for Shopify. With FliphatMedia, I paid once and now I own my store completely. The UPI integration is flawless for my customers.",
+            location: "New Delhi",
+            initials: "RS",
+            color: "bg-red-900/20 text-red-500 border-red-900/30"
+        },
+        // ... (keep 1-2 examples or just use the full list as fallback if needed)
+        {
+            name: "Priya Patel",
+            role: "Owner, EthnicWeave",
+            content: "My saree business needed a premium website. The team helped me setup everything in 24 hours. My sales have increased by 40% since launching.",
+            location: "Ahmedabad",
+            initials: "PP",
+            color: "bg-zinc-900 text-zinc-400 border-zinc-800"
+        }
+    ];
     return (
         <section className="py-24 bg-transparent relative overflow-hidden">
             {/* Background Decorations */}
@@ -77,7 +59,7 @@ export function Testimonials() {
                 </motion.div>
 
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-                    {testimonials.map((t, i) => (
+                    {data.map((t, i) => (
                         <motion.div
                             key={i}
                             initial={{ opacity: 0, y: 30 }}
@@ -100,8 +82,8 @@ export function Testimonials() {
                             </p>
 
                             <div className="flex items-center gap-4 pt-4 border-t border-dashed border-zinc-800">
-                                <div className={`h-12 w-12 rounded-full flex items-center justify-center font-bold text-lg border ${t.color}`}>
-                                    {t.initials}
+                                <div className={`h-12 w-12 rounded-full flex items-center justify-center font-bold text-lg border bg-zinc-900 border-zinc-700 text-zinc-400 overflow-hidden`}>
+                                    {t.initials ? t.initials : <User className="h-6 w-6" />}
                                 </div>
                                 <div>
                                     <h4 className="font-bold text-base flex items-center gap-2 text-white">

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,10 +38,13 @@ interface ActivityLog {
 }
 
 export default function AdminProfilePage() {
+    const searchParams = useSearchParams();
+    const router = useRouter();
     const [profile, setProfile] = useState<AdminProfile | null>(null);
     const [loginLogs, setLoginLogs] = useState<LoginLog[]>([]);
     const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'security');
 
     // Password change state
     const [currentPassword, setCurrentPassword] = useState('');
@@ -53,6 +57,12 @@ export default function AdminProfilePage() {
         fetchLoginLogs();
         fetchActivityLogs();
     }, []);
+
+    // Update URL when tab changes
+    const handleTabChange = (value: string) => {
+        setActiveTab(value);
+        router.push(`/admin/profile?tab=${value}`, { scroll: false });
+    };
 
     const fetchProfile = async () => {
         try {
@@ -200,7 +210,7 @@ export default function AdminProfilePage() {
             </Card>
 
             {/* Tabs for different sections */}
-            <Tabs defaultValue="security" className="space-y-4">
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
                 <TabsList>
                     <TabsTrigger value="security">
                         <Lock className="h-4 w-4 mr-2" />

@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Instagram, Twitter, Linkedin, Heart, Send, ArrowUpRight, Mail, Phone } from "lucide-react";
 import { BookingModal } from "./BookingModal";
 
-export function Footer() {
+export function Footer({ source = 'website' }: { source?: string }) {
     return (
         <footer className="bg-zinc-950 text-white pt-12 pb-24 md:pb-12 overflow-hidden relative">
             {/* Background Beams */}
@@ -30,7 +30,7 @@ export function Footer() {
                             Join the revolution of founders who truly own their store.
                         </p>
                     </div>
-                    <BookingModal type="book" source="footer">
+                    <BookingModal type="book" source={`${source}:footer`}>
                         <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}

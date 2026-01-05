@@ -221,3 +221,13 @@ enum TaskPriority {
   medium
   low
 }
+
+model SystemSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String   @db.Text
+  description String?
+  updated_at  DateTime @default(now()) @updatedAt
+
+  @@map("system_settings")
+}

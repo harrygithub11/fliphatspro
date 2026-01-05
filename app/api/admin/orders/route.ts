@@ -52,10 +52,28 @@ export async function POST(request: Request) {
             const amount = Math.floor(Math.random() * 10000) + 500;
             const rzpId = `order_${Math.random().toString(36).substring(7)}`;
 
-            await connection.execute(
+            const [result]: any = await connection.execute(
                 'INSERT INTO orders (customer_id, razorpay_order_id, amount, status, currency) VALUES (?, ?, ?, ?, ?)',
                 [customerId, rzpId, amount, 'paid', 'INR']
             );
+
+            // Log Admin Activity
+            const { getSession } = await import('@/lib/auth');
+            const session = await getSession();
+            if (session) {
+                // Fetch customer name
+                const [cust]: any = await connection.execute('SELECT name FROM customers WHERE id = ?', [customerId]);
+                const customerName = cust[0]?.name || 'Unknown';
+
+                const { logAdminActivity } = await import('@/lib/activity-logger');
+                await logAdminActivity(
+                    session.id,
+                    'order_create',
+                    `Created manual order #${result.insertId} (Rs. ${amount}) for ${customerName}`,
+                    'order',
+                    result.insertId
+                );
+            }
 
             return NextResponse.json({ success: true });
         } finally {

@@ -71,11 +71,15 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
         const connection = await pool.getConnection();
         try {
-            // Get customer ID from order
-            const [orderRows]: any = await connection.execute('SELECT customer_id FROM orders WHERE id = ?', [orderId]);
+            // Get customer ID and Name
+            const [orderRows]: any = await connection.execute(
+                'SELECT o.customer_id, c.name as customer_name FROM orders o LEFT JOIN customers c ON o.customer_id = c.id WHERE o.id = ?',
+                [orderId]
+            );
             if (orderRows.length === 0) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
 
             const customerId = orderRows[0].customer_id;
+            const customerName = orderRows[0].customer_name || 'Unknown';
 
             // Insert Interaction
             const finalType = type || 'internal_note';
@@ -92,6 +96,20 @@ export async function POST(request: Request, { params }: { params: { id: string 
                 content: content,
                 created_at: new Date().toISOString()
             };
+
+            // Log Admin Activity
+            const { getSession } = await import('@/lib/auth');
+            const session = await getSession();
+            if (session) {
+                const { logAdminActivity } = await import('@/lib/activity-logger');
+                await logAdminActivity(
+                    session.id,
+                    'note_create',
+                    `Added note to order #${orderId} (${customerName}): "${content.substring(0, 50)}${content.length > 50 ? '...' : ''}"`,
+                    'order',
+                    parseInt(orderId)
+                );
+            }
 
             return NextResponse.json(newInteraction);
         } finally {
@@ -111,6 +129,13 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
         try {
             await connection.beginTransaction();
 
+            // Fetch info before delete
+            const [rows]: any = await connection.execute(
+                'SELECT o.customer_id, c.name as customer_name FROM orders o LEFT JOIN customers c ON o.customer_id = c.id WHERE o.id = ?',
+                [orderId]
+            );
+            const customerName = rows[0]?.customer_name || 'Unknown';
+
             // 1. Delete Interactions
             await connection.execute('DELETE FROM interactions WHERE order_id = ?', [orderId]);
 
@@ -124,6 +149,21 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
             await connection.execute('DELETE FROM orders WHERE id = ?', [orderId]);
 
             await connection.commit();
+
+            // Log Admin Activity
+            const { getSession } = await import('@/lib/auth');
+            const session = await getSession();
+            if (session) {
+                const { logAdminActivity } = await import('@/lib/activity-logger');
+                await logAdminActivity(
+                    session.id,
+                    'order_delete',
+                    `Deleted order #${orderId} (Customer: ${customerName})`,
+                    'order',
+                    parseInt(orderId)
+                );
+            }
+
             return NextResponse.json({ success: true });
 
         } catch (dbError) {

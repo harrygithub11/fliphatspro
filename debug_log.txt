@@ -1,0 +1,165 @@
+
+[2026-01-05T16:23:29.072Z] UPDATE LEAD 32
+Payload: {"score":"warm"}
+Session: true
+AdminID: 1
+
+[2026-01-05T16:23:29.841Z] UPDATE LEAD 32
+Payload: {"stage":"proposal_sent"}
+Session: true
+AdminID: 1
+
+[2026-01-05T16:23:46.947Z] UPDATE LEAD 21
+Payload: {"stage":"proposal_sent"}
+Session: true
+AdminID: 1
+[2026-01-05T17:29:42.048Z] GET /api/admin/pages - Session: null
+[2026-01-05T17:29:42.049Z] Unauthorized access attempt
+[2026-01-05T17:30:27.018Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T17:30:27.023Z] Fetched 2 pages
+[2026-01-05T17:30:27.883Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T17:30:27.901Z] Fetched 2 pages
+[2026-01-05T17:31:14.312Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T17:31:14.316Z] Fetched 2 pages
+[2026-01-05T17:31:14.386Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T17:31:14.388Z] Fetched 2 pages
+[2026-01-05T17:31:26.188Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T17:31:26.190Z] Fetched 2 pages
+[2026-01-05T17:31:26.225Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T17:31:26.227Z] Fetched 2 pages
+[2026-01-05T17:31:35.165Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T17:31:35.167Z] Fetched 2 pages
+[2026-01-05T17:31:35.203Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T17:31:35.204Z] Fetched 2 pages
+[2026-01-05T17:31:45.487Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T17:31:45.489Z] Fetched 2 pages
+[2026-01-05T17:31:45.526Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T17:31:45.528Z] Fetched 2 pages
+[2026-01-05T17:31:47.415Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T17:31:47.418Z] Fetched 2 pages
+[2026-01-05T17:31:47.491Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T17:31:47.493Z] Fetched 2 pages
+[2026-01-05T18:10:45.286Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T18:10:45.306Z] Fetched 2 pages
+[2026-01-05T18:10:45.350Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T18:10:45.351Z] Fetched 2 pages
+[2026-01-05T18:12:06.456Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T18:12:06.470Z] Fetched 2 pages
+[2026-01-05T18:12:06.491Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T18:12:06.493Z] Fetched 2 pages
+[2026-01-05T18:12:22.670Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T18:12:22.707Z] Fetched 2 pages
+[2026-01-05T18:12:22.774Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T18:12:22.779Z] Fetched 2 pages
+[2026-01-05T18:13:37.923Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T18:13:37.940Z] Fetched 2 pages
+[2026-01-05T18:13:37.981Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T18:13:37.983Z] Fetched 2 pages
+[2026-01-05T18:13:46.083Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T18:13:46.087Z] Fetched 2 pages
+[2026-01-05T18:13:46.109Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T18:13:46.110Z] Fetched 2 pages
+[2026-01-05T18:36:46.251Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T18:36:46.272Z] Fetched 2 pages
+[2026-01-05T18:36:46.312Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T18:36:46.314Z] Fetched 2 pages
+[2026-01-05T18:41:36.085Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T18:41:36.096Z] Fetched 2 pages
+[2026-01-05T18:41:36.146Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T18:41:36.149Z] Fetched 2 pages
+[2026-01-05T18:41:52.170Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T18:41:52.172Z] Fetched 2 pages
+[2026-01-05T18:41:52.199Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T18:41:52.202Z] Fetched 2 pages
+[2026-01-05T18:44:51.235Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T18:44:51.252Z] Fetched 4 pages
+[2026-01-05T18:44:51.298Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T18:44:51.300Z] Fetched 4 pages
+[2026-01-05T18:50:51.014Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T18:50:51.027Z] Fetched 4 pages
+[2026-01-05T18:50:51.065Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T18:50:51.067Z] Fetched 4 pages
+[2026-01-05T18:51:19.346Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T18:51:19.350Z] Fetched 4 pages
+[2026-01-05T18:51:19.387Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T18:51:19.389Z] Fetched 4 pages
+[2026-01-05T19:01:57.430Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:01:57.441Z] Fetched 4 pages
+[2026-01-05T19:01:57.483Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:01:57.485Z] Fetched 4 pages
+[2026-01-05T19:26:23.932Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:26:23.942Z] Fetched 4 pages
+[2026-01-05T19:26:23.987Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:26:23.989Z] Fetched 4 pages
+[2026-01-05T19:26:26.710Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:26:26.713Z] Fetched 4 pages
+[2026-01-05T19:26:26.743Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:26:26.745Z] Fetched 4 pages
+[2026-01-05T19:26:30.762Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:26:30.764Z] Fetched 4 pages
+[2026-01-05T19:26:30.804Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:26:30.808Z] Fetched 4 pages
+[2026-01-05T19:26:36.272Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:26:36.275Z] Fetched 4 pages
+[2026-01-05T19:26:36.314Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:26:36.315Z] Fetched 4 pages
+[2026-01-05T19:39:21.491Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:39:21.526Z] Fetched 4 pages
+[2026-01-05T19:39:21.575Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:39:21.578Z] Fetched 4 pages
+[2026-01-05T19:40:44.601Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:40:44.605Z] Fetched 4 pages
+[2026-01-05T19:40:46.741Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:40:46.765Z] Fetched 4 pages
+[2026-01-05T19:41:23.829Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:41:23.834Z] Fetched 5 pages
+[2026-01-05T19:41:37.642Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:41:37.645Z] Fetched 6 pages
+[2026-01-05T19:42:07.217Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:42:07.222Z] Fetched 5 pages
+[2026-01-05T19:42:07.269Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:42:07.272Z] Fetched 5 pages
+[2026-01-05T19:43:21.875Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:43:21.890Z] Fetched 5 pages
+[2026-01-05T19:43:23.522Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:43:23.527Z] Fetched 5 pages
+[2026-01-05T19:43:27.264Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:43:27.297Z] Fetched 5 pages
+[2026-01-05T19:43:30.608Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:43:30.620Z] Fetched 5 pages
+[2026-01-05T19:43:31.230Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:43:31.237Z] Fetched 5 pages
+[2026-01-05T19:43:31.324Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:43:31.327Z] Fetched 5 pages
+[2026-01-05T19:49:10.669Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:49:10.690Z] Fetched 5 pages
+[2026-01-05T19:49:10.741Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:49:10.744Z] Fetched 5 pages
+[2026-01-05T19:51:16.323Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:51:16.336Z] Fetched 5 pages
+[2026-01-05T19:51:16.382Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:51:16.384Z] Fetched 5 pages
+[2026-01-05T19:52:03.752Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:52:03.757Z] Fetched 5 pages
+[2026-01-05T19:52:03.811Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T19:52:03.814Z] Fetched 5 pages
+[2026-01-05T20:03:53.256Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T20:03:53.269Z] Fetched 5 pages
+[2026-01-05T20:03:53.329Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T20:03:53.332Z] Fetched 5 pages
+[2026-01-05T20:06:24.658Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T20:06:24.666Z] Fetched 5 pages
+[2026-01-05T20:06:24.719Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T20:06:24.721Z] Fetched 5 pages
+[2026-01-05T20:07:17.162Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T20:07:17.165Z] Fetched 5 pages
+[2026-01-05T20:07:17.219Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T20:07:17.222Z] Fetched 5 pages
+[2026-01-05T20:24:29.412Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T20:24:29.424Z] Fetched 5 pages
+[2026-01-05T20:24:29.486Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T20:24:29.489Z] Fetched 5 pages
+[2026-01-05T20:27:25.342Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T20:27:25.353Z] Fetched 5 pages
+[2026-01-05T20:27:25.426Z] GET /api/admin/pages - Session: {"id":1,"email":"harrymailbox11@gmail.com","name":"Harry","role":"super_admin"}
+[2026-01-05T20:27:25.430Z] Fetched 5 pages

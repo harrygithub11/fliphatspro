@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
+import pool from '@/lib/db';
 
 // GET current logged-in admin info
 export async function GET() {
@@ -10,13 +11,29 @@ export async function GET() {
             return NextResponse.json({ success: false, message: 'Not authenticated' }, { status: 401 });
         }
 
+        // Fetch full admin details from database including dates
+        const connection = await pool.getConnection();
+        const [rows]: any = await connection.execute(
+            'SELECT id, name, email, role, created_at, last_login FROM admins WHERE id = ?',
+            [session.id]
+        );
+        connection.release();
+
+        if (rows.length === 0) {
+            return NextResponse.json({ success: false, message: 'Admin not found' }, { status: 404 });
+        }
+
+        const admin = rows[0];
+
         return NextResponse.json({
             success: true,
             admin: {
-                id: session.id,
-                name: session.name,
-                email: session.email,
-                role: session.role
+                id: admin.id,
+                name: admin.name,
+                email: admin.email,
+                role: admin.role,
+                created_at: admin.created_at,
+                last_login: admin.last_login
             }
         });
 

@@ -4,8 +4,22 @@ import { motion } from "framer-motion";
 import { Check, X, Info, ArrowRight } from "lucide-react";
 import { BookingModal } from "./BookingModal";
 
-export function ComparisonTable() {
-    const features = [
+interface ComparisonTableProps {
+    title?: string;
+    subtitle?: string;
+    badge?: string;
+    rows?: any[];
+    source?: string;
+}
+
+export function ComparisonTable({
+    title = "Compare & Save",
+    subtitle = "See exactly how much you save by switching to the founder-friendly model.",
+    badge = "Don't Get Trapped by Subscriptions",
+    rows = [],
+    source = 'website'
+}: ComparisonTableProps) {
+    const features = rows.length > 0 ? rows : [
         {
             name: "Setup Cost",
             fliphat: "One-time Payment",
@@ -56,7 +70,7 @@ export function ComparisonTable() {
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-600 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span>
                         </span>
-                        Don't Get Trapped by Subscriptions
+                        {badge}
                     </motion.div>
                     <motion.h2
                         initial={{ opacity: 0, y: 20 }}
@@ -65,10 +79,14 @@ export function ComparisonTable() {
                         transition={{ delay: 0.1 }}
                         className="text-3xl md:text-6xl font-black mb-4 md:mb-6 tracking-tight leading-tight text-white"
                     >
-                        Compare & <span className="text-red-600">Save</span>
+                        {title.split(' & ').length > 1 ? (
+                            <>
+                                {title.split(' & ')[0]} & <span className="text-red-600">{title.split(' & ')[1]}</span>
+                            </>
+                        ) : title}
                     </motion.h2>
                     <p className="text-sm md:text-lg text-zinc-400 max-w-xl mx-auto hidden md:block">
-                        See exactly how much you save by switching to the founder-friendly model.
+                        {subtitle}
                     </p>
                 </div>
 
@@ -136,7 +154,7 @@ export function ComparisonTable() {
                             </div>
                         ))}
                         <div className="min-h-[140px] p-8 flex items-center justify-center">
-                            <BookingModal type="book" source="comparison_table_desktop">
+                            <BookingModal type="book" source={`${source}:comparison`}>
                                 <motion.button
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
@@ -184,7 +202,7 @@ export function ComparisonTable() {
 
                     {/* Mobile CTA */}
                     <div className="p-4 bg-red-900/5 border-t border-red-900/20">
-                        <BookingModal type="book" source="comparison_table_mobile">
+                        <BookingModal type="book" source={`${source}:comparison_mobile`}>
                             <button className="w-full py-3 rounded-xl bg-red-600 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2">
                                 Start Your Store <ArrowRight className="h-4 w-4" />
                             </button>

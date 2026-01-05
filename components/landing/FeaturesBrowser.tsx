@@ -1,40 +1,57 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Laptop, BarChart, CreditCard, Rocket, Zap, ShieldCheck } from "lucide-react";
+import * as LucideIcons from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-export function FeaturesBrowser() {
-    const features = [
-        {
-            id: "website",
-            title: "Your Own Website",
-            desc: "A professional, mobile-responsive e-commerce store with your own domain included.",
-            icon: <Laptop className="w-6 h-6 text-red-600" />,
-            color: "bg-red-50 border-red-100"
-        },
-        {
-            id: "dashboard",
-            title: "User-Friendly Dashboard",
-            desc: "All your data in one place. Intuitive interface to view sales, inventory and customer insights.",
-            icon: <BarChart className="w-6 h-6 text-red-600" />,
-            color: "bg-red-50 border-red-100"
-        },
-        {
-            id: "insights",
-            title: "Real-Time Insights",
-            desc: "Stay up to date with instant analytics. React quickly to trends and optimize your sales.",
-            icon: <Zap className="w-6 h-6 text-red-600" />,
-            color: "bg-red-50 border-red-100"
-        },
-        {
-            id: "marketing",
-            title: "Marketing Tools",
-            desc: "Email automation, discount codes, and abandoned cart recovery tools built right in.",
-            icon: <Rocket className="w-6 h-6 text-red-600" />,
-            color: "bg-red-50 border-red-100"
-        }
-    ];
+interface FeatureItem {
+    id?: string;
+    title: string;
+    description: string;
+    icon: any;
+}
+
+const IconMap = (iconName: string) => {
+    const Icon = (LucideIcons as any)[iconName] || LucideIcons.Zap;
+    return <Icon className="w-6 h-6 text-red-600" />;
+};
+
+interface FeaturesBrowserProps {
+    features?: FeatureItem[];
+    headline?: string;
+    subheadline?: string;
+}
+
+export function FeaturesBrowser({
+    features = [],
+    headline = "Get more value from your tools",
+    subheadline = "Connect your tools, connect your teams. With everything included, your ecommerce journey is just a click away."
+}: FeaturesBrowserProps) {
+    // Fallback if empty
+    if (!features || features.length === 0) {
+        features = [
+            {
+                title: "Your Own Website",
+                description: "A professional, mobile-responsive e-commerce store with your own domain included.",
+                icon: "Laptop"
+            },
+            {
+                title: "User-Friendly Dashboard",
+                description: "All your data in one place. Intuitive interface to view sales, inventory and customer insights.",
+                icon: "BarChart"
+            },
+            {
+                title: "Real-Time Insights",
+                description: "Stay up to date with instant analytics. React quickly to trends and optimize your sales.",
+                icon: "Zap"
+            },
+            {
+                title: "Marketing Tools",
+                description: "Email automation, discount codes, and abandoned cart recovery tools built right in.",
+                icon: "Rocket"
+            }
+        ];
+    }
 
     return (
         <section className="container mx-auto px-4 py-24 relative z-10">
@@ -58,17 +75,17 @@ export function FeaturesBrowser() {
                             Our Features
                         </Badge>
                         <h2 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight text-white features-headline">
-                            Get more value from your tools
+                            {headline}
                         </h2>
                         <p className="text-lg text-zinc-400 leading-relaxed">
-                            Connect your tools, connect your teams. With everything included, your ecommerce journey is just a click away.
+                            {subheadline}
                         </p>
                     </div>
 
                     <div className="grid md:grid-cols-2 gap-6 lg:gap-10 relative z-10">
                         {features.map((item, i) => (
                             <motion.div
-                                key={item.id}
+                                key={item.id || i}
                                 initial={{ opacity: 0, y: 20 }}
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
@@ -77,12 +94,12 @@ export function FeaturesBrowser() {
                             >
                                 <div className={`w-12 h-12 rounded-xl bg-red-900/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
                                     <div className={`p-3 rounded-xl mb-4 w-fit bg-red-900/10 border border-red-900/20`}>
-                                        {item.icon}
+                                        {typeof item.icon === 'string' ? IconMap(item.icon) : item.icon}
                                     </div>
                                 </div>
                                 <h3 className="text-xl font-bold mb-3 text-white">{item.title}</h3>
                                 <p className="text-zinc-400 leading-relaxed text-sm md:text-base">
-                                    {item.desc}
+                                    {item.description}
                                 </p>
                             </motion.div>
                         ))}

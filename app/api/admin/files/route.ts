@@ -22,6 +22,20 @@ export async function POST(request: Request) {
                 `Added file/link: ${file_name}`
             );
 
+            // Log Admin Activity
+            const { getSession } = await import('@/lib/auth');
+            const session = await getSession();
+            if (session) {
+                const { logAdminActivity } = await import('@/lib/activity-logger');
+                await logAdminActivity(
+                    session.id,
+                    'file_upload',
+                    `Added file/link: ${file_name} for customer #${customer_id}`,
+                    'customer',
+                    customer_id
+                );
+            }
+
             return NextResponse.json({ success: true });
         } finally {
             connection.release();

@@ -16,17 +16,58 @@ interface PricingProps {
     price?: number;
     originalPrice?: number;
     title?: string;
+    description?: string;
+    features?: string[];
+    buttonText?: string;
     source?: string;
     paymentLink?: string;
+    ctaConfig?: any;
 }
+
+const defaultFeatures = [
+    "Complete e-commerce website",
+    "Admin dashboard included",
+    "Payment gateway integration",
+    "Free hosting for 1st year",
+    "Basic SEO setup",
+    "Email automation setup"
+];
 
 export function Pricing({
     price = 5000,
     originalPrice = 15000,
     title = "Founder's Starter Plan",
+    description = "Perfect for validating your idea",
+    features = defaultFeatures,
+    buttonText = "Get Instant Access",
     source = 'website',
-    paymentLink
+    paymentLink,
+    ctaConfig
 }: PricingProps) {
+    const mode = ctaConfig?.primary_mode || (paymentLink ? 'payment_link' : 'booking');
+    const modes = ctaConfig?.modes || {};
+    const currentConfig = modes[mode] || {};
+
+    let modalType: 'book' | 'pay' | 'link' = 'book';
+    let targetLink = paymentLink;
+    let btnText = buttonText || currentConfig.button_text || 'Get Instant Access';
+
+    if (mode === 'razorpay_api') {
+        modalType = 'pay';
+        targetLink = undefined;
+    } else if (mode === 'payment_link') {
+        modalType = 'link';
+        targetLink = currentConfig.url || paymentLink;
+    } else if (mode === 'booking') {
+        modalType = 'link';
+        targetLink = currentConfig.url || paymentLink;
+    } else if (mode === 'lead_form') {
+        modalType = 'book';
+        targetLink = undefined;
+    }
+
+    const finalAmount = modes.razorpay_api?.amount ? modes.razorpay_api.amount / 100 : price;
+
     return (
         <div className="w-full max-w-sm mx-auto perspective-1000">
             <motion.div
@@ -42,7 +83,7 @@ export function Pricing({
                         <CardTitle className="text-3xl font-bold text-white">
                             {title}
                         </CardTitle>
-                        <CardDescription className="text-base text-zinc-400">Perfect for validating your idea</CardDescription>
+                        <CardDescription className="text-base text-zinc-400">{description}</CardDescription>
                     </CardHeader>
 
                     <CardContent className="text-center">
@@ -55,14 +96,7 @@ export function Pricing({
                         </p>
 
                         <ul className="text-left space-y-4 mb-6">
-                            {[
-                                "Complete e-commerce website",
-                                "Admin dashboard included",
-                                "Payment gateway integration",
-                                "Free hosting for 1st year",
-                                "Basic SEO setup",
-                                "Email automation setup"
-                            ].map((feature, i) => (
+                            {features.map((feature, i) => (
                                 <li key={i} className="flex items-center gap-3 text-sm text-zinc-300">
                                     <div className="h-6 w-6 rounded-full bg-red-600/10 flex items-center justify-center flex-shrink-0 text-red-500">
                                         <Check className="h-3.5 w-3.5" />
@@ -74,17 +108,23 @@ export function Pricing({
                     </CardContent>
 
                     <CardFooter className="flex flex-col gap-3 pb-6 px-6">
-                        <BookingModal type="book" amount={price} source={source} paymentLink={paymentLink}>
+                        <BookingModal
+                            type={modalType}
+                            amount={finalAmount}
+                            source={`${source}:pricing`}
+                            paymentLink={targetLink}
+                            triggerText={btnText}
+                        >
                             <motion.button
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 className="w-full py-4 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-bold text-lg shadow-lg shadow-red-900/20 transition-all flex items-center justify-center gap-2"
                             >
-                                Get Instant Access
+                                {btnText}
                             </motion.button>
                         </BookingModal>
                         <div className="pt-2 w-full">
-                            <BookingModal type="book" triggerText="Talk to an Expert" source={source} />
+                            <BookingModal type="book" triggerText="Talk to an Expert" source={`${source}:pricing_expert`} />
                         </div>
                     </CardFooter>
                 </Card>

@@ -73,8 +73,8 @@ export async function POST(request: Request) {
                 // Insert new customer
                 const [result]: any = await connection.execute(
                     `INSERT INTO customers (name, email, phone, source, stage, score, tags, notes, created_at) 
-                     VALUES (?, ?, ?, 'Strategy Call', 'new', 'warm', ?, ?, NOW())`,
-                    [name, email, phone || '', JSON.stringify(['booking_form']), store || '']
+                     VALUES (?, ?, ?, ?, 'new', 'warm', ?, ?, NOW())`,
+                    [name, email, phone || '', source || 'Strategy Call', JSON.stringify(['booking_form']), store || '']
                 );
                 customerId = result.insertId;
             }
@@ -85,6 +85,14 @@ export async function POST(request: Request) {
                  VALUES ('system_event', ?, ?, NOW())`,
                 [customerId, JSON.stringify({ source: 'booking_form', action: 'form_submitted', ...body })]
             );
+
+            // Track conversion on landing page if source is a slug
+            if (source) {
+                await connection.execute(
+                    'UPDATE landing_pages SET conversions = conversions + 1 WHERE slug = ?',
+                    [source]
+                ).catch(err => console.log('Landing page not found for source:', source));
+            }
 
             connection.release();
 

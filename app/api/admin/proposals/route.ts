@@ -43,6 +43,24 @@ export async function POST(request: Request) {
             );
 
             await connection.commit();
+
+            // Log Admin Activity
+            const { getSession } = await import('@/lib/auth');
+            const session = await getSession();
+            if (session) {
+                // Fetch customer name
+                const [cust]: any = await connection.execute('SELECT name FROM customers WHERE id = ?', [customer_id]);
+                const customerName = cust[0]?.name || 'Unknown';
+
+                const { logAdminActivity } = await import('@/lib/activity-logger');
+                await logAdminActivity(
+                    session.id,
+                    'proposal_create',
+                    `Created Proposal: ${title} (Rs. ${amount}) for ${customerName}`,
+                    'order',
+                    orderId
+                );
+            }
             return NextResponse.json({ success: true, orderId });
         } catch (error) {
             await connection.rollback();

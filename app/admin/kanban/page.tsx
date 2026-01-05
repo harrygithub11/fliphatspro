@@ -109,7 +109,7 @@ export default function KanbanPage() {
                             <div className="p-2 flex-1 overflow-y-auto space-y-2">
                                 {orders.filter(o => o.status === col.id).map(order => (
                                     <div
-                                        key={order.id}
+                                        key={order.id || `lead-${order.customer_id}`}
                                         draggable
                                         onDragStart={() => setDraggedOrderId(order.id)}
                                         className="bg-white dark:bg-zinc-900 p-3 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-800 cursor-move hover:shadow-md transition-shadow group relative"

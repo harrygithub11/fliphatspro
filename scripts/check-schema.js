@@ -1,15 +1,20 @@
-
-const pool = require('../lib/db');
+require('dotenv').config();
+const mysql = require('mysql2/promise');
 
 async function checkSchema() {
     try {
-        const [rows] = await pool.query("SHOW COLUMNS FROM orders");
-        console.log("Columns in 'orders' table:");
-        rows.forEach(r => console.log(`- ${r.Field} (${r.Type})`));
-    } catch (e) {
-        console.error("Error:", e.message);
-    } finally {
-        process.exit();
+        const connection = await mysql.createConnection({
+            host: process.env.DB_HOST || 'localhost',
+            user: process.env.DB_USER || 'root',
+            password: process.env.DB_PASSWORD ?? '',
+            database: process.env.DB_NAME || 'newyearlp',
+        });
+
+        const [rows] = await connection.execute("DESCRIBE admin_activity_logs");
+        console.log(JSON.stringify(rows, null, 2));
+        await connection.end();
+    } catch (error) {
+        console.error(error);
     }
 }
 

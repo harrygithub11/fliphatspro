@@ -12,35 +12,54 @@ export function CountdownTimer() {
     });
 
     useEffect(() => {
-        // Set deadline to 3 days from now for demo purposes, or a fixed New Year date
-        // For specific New Year offer: Jan 1st of next year
-        const now = new Date();
-        const currentYear = now.getFullYear();
-        const targetDate = new Date(`January 1, ${currentYear + 1} 00:00:00`).getTime();
+        const fetchTargetDate = async () => {
+            try {
+                // Default to 15th Jan if fetch fails
+                let targetTime = new Date('January 15, 2026 00:00:00').getTime();
 
-        // Fallback if already passed (e.g. for demo continuity) -> set to 24 hours from now
-        const fallbackDate = new Date(now.getTime() + 24 * 60 * 60 * 1000).getTime();
+                const res = await fetch('/api/admin/settings');
+                const data = await res.json();
 
-        const deadline = targetDate > now.getTime() ? targetDate : fallbackDate;
+                if (data.offer_end_date) {
+                    targetTime = new Date(data.offer_end_date).getTime();
+                }
 
-        const interval = setInterval(() => {
-            const now = new Date().getTime();
-            const distance = deadline - now;
-
-            if (distance < 0) {
-                clearInterval(interval);
-                return;
+                startTimer(targetTime);
+            } catch (error) {
+                console.error('Failed to fetch timer date:', error);
+                // Fallback
+                startTimer(new Date('January 15, 2026 00:00:00').getTime());
             }
+        };
 
-            setTimeLeft({
-                days: Math.floor(distance / (1000 * 60 * 60 * 24)),
-                hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-                minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
-                seconds: Math.floor((distance % (1000 * 60)) / 1000),
-            });
-        }, 1000);
+        const startTimer = (targetDate: number) => {
+            const now = new Date().getTime();
+            // Just use targetDate directly, no 24h fallback for this specific offer unless needed
+            const deadline = targetDate;
 
-        return () => clearInterval(interval);
+            const interval = setInterval(() => {
+                const now = new Date().getTime();
+                const distance = deadline - now;
+
+                if (distance < 0) {
+                    setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+                    clearInterval(interval);
+                    return;
+                }
+
+                setTimeLeft({
+                    days: Math.floor(distance / (1000 * 60 * 60 * 24)),
+                    hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+                    minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
+                    seconds: Math.floor((distance % (1000 * 60)) / 1000),
+                });
+            }, 1000);
+
+            // Cleanup function assignment
+            return () => clearInterval(interval);
+        };
+
+        fetchTargetDate();
     }, []);
 
     const timeUnits = [

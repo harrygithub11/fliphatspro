@@ -4,7 +4,40 @@ import { motion } from "framer-motion";
 import { ExternalLink, LayoutDashboard, ShoppingBag, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export function LiveDemos() {
+interface LiveDemosProps {
+    title?: string;
+    description?: string;
+    items?: any[];
+}
+
+export function LiveDemos({
+    title = "Experience the Power",
+    description = "Don't just take our word for it. Explore the live store and the powerful admin panel behind it.",
+    items = []
+}: LiveDemosProps) {
+    // Default items if none provided
+    const displayItems = items.length > 0 ? items : [
+        {
+            title: "Live Demo Store",
+            subtitle: "Customer Experience",
+            desc: "See how your customers will browse and buy from your brand.",
+            video: "/Videos/webpreview.mp4",
+            link: "https://demo.fliphatmedia.com/",
+            action: "Visit Store",
+            icon: "ShoppingBag",
+            color: "from-red-600/20 to-orange-600/20"
+        },
+        {
+            title: "Admin Dashboard",
+            subtitle: "Business Control",
+            desc: "Control everything from products and orders to payments.",
+            video: "/Videos/dashpreview.mp4",
+            link: "https://demo.fliphatmedia.com/admin",
+            action: "Try Admin Panel",
+            icon: "LayoutDashboard",
+            color: "from-red-600/20 to-orange-600/20"
+        }
+    ];
     return (
         <section className="py-24 relative overflow-hidden bg-transparent">
             {/* Background Decor */}
@@ -32,7 +65,7 @@ export function LiveDemos() {
                         transition={{ delay: 0.1 }}
                         className="text-4xl md:text-5xl font-bold mb-6 tracking-tight text-white"
                     >
-                        Experience the Power
+                        {title}
                     </motion.h2>
                     <motion.p
                         initial={{ opacity: 0, y: 20 }}
@@ -41,34 +74,30 @@ export function LiveDemos() {
                         transition={{ delay: 0.2 }}
                         className="text-lg text-zinc-400"
                     >
-                        Don't just take our word for it. Explore the live store and the powerful admin panel behind it.
+                        {description}
                     </motion.p>
                 </div>
 
                 <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
-                    <DemoCard
-                        title="Live Demo Store"
-                        subtitle="Customer Experience"
-                        desc="See how your customers will browse and buy from your brand."
-                        video="/Videos/webpreview.mp4"
-                        link="https://demo.fliphatmedia.com/"
-                        action="Visit Store"
-                        icon={ShoppingBag}
-                        delay={0.3}
-                        color="from-red-600/20 to-orange-600/20"
-                    />
+                    {displayItems.map((item: any, idx: number) => {
+                        const IconMap: any = { ShoppingBag, LayoutDashboard };
+                        const Icon = typeof item.icon === 'string' ? (IconMap[item.icon] || ShoppingBag) : item.icon;
 
-                    <DemoCard
-                        title="Admin Dashboard"
-                        subtitle="Business Control"
-                        desc="Control everything from products and orders to payments."
-                        video="/Videos/dashpreview.mp4"
-                        link="https://demo.fliphatmedia.com/admin"
-                        action="Try Admin Panel"
-                        icon={LayoutDashboard}
-                        delay={0.4}
-                        color="from-red-600/20 to-orange-600/20"
-                    />
+                        return (
+                            <DemoCard
+                                key={idx}
+                                title={item.title}
+                                subtitle={item.subtitle}
+                                desc={item.desc}
+                                video={item.video}
+                                link={item.link}
+                                action={item.action}
+                                icon={Icon}
+                                delay={0.3 + (idx * 0.1)}
+                                color={item.color || "from-red-600/20 to-orange-600/20"}
+                            />
+                        );
+                    })}
                 </div>
             </div>
         </section>

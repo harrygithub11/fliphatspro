@@ -10,14 +10,23 @@ interface NewYearHeroProps {
     videoSrc?: string;
     headline?: React.ReactNode;
     subheadline?: string;
+    announcementBadge?: string;
+    ctaText?: string;
+    offerEndRequest?: string | null;
 }
 
 export function NewYearHero({
     videoThumbnail = "/Photos/5k-video-cover.jpg",
     videoSrc = "/Videos/5k LP.mp4",
     headline,
-    subheadline
+    subheadline,
+    announcementBadge = "FLASH SALE LIVE",
+    ctaText = "Get Instant Access",
+    offerEndRequest
 }: NewYearHeroProps) {
+    // Determine the date to show
+    const targetDateStr = offerEndRequest || '2026-01-15';
+
     return (
         <section className="relative pt-12 pb-16 md:pt-24 md:pb-32 overflow-hidden bg-black text-white min-h-[85vh] md:min-h-[90vh] flex flex-col justify-center items-center">
 
@@ -45,9 +54,9 @@ export function NewYearHero({
                     className="mb-8 inline-flex items-center bg-white rounded-lg p-1 pr-4 shadow-lg shadow-white/5"
                 >
                     <span className="bg-black text-white text-sm font-medium px-3 py-1.5 rounded-md mr-3">
-                        Limited time offer ends in
+                        {announcementBadge}
                     </span>
-                    <SimpleTimer targetDate={new Date('2026-01-15')} />
+                    <SimpleTimer targetDate={new Date(targetDateStr)} />
                 </motion.div>
 
                 {/* Headline */}
@@ -128,7 +137,7 @@ export function NewYearHero({
                     transition={{ delay: 0.4 }}
                     className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-12 w-full max-w-4xl"
                 >
-                    <InfoBox icon={<Calendar className="text-red-500" />} label="Offer Valid Until" value="January 15th, 2026" />
+                    <InfoBox icon={<Calendar className="text-red-500" />} label="Offer Valid Until" value={new Date(targetDateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })} />
                     <InfoBox icon={<Clock className="text-red-500" />} label="Setup Time" value="24 - 48 Hours" />
                     <InfoBox icon={<Hourglass className="text-red-500" />} label="Duration" value="1 Year Access" />
                     <InfoBox icon={<Languages className="text-red-500" />} label="Support" value="English & Hindi" />

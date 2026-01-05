@@ -35,8 +35,8 @@ export async function POST(request: Request) {
                 // Update phone/name if missing? For now just use existing ID.
             } else {
                 const [res]: any = await connection.execute(
-                    'INSERT INTO customers (name, email, phone, notes) VALUES (?, ?, ?, ?)',
-                    [name, email, phone, `Store Interest: ${store_name || 'N/A'}`]
+                    'INSERT INTO customers (name, email, phone, source, notes) VALUES (?, ?, ?, ?, ?)',
+                    [name, email, phone, source || 'website', `Store Interest: ${store_name || 'N/A'}`]
                 );
                 customerId = res.insertId;
             }
@@ -53,6 +53,14 @@ export async function POST(request: Request) {
                 'INSERT INTO interactions (customer_id, order_id, type, content) VALUES (?, ?, ?, ?)',
                 [customerId, orderDbId, 'system_event', 'Checkout Initiated - Waiting for Payment']
             );
+
+            // D. Track conversion on landing page if source is a slug
+            if (source) {
+                await connection.execute(
+                    'UPDATE landing_pages SET conversions = conversions + 1 WHERE slug = ?',
+                    [source]
+                ).catch(err => console.log('Landing page not found for source:', source));
+            }
 
             await connection.commit();
         } catch (dbError) {

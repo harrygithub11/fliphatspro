@@ -1,78 +1,146 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Loader2, Save } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { GeneralSettings } from './components/GeneralSettings';
 
 export default function SettingsPage() {
+    const { toast } = useToast();
+    const [loading, setLoading] = useState(false);
+    const [settings, setSettings] = useState({
+        site_name: '',
+        razorpay_key_id: '',
+        razorpay_key_secret: '',
+        facebook_pixel_id: '',
+        google_analytics_id: ''
+    });
+
+    useEffect(() => {
+        fetchSettings();
+    }, []);
+
+    const fetchSettings = async () => {
+        try {
+            const res = await fetch('/api/admin/settings');
+            if (res.ok) {
+                const data = await res.json();
+                setSettings(data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch settings:', error);
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+
+        try {
+            const res = await fetch('/api/admin/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(settings)
+            });
+
+            if (res.ok) {
+                toast({
+                    title: 'Settings saved',
+                    description: 'Your settings have been updated successfully.',
+                });
+            } else {
+                throw new Error('Failed to save settings');
+            }
+        } catch (error) {
+            toast({
+                title: 'Error',
+                description: 'Failed to save settings. Please try again.',
+                variant: 'destructive'
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
-        <div className="space-y-6">
-            <h1 className="text-3xl font-bold tracking-tight">System Settings</h1>
+        <div className="p-6 max-w-4xl mx-auto space-y-6">
+            <div>
+                <h1 className="text-3xl font-bold">Settings</h1>
+                <p className="text-muted-foreground">Manage your application settings</p>
+            </div>
 
-            <Tabs defaultValue="general" className="space-y-4">
-                <TabsList>
-                    <TabsTrigger value="general">General</TabsTrigger>
-                    <TabsTrigger value="profile">Admin Profile</TabsTrigger>
-                    <TabsTrigger value="billing">Billing & Keys</TabsTrigger>
-                </TabsList>
+            {/* Offer Settings Component */}
+            <GeneralSettings />
 
-                <TabsContent value="general">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>General Configuration</CardTitle>
-                            <CardDescription>Manage global settings for your CRM.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid gap-2">
-                                <Label>CRM Name</Label>
-                                <Input defaultValue="FliphatMedia CRM" />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label>Support Email</Label>
-                                <Input defaultValue="support@fliphatmedia.com" />
-                            </div>
-                            <Button>Save Changes</Button>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
+            <form onSubmit={handleSubmit}>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>API & Integration Settings</CardTitle>
+                        <CardDescription>Configure your site and integrations</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="site_name">Site Name</Label>
+                            <Input
+                                id="site_name"
+                                value={settings.site_name}
+                                onChange={(e) => setSettings({ ...settings, site_name: e.target.value })}
+                                placeholder="FliphatMedia"
+                            />
+                        </div>
 
-                <TabsContent value="profile">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Admin Profile</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid gap-2">
-                                <Label>Current Email</Label>
-                                <Input disabled defaultValue="admin@system.com" />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label>New Password</Label>
-                                <Input type="password" />
-                            </div>
-                            <Button variant="secondary">Update Password</Button>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
+                        <div className="space-y-2">
+                            <Label htmlFor="razorpay_key_id">Razorpay Key ID</Label>
+                            <Input
+                                id="razorpay_key_id"
+                                value={settings.razorpay_key_id}
+                                onChange={(e) => setSettings({ ...settings, razorpay_key_id: e.target.value })}
+                                placeholder="rzp_test_..."
+                            />
+                        </div>
 
-                <TabsContent value="billing">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>API Keys</CardTitle>
-                            <CardDescription className="text-red-500">Sensitive Information</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid gap-2">
-                                <Label>Razorpay Key ID</Label>
-                                <Input defaultValue="rzp_test_..." type="password" />
-                            </div>
-                            <Button variant="outline">Regenerate Keys</Button>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-            </Tabs>
+                        <div className="space-y-2">
+                            <Label htmlFor="razorpay_key_secret">Razorpay Key Secret</Label>
+                            <Input
+                                id="razorpay_key_secret"
+                                type="password"
+                                value={settings.razorpay_key_secret}
+                                onChange={(e) => setSettings({ ...settings, razorpay_key_secret: e.target.value })}
+                                placeholder="••••••••"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="facebook_pixel_id">Facebook Pixel ID</Label>
+                            <Input
+                                id="facebook_pixel_id"
+                                value={settings.facebook_pixel_id}
+                                onChange={(e) => setSettings({ ...settings, facebook_pixel_id: e.target.value })}
+                                placeholder="123456789012345"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="google_analytics_id">Google Analytics ID</Label>
+                            <Input
+                                id="google_analytics_id"
+                                value={settings.google_analytics_id}
+                                onChange={(e) => setSettings({ ...settings, google_analytics_id: e.target.value })}
+                                placeholder="G-XXXXXXXXXX"
+                            />
+                        </div>
+
+                        <Button type="submit" disabled={loading} className="w-full">
+                            {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                            Save Settings
+                        </Button>
+                    </CardContent>
+                </Card>
+            </form>
         </div>
     );
 }

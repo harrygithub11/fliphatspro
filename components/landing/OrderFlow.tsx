@@ -5,57 +5,57 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, ShoppingBag, ShoppingCart, CreditCard, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-const steps = [
+const defaultSteps = [
     {
         title: "Browse Products",
         desc: "Your customers browse your beautiful store.",
         image: "/Photos/Orderflow01.png",
-        icon: ShoppingBag
+        icon: "ShoppingBag"
     },
     {
         title: "Add to Cart",
         desc: "Seamless one-click add to cart experience.",
         image: "/Photos/Orderflow02.png",
-        icon: ShoppingCart
+        icon: "ShoppingCart"
     },
     {
         title: "Checkout",
         desc: "Simple checkout page optimized for conversions.",
         image: "/Photos/Orderflow04.png",
-        icon: CreditCard
-    },
-    {
-        title: "Payment",
-        desc: "Secure payment gateway integration (UPI/Cards).",
-        image: "/Photos/Orderflow05.png",
-        icon: CreditCard
+        icon: "CreditCard"
     },
     {
         title: "Order Success",
         desc: "Instant order confirmation and invoice generation.",
+        // @ts-ignore
         images: ["/Photos/ordersucusspage01.png", "/Photos/emailrecive01.png"],
-        icon: CheckCircle
-    },
-    {
-        title: "Track Order",
-        desc: "Customers can track their order status in real-time.",
-        image: "/Photos/Orderflow06.png",
-        icon: ShoppingBag
+        icon: "CheckCircle"
     }
 ];
 
-export function OrderFlow() {
+interface OrderFlowProps {
+    title?: string;
+    subtitle?: string;
+    items?: any[];
+}
+
+export function OrderFlow({
+    title = "Experience the Seamless Buying Flow",
+    subtitle = "Your customers get a world-class shopping experience from product to payment.",
+    items = []
+}: OrderFlowProps) {
+    const steps = items.length > 0 ? items : defaultSteps;
     const [currentStep, setCurrentStep] = useState(0);
     const [isHovered, setIsHovered] = useState(false);
 
     useEffect(() => {
-        if (!isHovered) {
+        if (!isHovered && steps.length > 0) {
             const timer = setInterval(() => {
                 setCurrentStep((prev) => (prev + 1) % steps.length);
             }, 3000);
             return () => clearInterval(timer);
         }
-    }, [isHovered]);
+    }, [isHovered, steps.length]);
 
     const nextStep = () => {
         setCurrentStep((prev) => (prev + 1) % steps.length);
@@ -73,15 +73,17 @@ export function OrderFlow() {
         >
             <div className="container mx-auto px-4">
                 <div className="text-center max-w-3xl mx-auto mb-16">
-                    <h2 className="text-3xl md:text-5xl font-bold mb-6 text-white">Experience the Seamless Buying Flow</h2>
-                    <p className="text-lg text-zinc-400">Your customers get a world-class shopping experience from product to payment.</p>
+                    <h2 className="text-3xl md:text-5xl font-bold mb-6 text-white">{title}</h2>
+                    <p className="text-lg text-zinc-400">{subtitle}</p>
                 </div>
 
                 <div className="grid lg:grid-cols-12 gap-12 items-center">
                     {/* Steps Navigation (Desktop) */}
                     <div className="lg:col-span-4 space-y-4 hidden lg:block">
                         {steps.map((step, index) => {
-                            const Icon = step.icon;
+                            const IconMap: any = { ShoppingBag, ShoppingCart, CreditCard, CheckCircle };
+                            const Icon = typeof step.icon === 'string' ? (IconMap[step.icon] || ShoppingBag) : step.icon;
+
                             return (
                                 <div
                                     key={index}

@@ -26,6 +26,24 @@ export async function POST(request: Request) {
                 `Manual deal created: ₹${amount}`
             );
 
+            // Log Admin Activity
+            const { getSession } = await import('@/lib/auth');
+            const session = await getSession();
+            if (session) {
+                // Fetch customer name
+                const [cust]: any = await connection.execute('SELECT name FROM customers WHERE id = ?', [customer_id]);
+                const customerName = cust[0]?.name || 'Unknown';
+
+                const { logAdminActivity } = await import('@/lib/activity-logger');
+                await logAdminActivity(
+                    session.id,
+                    'deal_create',
+                    `Created manual deal: Rs. ${amount} for ${customerName}`,
+                    'order',
+                    orderId
+                );
+            }
+
             return NextResponse.json({ success: true, orderId });
         } finally {
             connection.release();
@@ -55,6 +73,24 @@ export async function PUT(request: Request) {
                 `UPDATE orders SET ${setClause} WHERE id = ?`,
                 [...values, id]
             );
+
+            // Log Admin Activity
+            const { getSession } = await import('@/lib/auth');
+            const session = await getSession();
+            if (session) {
+                const { logAdminActivity } = await import('@/lib/activity-logger');
+                const changes = Object.entries(updates)
+                    .map(([key, value]) => `${key} to '${value}'`)
+                    .join(', ');
+
+                await logAdminActivity(
+                    session.id,
+                    'deal_update',
+                    `Updated deal #${id}: ${changes}`,
+                    'order',
+                    id
+                );
+            }
             return NextResponse.json({ success: true });
         } finally {
             connection.release();

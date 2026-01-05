@@ -26,6 +26,8 @@ export default function AdminLogin() {
             });
 
             if (res.ok) {
+                // Store user email in localStorage for avatar display
+                localStorage.setItem('userEmail', identifier);
                 router.push('/admin/dashboard');
                 router.refresh(); // Refresh to update middleware state
             } else {
