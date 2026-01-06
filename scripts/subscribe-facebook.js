@@ -22,8 +22,28 @@ async function subscribeApp() {
 
         console.log(`Found Access Token for Page ID: ${pageId}`);
 
+        // 1.5 Verify Token
+        console.log('Verifying Token Owner...');
+        const verifyRes = await fetch(`https://graph.facebook.com/me?fields=id,name&access_token=${pageAccessToken}`);
+        const verifyData = await verifyRes.json();
+
+        if (verifyData.error) {
+            throw new Error('Token is Invalid: ' + verifyData.error.message);
+        }
+
+        console.log(`Token belongs to: "${verifyData.name}" (ID: ${verifyData.id})`);
+
+        if (verifyData.id !== pageId) {
+            console.error('\n❌ CRITICAL ERROR: TOKEN MISMATCH');
+            console.error(`You provided a token for: ${verifyData.name} (ID: ${verifyData.id})`);
+            console.error(`But we need a token for Page ID: ${pageId}`);
+            console.error('--> This is likely a USER Token. You must generate a PAGE Token.');
+            console.error('--> In Graph API Explorer, select your PAGE from the "User or Page" dropdown.');
+            return;
+        }
+
         // 2. Call Graph API to subscribe
-        console.log('Subscribing App to Page (leadgen)...');
+        console.log('Token matches Page ID! Subscribing App to Page (leadgen)...');
         const url = `https://graph.facebook.com/v18.0/${pageId}/subscribed_apps?subscribed_fields=leadgen&access_token=${pageAccessToken}`;
 
         const response = await fetch(url, { method: 'POST' });
