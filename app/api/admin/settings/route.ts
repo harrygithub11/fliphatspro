@@ -72,14 +72,14 @@ export async function POST(request: Request) {
                 }
             } else {
                 // Bulk update (API & Integration settings)
-                const { site_name, razorpay_key_id, razorpay_key_secret, facebook_pixel_id, google_analytics_id } = body;
+                console.log('Bulk updating settings:', body);
 
                 const settingsToUpdate = [
-                    { key: 'site_name', value: site_name },
-                    { key: 'razorpay_key_id', value: razorpay_key_id },
-                    { key: 'razorpay_key_secret', value: razorpay_key_secret },
-                    { key: 'facebook_pixel_id', value: facebook_pixel_id },
-                    { key: 'google_analytics_id', value: google_analytics_id },
+                    { key: 'site_name', value: body.site_name },
+                    { key: 'razorpay_key_id', value: body.razorpay_key_id },
+                    { key: 'razorpay_key_secret', value: body.razorpay_key_secret },
+                    { key: 'facebook_pixel_id', value: body.facebook_pixel_id },
+                    { key: 'google_analytics_id', value: body.google_analytics_id },
                     { key: 'facebook_page_id', value: body.facebook_page_id },
                     { key: 'facebook_access_token', value: body.facebook_access_token },
                     { key: 'facebook_app_secret', value: body.facebook_app_secret },
@@ -87,21 +87,28 @@ export async function POST(request: Request) {
                 ];
 
                 for (const setting of settingsToUpdate) {
+                    const safeValue = setting.value ?? '';
+                    console.log(`Processing ${setting.key}:`, safeValue ? 'Has Value' : 'Empty');
+
                     const [existing]: any = await connection.execute(
                         'SELECT id FROM system_settings WHERE `key` = ?',
                         [setting.key]
                     );
 
-                    if (existing.length === 0) {
-                        await connection.execute(
-                            'INSERT INTO system_settings (id, `key`, `value`) VALUES (?, ?, ?)',
-                            [crypto.randomUUID(), setting.key, setting.value]
-                        );
-                    } else {
-                        await connection.execute(
-                            'UPDATE system_settings SET `value` = ? WHERE `key` = ?',
-                            [setting.value, setting.key]
-                        );
+                    try {
+                        if (existing.length === 0) {
+                            await connection.execute(
+                                'INSERT INTO system_settings (id, `key`, `value`) VALUES (?, ?, ?)',
+                                [crypto.randomUUID(), setting.key, safeValue]
+                            );
+                        } else {
+                            await connection.execute(
+                                'UPDATE system_settings SET `value` = ? WHERE `key` = ?',
+                                [safeValue, setting.key]
+                            );
+                        }
+                    } catch (dbError) {
+                        console.error(`DB Error for ${setting.key}:`, dbError);
                     }
                 }
             }
