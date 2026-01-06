@@ -38,6 +38,9 @@ model Customer {
   created_at   DateTime?     @default(now()) @db.Timestamp(0)
   updated_at   DateTime?     @default(now()) @updatedAt @db.Timestamp(0)
 
+  facebook_lead_id String?       @unique
+  ad_data      Json?
+
   orders       Order[]
   interactions Interaction[]
   tasks        Task[]

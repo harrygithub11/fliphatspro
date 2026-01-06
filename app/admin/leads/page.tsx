@@ -160,7 +160,8 @@ export default function LeadsPage() {
             (l.order_source === sourceFilter) ||
             (l.source === sourceFilter) ||
             (sourceFilter === 'lifetime_12k' && l.order_source === 'lifetime_12k') ||
-            (sourceFilter === 'newyear_5k' && l.order_source === 'newyear_5k');
+            (sourceFilter === 'newyear_5k' && l.order_source === 'newyear_5k') ||
+            (sourceFilter === 'facebook' && l.source === 'Facebook Lead Form');
 
         return matchesSearch && matchesOwner && matchesSource;
     });
@@ -266,6 +267,7 @@ export default function LeadsPage() {
                                     <SelectItem value="Strategy Call">Strategy Call</SelectItem>
                                     <SelectItem value="manual">Manual Entry</SelectItem>
                                     <SelectItem value="website">Website</SelectItem>
+                                    <SelectItem value="facebook">Facebook Leads</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -305,7 +307,8 @@ export default function LeadsPage() {
                                         <TableCell>
                                             {lead.order_source === 'lifetime_12k' ? <Badge className="bg-purple-100 text-purple-700 border-purple-200">12k Offer</Badge> :
                                                 lead.order_source === 'newyear_5k' ? <Badge className="bg-red-100 text-red-700 border-red-200">5k Offer</Badge> :
-                                                    lead.source}
+                                                    lead.source === 'Facebook Lead Form' ? <Badge className="bg-blue-100 text-blue-700 border-blue-200">Facebook 📘</Badge> :
+                                                        lead.source}
                                         </TableCell>
                                         <TableCell>
                                             <Select

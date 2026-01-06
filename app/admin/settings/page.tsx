@@ -17,7 +17,11 @@ export default function SettingsPage() {
         razorpay_key_id: '',
         razorpay_key_secret: '',
         facebook_pixel_id: '',
-        google_analytics_id: ''
+        google_analytics_id: '',
+        facebook_page_id: '',
+        facebook_access_token: '',
+        facebook_app_secret: '',
+        webhook_verify_token: ''
     });
 
     useEffect(() => {
@@ -132,6 +136,58 @@ export default function SettingsPage() {
                                 onChange={(e) => setSettings({ ...settings, google_analytics_id: e.target.value })}
                                 placeholder="G-XXXXXXXXXX"
                             />
+                        </div>
+
+                        <div className="pt-6 border-t">
+                            <h3 className="text-lg font-medium mb-4">Facebook Lead Ads</h3>
+
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="facebook_page_id">Page ID</Label>
+                                    <Input
+                                        id="facebook_page_id"
+                                        value={settings.facebook_page_id}
+                                        onChange={(e) => setSettings({ ...settings, facebook_page_id: e.target.value })}
+                                        placeholder="1234567890"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="facebook_access_token">Page Access Token</Label>
+                                    <Input
+                                        id="facebook_access_token"
+                                        type="password"
+                                        value={settings.facebook_access_token}
+                                        onChange={(e) => setSettings({ ...settings, facebook_access_token: e.target.value })}
+                                        placeholder="EAA..."
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="facebook_app_secret">App Secret</Label>
+                                    <Input
+                                        id="facebook_app_secret"
+                                        type="password"
+                                        value={settings.facebook_app_secret}
+                                        onChange={(e) => setSettings({ ...settings, facebook_app_secret: e.target.value })}
+                                        placeholder="For webhook signature verification"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="webhook_verify_token">Webhook Verify Token</Label>
+                                    <Input
+                                        id="webhook_verify_token"
+                                        value={settings.webhook_verify_token}
+                                        onChange={(e) => setSettings({ ...settings, webhook_verify_token: e.target.value })}
+                                        placeholder="my_secret_verify_token"
+                                    />
+                                    <p className="text-sm text-muted-foreground">Enter this in Facebook Webhook settings.</p>
+                                </div>
+                                <div className="p-4 bg-muted rounded-md space-y-2">
+                                    <Label>Your Webhook Callback URL</Label>
+                                    <code className="block p-2 bg-background rounded border text-sm break-all">
+                                        https://ecom.fliphatmedia.com/api/webhooks/facebook
+                                    </code>
+                                </div>
+                            </div>
                         </div>
 
                         <Button type="submit" disabled={loading} className="w-full">

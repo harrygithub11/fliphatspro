@@ -23,7 +23,11 @@ export async function GET() {
                 facebook_pixel_id: '',
                 google_analytics_id: '',
                 offer_end_date: '',
-                newyear_offer_date: ''
+                newyear_offer_date: '',
+                facebook_page_id: '',
+                facebook_access_token: '',
+                facebook_app_secret: '',
+                webhook_verify_token: ''
             };
 
             rows.forEach((row: any) => {
@@ -82,7 +86,11 @@ export async function POST(request: Request) {
                     { key: 'razorpay_key_id', value: razorpay_key_id },
                     { key: 'razorpay_key_secret', value: razorpay_key_secret },
                     { key: 'facebook_pixel_id', value: facebook_pixel_id },
-                    { key: 'google_analytics_id', value: google_analytics_id }
+                    { key: 'google_analytics_id', value: google_analytics_id },
+                    { key: 'facebook_page_id', value: body.facebook_page_id },
+                    { key: 'facebook_access_token', value: body.facebook_access_token },
+                    { key: 'facebook_app_secret', value: body.facebook_app_secret },
+                    { key: 'webhook_verify_token', value: body.webhook_verify_token }
                 ];
 
                 for (const setting of settingsToUpdate) {
