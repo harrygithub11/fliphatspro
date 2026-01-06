@@ -1,8 +1,0 @@
-{
-  "/newyearonly/page": "app/newyearonly/page.js",
-  "/sale/[slug]/page": "app/sale/[slug]/page.js",
-  "/lifetimeoffer/page": "app/lifetimeoffer/page.js",
-  "/privacy/page": "app/privacy/page.js",
-  "/admin/pages/page": "app/admin/pages/page.js",
-  "/admin/leads/page": "app/admin/leads/page.js"
-}
