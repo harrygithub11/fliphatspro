@@ -30,20 +30,8 @@ export function NewYearHero({
     return (
         <section className="relative pt-12 pb-16 md:pt-24 md:pb-32 overflow-hidden bg-black text-white min-h-[85vh] md:min-h-[90vh] flex flex-col justify-center items-center">
 
-            {/* Background Texture/Noise */}
-            <div className="absolute inset-0 bg-[#050505]">
-                <div className="absolute inset-0 opacity-[0.2]"
-                    style={{ backgroundImage: 'url("https://grainy-gradients.vercel.app/noise.svg")' }}>
-                </div>
-
-                {/* Spotlights */}
-                <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-white/10 rounded-full blur-[100px] mix-blend-overlay" />
-                <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-white/10 rounded-full blur-[100px] mix-blend-overlay" />
-
-                {/* Red Ambient Glow */}
-                <div className="absolute top-[-20%] left-[20%] w-[500px] h-[500px] bg-red-600/30 rounded-full blur-[120px]" />
-                <div className="absolute bottom-[-20%] right-[20%] w-[500px] h-[500px] bg-red-600/30 rounded-full blur-[120px]" />
-            </div>
+            {/* Background Texture - REMOVED (Relies on GlobalBackground) */}
+            <div className="absolute inset-0 z-0" />
 
             <div className="container mx-auto px-4 relative z-10 flex flex-col items-center text-center">
 
