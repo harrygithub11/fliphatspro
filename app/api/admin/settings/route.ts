@@ -13,7 +13,7 @@ export async function GET() {
         const connection = await pool.getConnection();
         try {
             // Fetch all settings as key-value pairs
-            const [rows]: any = await connection.execute('SELECT setting_key, setting_value FROM settings');
+            const [rows]: any = await connection.execute('SELECT `key`, `value` FROM system_settings');
 
             // Convert to object
             const settings: any = {
@@ -31,7 +31,7 @@ export async function GET() {
             };
 
             rows.forEach((row: any) => {
-                settings[row.setting_key] = row.setting_value;
+                settings[row.key] = row.value;
             });
 
             return NextResponse.json(settings);
@@ -62,18 +62,18 @@ export async function POST(request: Request) {
                 const { key, value, description } = body;
 
                 const [existing]: any = await connection.execute(
-                    'SELECT id FROM settings WHERE setting_key = ?',
+                    'SELECT id FROM system_settings WHERE `key` = ?',
                     [key]
                 );
 
                 if (existing.length === 0) {
                     await connection.execute(
-                        'INSERT INTO settings (setting_key, setting_value, description) VALUES (?, ?, ?)',
+                        'INSERT INTO system_settings (`key`, `value`, description) VALUES (?, ?, ?)',
                         [key, value, description || '']
                     );
                 } else {
                     await connection.execute(
-                        'UPDATE settings SET setting_value = ?, description = ? WHERE setting_key = ?',
+                        'UPDATE system_settings SET `value` = ?, description = ? WHERE `key` = ?',
                         [value, description || '', key]
                     );
                 }
@@ -95,18 +95,18 @@ export async function POST(request: Request) {
 
                 for (const setting of settingsToUpdate) {
                     const [existing]: any = await connection.execute(
-                        'SELECT id FROM settings WHERE setting_key = ?',
+                        'SELECT id FROM system_settings WHERE `key` = ?',
                         [setting.key]
                     );
 
                     if (existing.length === 0) {
                         await connection.execute(
-                            'INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)',
+                            'INSERT INTO system_settings (`key`, `value`) VALUES (?, ?)',
                             [setting.key, setting.value]
                         );
                     } else {
                         await connection.execute(
-                            'UPDATE settings SET setting_value = ? WHERE setting_key = ?',
+                            'UPDATE system_settings SET `value` = ? WHERE `key` = ?',
                             [setting.value, setting.key]
                         );
                     }
