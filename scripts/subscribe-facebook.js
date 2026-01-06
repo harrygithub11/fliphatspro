@@ -33,6 +33,19 @@ async function subscribeApp() {
 
         console.log(`Token belongs to: "${verifyData.name}" (ID: ${verifyData.id})`);
 
+        // 1.6 Verify App Context
+        try {
+            const debugRes = await fetch(`https://graph.facebook.com/debug_token?input_token=${pageAccessToken}&access_token=${pageAccessToken}`);
+            const debugData = await debugRes.json();
+            if (debugData.data) {
+                console.log(`Token issued for App: "${debugData.data.application}" (ID: ${debugData.data.app_id})`);
+                console.log(`Token Scopes: ${debugData.data.scopes.join(', ')}`);
+                // Note: application field is usually the name or ID.
+            }
+        } catch (e) {
+            console.log('Could not verify App ID (debug_token failed). Continuing...');
+        }
+
         if (verifyData.id !== pageId) {
             console.log('Detected User Token. Attempting to fetch Page Token automatically...');
 
