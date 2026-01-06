@@ -50,7 +50,29 @@ async function subscribeApp() {
             if (!matchingPage) {
                 console.error('\n❌ CRITICAL ERROR: Page Not Found');
                 console.error(`User "${verifyData.name}" does not seem to have admin access to Page ID: ${pageId}`);
-                console.error('Available Pages:', accountsData.data.map(p => `${p.name} (${p.id})`).join(', '));
+
+                // 2.5 Check Permissions
+                console.log('Checking User Permissions...');
+                const permRes = await fetch(`https://graph.facebook.com/me/permissions?access_token=${pageAccessToken}`);
+                const permData = await permRes.json();
+
+                if (permData.data) {
+                    const scopes = permData.data.map(p => p.permission);
+                    console.log('Current Permissions:', scopes.join(', '));
+
+                    const required = ['pages_show_list', 'pages_read_engagement', 'leads_retrieval'];
+                    const missing = required.filter(r => !scopes.includes(r));
+
+                    if (missing.length > 0) {
+                        console.error('\n⚠️  MISSING PERMISSIONS:', missing.join(', '));
+                        console.error('You MUST add these permissions in Graph API Explorer:');
+                        console.error('1. Select "User Token" -> "Get User Access Token"');
+                        console.error('2. Add/Select: ' + missing.join(', '));
+                        console.error('3. Generate Access Token & Save it.');
+                    }
+                }
+
+                console.error('\nAvailable Pages detected:', accountsData.data.map(p => `${p.name} (${p.id})`).join(', ') || 'NONE');
                 return;
             }
 
