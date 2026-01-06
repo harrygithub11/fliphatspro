@@ -2,15 +2,7 @@
   "/newyearonly/page": "app/newyearonly/page.js",
   "/sale/[slug]/page": "app/sale/[slug]/page.js",
   "/lifetimeoffer/page": "app/lifetimeoffer/page.js",
-  "/api/admin/stats/route": "app/api/admin/stats/route.js",
-  "/api/admin/pages/route": "app/api/admin/pages/route.js",
-  "/api/admin/orders/route": "app/api/admin/orders/route.js",
-  "/api/admin/leads/route": "app/api/admin/leads/route.js",
-  "/api/admin/me/route": "app/api/admin/me/route.js",
-  "/api/admin/team/route": "app/api/admin/team/route.js",
+  "/privacy/page": "app/privacy/page.js",
   "/admin/pages/page": "app/admin/pages/page.js",
-  "/admin/profile/page": "app/admin/profile/page.js",
-  "/admin/dashboard/page": "app/admin/dashboard/page.js",
-  "/admin/orders/page": "app/admin/orders/page.js",
   "/admin/leads/page": "app/admin/leads/page.js"
 }

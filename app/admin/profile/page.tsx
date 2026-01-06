@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,7 +37,7 @@ interface ActivityLog {
     created_at: string;
 }
 
-export default function AdminProfilePage() {
+function ProfileContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const [profile, setProfile] = useState<AdminProfile | null>(null);
@@ -357,5 +357,20 @@ export default function AdminProfilePage() {
                 </TabsContent>
             </Tabs>
         </div>
+    );
+}
+
+export default function AdminProfilePage() {
+    return (
+        <Suspense fallback={
+            <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+                <div className="text-center">
+                    <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-muted-foreground">Loading profile configuration...</p>
+                </div>
+            </div>
+        }>
+            <ProfileContent />
+        </Suspense>
     );
 }
