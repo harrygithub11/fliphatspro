@@ -17,23 +17,19 @@ interface StickyCTAProps {
 
 export function StickyCTA({ price, originalPrice = 12000, source, ctaConfig, paymentLink, offerEndDate }: StickyCTAProps) {
     const [show, setShow] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
         setMounted(true);
         const handleScroll = () => {
-            // Show after scrolling 300px
-            if (window.scrollY > 300) {
-                setShow(true);
-            } else {
-                setShow(false);
-            }
+            if (window.scrollY > 300) setShow(true);
+            else setShow(false);
         };
 
         const handleModalState = (e: any) => {
-            if (e.detail.open) setShow(false);
-            // Don't auto-show on close, let scroll handle it or keep it hidden until scroll
-            else if (window.scrollY > 300) setShow(true);
+            if (e.detail.open) setIsModalOpen(true);
+            else setIsModalOpen(false);
         };
 
         window.addEventListener('scroll', handleScroll);
@@ -48,18 +44,28 @@ export function StickyCTA({ price, originalPrice = 12000, source, ctaConfig, pay
 
     if (!mounted) return null;
 
-    // If source/paymentLink are handled by BookingModal, we pass them.
-    // The design: 
-    // Left: Price "Rs. 499/- Rs. 249/- Only on 3rd January 2026" 
-    // Right: Gradient Button "Register Now" with arrow/play
+    // Logic: 
+    // If modal is open -> Render invisible (opacity-0, pointer-events-none) but keep mounted so Dialog survives.
+    // If !modal but show -> Render visible.
+    // If !modal and !show -> Unmount (standard sticky behavior).
 
-    // Use Portal to break out of any overflow:hidden or transform constraints of parent
+    // So we render IF (show OR isModalOpen)
+    const shouldRender = show || isModalOpen;
+    // We are visible IF (show AND !isModalOpen)
+    // Actually simpler: 
+    // isModalOpen -> opacity 0
+    // !isModalOpen -> normal behavior (opacity 1 entry animation)
+
     return createPortal(
         <AnimatePresence>
-            {show && (
+            {shouldRender && (
                 <motion.div
                     initial={{ y: 100, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
+                    animate={{
+                        y: isModalOpen ? 100 : 0,
+                        opacity: isModalOpen ? 0 : 1,
+                        pointerEvents: isModalOpen ? 'none' : 'auto'
+                    }}
                     exit={{ y: 100, opacity: 0 }}
                     className="fixed bottom-6 left-4 right-4 md:left-0 md:right-0 md:mx-auto md:w-full md:max-w-3xl z-[100]"
                 >
