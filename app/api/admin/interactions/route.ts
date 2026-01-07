@@ -13,18 +13,11 @@ export async function GET(request: Request) {
 
         const connection = await pool.getConnection();
         try {
-            // Build WHERE clause for admin filter
-            let whereClause = '';
+            // Build query dynamically
             const params: any[] = [];
 
-            if (adminId && adminId !== 'all') {
-                whereClause = 'WHERE i.created_by = ?';
-                params.push(adminId);
-            }
-
-            // Fetch from interactions table - the main timeline source
-            const [interactions]: any = await connection.execute(
-                `SELECT 
+            let query = `
+                SELECT 
                     i.id,
                     'interaction' AS source,
                     i.type AS action_type,
@@ -34,14 +27,21 @@ export async function GET(request: Request) {
                     i.created_by AS admin_id,
                     a.name AS admin_name,
                     i.created_at
-                 FROM interactions i
-                 LEFT JOIN customers c ON i.customer_id = c.id
-                 LEFT JOIN admins a ON i.created_by = a.id
-                 ${whereClause}
-                 ORDER BY i.created_at DESC
-                 LIMIT ?`,
-                [...params, limit]
-            );
+                FROM interactions i
+                LEFT JOIN customers c ON i.customer_id = c.id
+                LEFT JOIN admins a ON i.created_by = a.id
+            `;
+
+            if (adminId && adminId !== 'all') {
+                query += ` WHERE i.created_by = ?`;
+                params.push(adminId);
+            }
+
+            query += ` ORDER BY i.created_at DESC LIMIT ?`;
+            params.push(limit);
+
+            // Fetch from interactions table - the main timeline source
+            const [interactions]: any = await connection.execute(query, params);
 
             // Try to also fetch admin_activity_logs (disable for now to debug)
             const activityLogs: any[] = [];
