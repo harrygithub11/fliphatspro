@@ -13,11 +13,13 @@ export async function GET(request: Request) {
         let query = `
             SELECT t.*, c.name AS customer_name, c.email AS customer_email, 
                    a.name AS created_by_name,
-                   asg.name AS assigned_name
+                   asg.name AS assigned_name,
+                   sc.name AS status_changed_by_name
             FROM tasks t
             LEFT JOIN customers c ON t.customer_id = c.id
             LEFT JOIN admins a ON t.created_by = a.id
             LEFT JOIN admins asg ON t.assigned_to = asg.id
+            LEFT JOIN admins sc ON t.status_changed_by = sc.id
             WHERE 1 = 1
         `;
         const params: any[] = [];
@@ -102,20 +104,27 @@ export async function PUT(request: Request) {
             return NextResponse.json({ success: false, message: 'Invalid update' }, { status: 400 });
         }
 
-        const keys = Object.keys(updates);
-        const values = Object.values(updates);
-        const setClause = keys.map(k => `${k} = ?`).join(', ');
-
         const connection = await pool.getConnection();
         try {
+            // If status is being updated, also track who changed it
+            const { getSession } = await import('@/lib/auth');
+            const session = await getSession();
+
+            if (updates.status && session) {
+                updates.status_changed_by = session.id;
+                updates.status_changed_at = new Date().toISOString().slice(0, 19).replace('T', ' ');
+            }
+
+            const keys = Object.keys(updates);
+            const values = Object.values(updates);
+            const setClause = keys.map(k => `${k} = ?`).join(', ');
+
             await connection.execute(
-                `UPDATE tasks SET ${setClause} WHERE id = ? `,
+                `UPDATE tasks SET ${setClause} WHERE id = ?`,
                 [...values, id]
             );
 
             // Log Admin Activity
-            const { getSession } = await import('@/lib/auth');
-            const session = await getSession();
             if (session) {
                 const { logAdminActivity } = await import('@/lib/activity-logger');
                 const changes = Object.entries(updates)

@@ -32,6 +32,9 @@ interface Task {
     priority: string;
     created_at: string;
     created_by_name?: string;
+    status_changed_by?: number;
+    status_changed_by_name?: string;
+    status_changed_at?: string;
 }
 
 interface TimelineItem {
@@ -332,22 +335,29 @@ export default function WorkspacePage() {
                                     {tasks.map(task => (
                                         <div key={task.id} className="flex items-start gap-4 p-4 border rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors group">
                                             <Select value={task.status} onValueChange={v => handleUpdateTask(task.id, 'status', v)}>
-                                                <SelectTrigger className="w-auto h-auto border-none shadow-none p-0">
-                                                    <Badge
-                                                        variant="outline"
-                                                        className={`cursor-pointer text-xs font-medium px-2 py-1 flex items-center gap-1 ${task.status === 'done'
-                                                            ? 'bg-green-50 text-green-700 border-green-300 hover:bg-green-100'
-                                                            : task.status === 'in_progress'
-                                                                ? 'bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100'
-                                                                : 'bg-gray-50 text-gray-700 border-gray-300 hover:bg-gray-100'
-                                                            }`}
-                                                    >
-                                                        {task.status === 'done' && <CheckCircle2 className="w-3 h-3" />}
-                                                        {task.status === 'in_progress' && <Clock className="w-3 h-3" />}
-                                                        {task.status === 'open' && <Circle className="w-3 h-3" />}
-                                                        <span className="capitalize">{task.status === 'in_progress' ? 'In Progress' : task.status}</span>
-                                                        <ChevronDown className="w-3 h-3 opacity-50" />
-                                                    </Badge>
+                                                <SelectTrigger className="w-auto h-auto border-none shadow-none p-0 [&>svg]:hidden">
+                                                    <div className="flex flex-col items-start">
+                                                        <Badge
+                                                            variant="outline"
+                                                            className={`cursor-pointer text-xs font-medium px-2 py-1 flex items-center gap-1 ${task.status === 'done'
+                                                                ? 'bg-green-50 text-green-700 border-green-300 hover:bg-green-100'
+                                                                : task.status === 'in_progress'
+                                                                    ? 'bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100'
+                                                                    : 'bg-gray-50 text-gray-700 border-gray-300 hover:bg-gray-100'
+                                                                }`}
+                                                        >
+                                                            {task.status === 'done' && <CheckCircle2 className="w-3 h-3" />}
+                                                            {task.status === 'in_progress' && <Clock className="w-3 h-3" />}
+                                                            {task.status === 'open' && <Circle className="w-3 h-3" />}
+                                                            <span className="capitalize">{task.status === 'in_progress' ? 'In Progress' : task.status}</span>
+                                                            <ChevronDown className="w-3 h-3 opacity-50" />
+                                                        </Badge>
+                                                        {task.status_changed_by_name && (
+                                                            <span className="text-[9px] text-muted-foreground mt-0.5">
+                                                                by {task.status_changed_by_name}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="open">Open</SelectItem>
