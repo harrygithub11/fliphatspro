@@ -4,6 +4,34 @@ export const dynamic = 'force-dynamic';
 import pool from '@/lib/db';
 import { getSession } from '@/lib/auth';
 
+// GET: Fetch all interactions for global timeline
+export async function GET(request: Request) {
+    try {
+        const { searchParams } = new URL(request.url);
+        const limit = parseInt(searchParams.get('limit') || '50');
+
+        const connection = await pool.getConnection();
+        try {
+            const [rows]: any = await connection.execute(
+                `SELECT i.*, c.name AS customer_name, c.email AS customer_email,
+                        a.name AS created_by_name
+                 FROM interactions i
+                 LEFT JOIN customers c ON i.customer_id = c.id
+                 LEFT JOIN admins a ON i.created_by = a.id
+                 ORDER BY i.created_at DESC
+                 LIMIT ?`,
+                [limit]
+            );
+            return NextResponse.json({ success: true, interactions: rows });
+        } finally {
+            connection.release();
+        }
+    } catch (error) {
+        console.error("Get Interactions Error:", error);
+        return NextResponse.json({ success: false, message: 'Failed to fetch interactions' }, { status: 500 });
+    }
+}
+
 export async function POST(request: Request) {
     try {
         const session = await getSession();

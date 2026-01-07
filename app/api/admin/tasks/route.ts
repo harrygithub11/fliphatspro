@@ -2,6 +2,45 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 
+// GET: Fetch all tasks with customer info
+export async function GET(request: Request) {
+    try {
+        const { searchParams } = new URL(request.url);
+        const status = searchParams.get('status');
+        const priority = searchParams.get('priority');
+
+        let query = `
+            SELECT t.*, c.name AS customer_name, c.email AS customer_email
+            FROM tasks t
+            LEFT JOIN customers c ON t.customer_id = c.id
+            WHERE 1=1
+        `;
+        const params: any[] = [];
+
+        if (status) {
+            query += ` AND t.status = ?`;
+            params.push(status);
+        }
+        if (priority) {
+            query += ` AND t.priority = ?`;
+            params.push(priority);
+        }
+
+        query += ` ORDER BY t.due_date ASC, t.created_at DESC`;
+
+        const connection = await pool.getConnection();
+        try {
+            const [rows]: any = await connection.execute(query, params);
+            return NextResponse.json({ success: true, tasks: rows });
+        } finally {
+            connection.release();
+        }
+    } catch (error) {
+        console.error("Get Tasks Error:", error);
+        return NextResponse.json({ success: false, message: 'Failed to fetch tasks' }, { status: 500 });
+    }
+}
+
 export async function POST(request: Request) {
     try {
         const body = await request.json();

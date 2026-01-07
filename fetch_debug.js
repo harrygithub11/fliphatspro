@@ -6,3 +6,6 @@ http.get('http://localhost:3000/api/debug-order?id=lead_1766948354552', (res) =>
     res.on('data', (chunk) => data += chunk);
     res.on('end', () => console.log(data));
 }).on('error', (err) => console.error(err));
+
+
+type .env
