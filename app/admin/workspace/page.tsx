@@ -32,8 +32,6 @@ interface Task {
     priority: string;
     created_at: string;
     created_by_name?: string;
-    assigned_to?: number;
-    assigned_name?: string;
 }
 
 interface TimelineItem {
