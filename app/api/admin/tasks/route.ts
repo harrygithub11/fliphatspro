@@ -8,23 +8,31 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url);
         const status = searchParams.get('status');
         const priority = searchParams.get('priority');
+        const createdBy = searchParams.get('created_by');
 
         let query = `
-            SELECT t.*, c.name AS customer_name, c.email AS customer_email, a.name AS created_by_name
+            SELECT t.*, c.name AS customer_name, c.email AS customer_email, 
+                   a.name AS created_by_name,
+                   asg.name AS assigned_name
             FROM tasks t
             LEFT JOIN customers c ON t.customer_id = c.id
             LEFT JOIN admins a ON t.created_by = a.id
-            WHERE 1=1
+            LEFT JOIN admins asg ON t.assigned_to = asg.id
+            WHERE 1 = 1
         `;
         const params: any[] = [];
 
         if (status) {
-            query += ` AND t.status = ?`;
+            query += ` AND t.status = ? `;
             params.push(status);
         }
         if (priority) {
-            query += ` AND t.priority = ?`;
+            query += ` AND t.priority = ? `;
             params.push(priority);
+        }
+        if (createdBy && createdBy !== 'all') {
+            query += ` AND t.created_by = ? `;
+            params.push(createdBy);
         }
 
         query += ` ORDER BY t.due_date ASC, t.created_at DESC`;
@@ -45,7 +53,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { title, customer_id, due_date, priority } = body;
+        const { title, customer_id, due_date, priority, assigned_to } = body;
 
         const { getSession } = await import('@/lib/auth');
         const session = await getSession();
@@ -54,8 +62,8 @@ export async function POST(request: Request) {
         const connection = await pool.getConnection();
         try {
             const [result]: any = await connection.execute(
-                'INSERT INTO tasks (title, customer_id, due_date, priority, status, created_by) VALUES (?, ?, ?, ?, ?, ?)',
-                [title, customer_id, due_date || null, priority || 'medium', 'open', createdBy]
+                'INSERT INTO tasks (title, customer_id, due_date, priority, status, created_by, assigned_to) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [title, customer_id, due_date || null, priority || 'medium', 'open', createdBy, assigned_to || null]
             );
 
             // Log Admin Activity
@@ -101,7 +109,7 @@ export async function PUT(request: Request) {
         const connection = await pool.getConnection();
         try {
             await connection.execute(
-                `UPDATE tasks SET ${setClause} WHERE id = ?`,
+                `UPDATE tasks SET ${setClause} WHERE id = ? `,
                 [...values, id]
             );
 
@@ -117,7 +125,7 @@ export async function PUT(request: Request) {
                 await logAdminActivity(
                     session.id,
                     'task_update',
-                    `Updated task #${id}: ${changes}`,
+                    `Updated task #${id}: ${changes} `,
                     'task',
                     id
                 );

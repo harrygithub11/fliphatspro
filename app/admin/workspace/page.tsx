@@ -32,6 +32,8 @@ interface Task {
     priority: string;
     created_at: string;
     created_by_name?: string;
+    assigned_to?: number;
+    assigned_name?: string;
 }
 
 interface TimelineItem {
@@ -59,10 +61,11 @@ export default function WorkspacePage() {
     const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState('all');
     const [priorityFilter, setPriorityFilter] = useState('all');
+    const [userFilter, setUserFilter] = useState('all');
 
     // Add Task Dialog
     const [addTaskOpen, setAddTaskOpen] = useState(false);
-    const [newTask, setNewTask] = useState({ title: '', description: '', due_date: '', due_time: '', priority: 'medium', customer_id: '' });
+    const [newTask, setNewTask] = useState({ title: '', description: '', due_date: '', due_time: '', priority: 'medium', customer_id: '', assigned_to: '' });
 
     // Edit Task Dialog
     const [editTaskOpen, setEditTaskOpen] = useState(false);
@@ -71,7 +74,8 @@ export default function WorkspacePage() {
     const fetchTasks = async () => {
         let url = '/api/admin/tasks?';
         if (statusFilter !== 'all') url += `status=${statusFilter}&`;
-        if (priorityFilter !== 'all') url += `priority=${priorityFilter}`;
+        if (priorityFilter !== 'all') url += `priority=${priorityFilter}&`;
+        if (userFilter !== 'all') url += `created_by=${userFilter}`;
 
         const res = await fetch(url);
         const data = await res.json();
@@ -94,7 +98,7 @@ export default function WorkspacePage() {
 
     useEffect(() => {
         Promise.all([fetchTasks(), fetchTimeline(), fetchTeam()]).finally(() => setLoading(false));
-    }, [statusFilter, priorityFilter]);
+    }, [statusFilter, priorityFilter, userFilter]);
 
     const toggleTaskStatus = async (taskId: number, currentStatus: string) => {
         const newStatus = currentStatus === 'done' ? 'open' : 'done';
@@ -128,11 +132,12 @@ export default function WorkspacePage() {
                     description: newTask.description,
                     due_date: finalDate || null,
                     priority: newTask.priority,
-                    customer_id: newTask.customer_id || null
+                    customer_id: newTask.customer_id || null,
+                    assigned_to: newTask.assigned_to || null
                 })
             });
             setAddTaskOpen(false);
-            setNewTask({ title: '', description: '', due_date: '', due_time: '', priority: 'medium', customer_id: '' });
+            setNewTask({ title: '', description: '', due_date: '', due_time: '', priority: 'medium', customer_id: '', assigned_to: '' });
             fetchTasks();
         } catch (e) {
             console.error(e);
@@ -237,6 +242,18 @@ export default function WorkspacePage() {
                                         </SelectContent>
                                     </Select>
                                 </div>
+                                <div className="grid gap-2">
+                                    <Label>Assign To</Label>
+                                    <Select value={newTask.assigned_to} onValueChange={v => setNewTask({ ...newTask, assigned_to: v })}>
+                                        <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
+                                        <SelectContent className="z-[9999]">
+                                            <SelectItem value="">Unassigned</SelectItem>
+                                            {team.map(member => (
+                                                <SelectItem key={member.id} value={String(member.id)}>{member.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                                 <Button onClick={handleCreateTask} className="w-full">Create Task</Button>
                             </div>
                         </DialogContent>
@@ -285,6 +302,17 @@ export default function WorkspacePage() {
                                             <SelectItem value="low">Low</SelectItem>
                                         </SelectContent>
                                     </Select>
+                                    <Select value={userFilter} onValueChange={setUserFilter}>
+                                        <SelectTrigger className="w-[120px] h-8">
+                                            <SelectValue placeholder="User" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All Users</SelectItem>
+                                            {team.map(member => (
+                                                <SelectItem key={member.id} value={String(member.id)}>{member.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                             </div>
                         </CardHeader>
@@ -301,15 +329,24 @@ export default function WorkspacePage() {
                                 <div className="space-y-2">
                                     {tasks.map(task => (
                                         <div key={task.id} className="flex items-start gap-4 p-4 border rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors group">
-                                            <button
-                                                onClick={() => toggleTaskStatus(task.id, task.status)}
-                                                className={`w-5 h-5 rounded border flex items-center justify-center transition-colors shrink-0 mt-0.5 ${task.status === 'done'
-                                                    ? 'bg-green-500 border-green-500 text-white'
-                                                    : 'border-zinc-300 hover:border-primary hover:bg-primary/10'
-                                                    }`}
-                                            >
-                                                {task.status === 'done' && <CheckCircle2 className="w-3 h-3" />}
-                                            </button>
+                                            <Select value={task.status} onValueChange={v => handleUpdateTask(task.id, 'status', v)}>
+                                                <SelectTrigger className="w-auto h-auto p-0 border-none shadow-none mt-1">
+                                                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors cursor-pointer ${task.status === 'done'
+                                                        ? 'bg-green-500 border-green-500 text-white'
+                                                        : task.status === 'in_progress'
+                                                            ? 'bg-blue-100 border-blue-300 text-blue-600'
+                                                            : 'border-zinc-300 hover:border-primary hover:bg-primary/10'
+                                                        }`}>
+                                                        {task.status === 'done' && <CheckCircle2 className="w-3 h-3" />}
+                                                        {task.status === 'in_progress' && <div className="w-2 h-2 bg-current rounded-full" />}
+                                                    </div>
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="open">Open</SelectItem>
+                                                    <SelectItem value="in_progress">In Progress</SelectItem>
+                                                    <SelectItem value="done">Done</SelectItem>
+                                                </SelectContent>
+                                            </Select>
 
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-start justify-between gap-2">
@@ -377,10 +414,16 @@ export default function WorkspacePage() {
                                                         </div>
                                                     )}
 
-                                                    <span className="text-[10px] text-muted-foreground/50">
-                                                        {task.created_by_name && `Created by ${task.created_by_name} • `}
-                                                        {new Date(task.created_at).toLocaleDateString()}
-                                                    </span>
+                                                    <div className="flex flex-col items-end gap-1">
+                                                        <span className="text-xs text-muted-foreground font-medium">
+                                                            {task.created_by_name && `Created by ${task.created_by_name}`} &bull; {new Date(task.created_at).toLocaleDateString()}
+                                                        </span>
+                                                        {task.assigned_name && (
+                                                            <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-600 dark:text-zinc-400">
+                                                                Assigned to {task.assigned_name}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
