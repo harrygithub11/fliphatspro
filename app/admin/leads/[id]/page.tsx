@@ -676,7 +676,7 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
                                         <Label>Priority</Label>
                                         <Select value={newTaskPriority} onValueChange={setNewTaskPriority}>
                                             <SelectTrigger><SelectValue /></SelectTrigger>
-                                            <SelectContent>
+                                            <SelectContent className="z-[9999]">
                                                 <SelectItem value="high">High</SelectItem>
                                                 <SelectItem value="medium">Medium</SelectItem>
                                                 <SelectItem value="low">Low</SelectItem>

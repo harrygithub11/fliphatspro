@@ -90,7 +90,7 @@ export default function WorkspacePage() {
         try {
             const res = await fetch('/api/admin/team');
             const data = await res.json();
-            if (data.success) setTeam(data.members || []);
+            if (Array.isArray(data)) setTeam(data);
         } catch (e) { console.error(e); }
     };
 
