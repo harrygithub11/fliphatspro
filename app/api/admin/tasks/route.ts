@@ -26,7 +26,7 @@ export async function GET(request: Request) {
             LEFT JOIN admins a ON t.created_by = a.id
             LEFT JOIN admins asg ON t.assigned_to = asg.id
             LEFT JOIN admins sc ON t.status_changed_by = sc.id
-            WHERE 1=1
+            WHERE t.deleted_at IS NULL
         `;
         const params: any[] = [];
 
@@ -93,9 +93,13 @@ export async function GET(request: Request) {
         } finally {
             connection.release();
         }
-    } catch (error) {
-        console.error("Get Tasks Error:", error);
-        return NextResponse.json({ success: false, message: 'Failed to fetch tasks' }, { status: 500 });
+    } catch (error: any) {
+        console.error("Fetch Tasks Error:", error);
+        return NextResponse.json({
+            success: false,
+            message: 'Failed to fetch tasks',
+            error: error.message // <--- Added this to see the real error
+        }, { status: 500 });
     }
 }
 
