@@ -59,20 +59,60 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     const getGreeting = () => {
         const hour = new Date().getHours();
+        if (hour < 5) return 'Late Night Hustle';
         if (hour < 12) return 'Good Morning';
         if (hour < 17) return 'Good Afternoon';
-        return 'Good Evening';
+        if (hour < 22) return 'Good Evening';
+        return 'Good Night';
     };
 
-    const motivationalQuotes = [
-        "Every sale starts with a conversation. Make it count! 🚀",
-        "Success is built one client at a time. Keep going! 💪",
-        "Today's effort is tomorrow's success. Stay focused! ⭐",
-        "Your next big deal is just one call away! 📞",
-        "Consistency beats talent. Show up every day! 🔥"
-    ];
+    const getPersonalizedMessage = (stats: { leadsToday: number, tasksOpen: number }) => {
+        const date = new Date();
+        const hour = date.getHours();
+        const day = date.getDay(); // 0 is Sunday
+        const messages = [];
 
-    const getQuote = () => motivationalQuotes[new Date().getDate() % motivationalQuotes.length];
+        // Time specific touches
+        if (hour < 6) messages.push("Burning the midnight oil? Remember to get some rest soon. 🌙", "Quiet hours are the best for deep focus. 🕯️");
+        else if (hour < 9) messages.push("Early bird gets the worm! Hope you had your coffee. ☕", "Ready to attack the day? Let's go! 🚀");
+        else if (hour < 12) messages.push("Hope your morning is off to a productive start! ☀️", "One task at a time, you've got this. ✨");
+        else if (hour < 14) messages.push("Don't forget to take a lunch break! Refuel. 🥪", "Mid-day check-in: How are you feeling? 🌿");
+        else if (hour < 17) messages.push("Keep that momentum going, almost there! 💪", "Afternoon slump? A quick stretch might help! 🧘");
+        else if (hour < 20) messages.push("Wrapping up a solid day? Or just getting started? 🌆", "Time to review today's wins. checkout the dashboard. 📈");
+        else messages.push("Time to wind down? You've done enough for today. 💤");
+
+        // Day specific touches
+        if (day === 1) messages.push("New week, fresh goals. Make it count! 🎯", "Monday blues? Nah, Monday moves. 💼");
+        if (day === 5) messages.push("It's Friday! Finish strong and enjoy the weekend. 🎉", "Almost weekend time. Push through! 🏖️");
+        if (day === 0 || day === 6) messages.push("Working on the weekend? That's dedication. 💯", "Hope you're finding some balance this weekend. ⚖️");
+
+        // Context/Stats specific
+        if (stats.leadsToday > 0) messages.push(`You've already captured ${stats.leadsToday} leads today! On fire! 🔥`);
+        if (stats.leadsToday > 5) messages.push("Lead machine! Save some for the rest of us! 😉");
+        if (stats.tasksOpen > 8) messages.push("Lots on the plate? Just focus on the top priority first. ✅", "Breathe. You'll get through the list. One by one. 📋");
+        if (stats.tasksOpen === 0) messages.push("Inbox zero? That's a beautiful sight. 🕊️", "Everything caught up! Great feeling, isn't it? ✨");
+
+        // General emotional/personal touches
+        messages.push(
+            "Trust the process. Your hard work builds up. 🧱",
+            "Remember, progress over perfection. 🌱",
+            "You're doing better than you think. Keep going. 💖",
+            "Every interaction counts. Be yourself. 😊",
+            "Small wins are still wins. Celebrate them. 🏆",
+            "Take a deep breath. You got this. 🍃",
+            "Your energy introduces you before you even speak. ✨"
+        );
+
+        // Deterministic random based on date to keep it consistent for the session/hour mostly
+        // mixed with some true randomness for variety on refresh
+        return messages[Math.floor(Math.random() * messages.length)];
+    };
+
+    const [message, setMessage] = useState('');
+
+    useEffect(() => {
+        setMessage(getPersonalizedMessage(stats));
+    }, [stats]);
 
     const isActive = (path: string) => pathname === path;
 
@@ -162,7 +202,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 {getGreeting()}, <span className="text-primary">{userName || 'Admin'}</span>
                                 <Sparkles className="w-4 h-4 text-yellow-500" />
                             </h2>
-                            <p className="text-xs text-muted-foreground max-w-md truncate">{getQuote()}</p>
+                            <p className="text-xs text-muted-foreground max-w-md truncate">{message}</p>
                         </div>
                     </div>
 
