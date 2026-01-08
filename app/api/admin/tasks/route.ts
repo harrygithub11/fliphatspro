@@ -68,7 +68,7 @@ export async function GET(request: Request) {
         }
 
         query += ` LIMIT ? OFFSET ?`;
-        params.push(perPage, offset);
+        params.push(Number(perPage), Number(offset));
 
         const connection = await pool.getConnection();
         try {
