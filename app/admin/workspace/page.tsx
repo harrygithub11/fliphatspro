@@ -19,15 +19,17 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { KanbanBoard } from '@/components/admin/KanbanBoard';
+import TaskListView from '@/components/admin/TaskListView';
+import TaskDrawer from '@/components/admin/TaskDrawer';
 
 interface Task {
     id: number;
     title: string;
     description?: string;
-    customer_id: number;
+    customer_id?: number;
     related_order_id?: number;
-    customer_name: string;
-    customer_email: string;
+    customer_name?: string;
+    customer_email?: string;
     assigned_to?: number;
     assigned_name?: string;
     due_date: string | null;
@@ -67,7 +69,10 @@ export default function WorkspacePage() {
     const [priorityFilter, setPriorityFilter] = useState('all');
     const [userFilter, setUserFilter] = useState('all');
     const [activityUserFilter, setActivityUserFilter] = useState('all');
-    const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
+    const [viewMode, setViewMode] = useState<'list' | 'kanban' | 'clickup'>('clickup');
+    const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+    const [drawerOpen, setDrawerOpen] = useState(false);
+    const [selectedTasks, setSelectedTasks] = useState<number[]>([]);
 
     // Add Task Dialog
     const [addTaskOpen, setAddTaskOpen] = useState(false);
@@ -198,6 +203,86 @@ export default function WorkspacePage() {
         } catch (e) {
             fetchTasks(); // Refetch on error
         }
+    };
+
+    // ClickUp-style handlers
+    const handleTaskClick = (task: Task) => {
+        setSelectedTask(task);
+        setDrawerOpen(true);
+    };
+
+    const handleQuickAdd = async (status: string, title: string) => {
+        try {
+            await fetch('/api/admin/tasks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, status, priority: 'medium' })
+            });
+            fetchTasks();
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const handleDuplicate = async (taskId: number) => {
+        const task = tasks.find(t => t.id === taskId);
+        if (!task) return;
+        try {
+            await fetch('/api/admin/tasks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: `${task.title} (copy)`,
+                    description: task.description,
+                    status: task.status,
+                    priority: task.priority,
+                    due_date: task.due_date,
+                    customer_id: task.customer_id,
+                    assigned_to: task.assigned_to
+                })
+            });
+            fetchTasks();
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const handleSelectTask = (taskId: number, selected: boolean) => {
+        setSelectedTasks(prev =>
+            selected ? [...prev, taskId] : prev.filter(id => id !== taskId)
+        );
+    };
+
+    const handleSelectAll = (status: string, selected: boolean) => {
+        const statusTasks = tasks.filter(t => t.status === status).map(t => t.id);
+        setSelectedTasks(prev =>
+            selected
+                ? Array.from(new Set([...prev, ...statusTasks]))
+                : prev.filter(id => !statusTasks.includes(id))
+        );
+    };
+
+    const handleTaskUpdate = async (taskId: number, updates: Partial<Task>) => {
+        // Optimistic update
+        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updates } : t));
+        if (selectedTask?.id === taskId) {
+            setSelectedTask(prev => prev ? { ...prev, ...updates } : null);
+        }
+
+        try {
+            await fetch('/api/admin/tasks', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: taskId, ...updates })
+            });
+        } catch (e) {
+            fetchTasks(); // Revert on error
+        }
+    };
+
+    const handleAddComment = (taskId: number, body: string) => {
+        // Just refresh - the drawer handles the actual API call
+        fetchTasks();
     };
 
     const getActionIcon = (type: string) => {
@@ -433,10 +518,11 @@ export default function WorkspacePage() {
                         {/* View Toggle */}
                         <div className="flex items-center border rounded-lg overflow-hidden ml-2">
                             <Button
-                                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                                variant={viewMode === 'clickup' ? 'default' : 'ghost'}
                                 size="sm"
                                 className="h-8 rounded-none px-3"
-                                onClick={() => setViewMode('list')}
+                                onClick={() => setViewMode('clickup')}
+                                title="ClickUp View"
                             >
                                 <ListTodo className="w-4 h-4" />
                             </Button>
@@ -445,8 +531,18 @@ export default function WorkspacePage() {
                                 size="sm"
                                 className="h-8 rounded-none px-3"
                                 onClick={() => setViewMode('kanban')}
+                                title="Kanban View"
                             >
                                 <Settings className="w-4 h-4" />
+                            </Button>
+                            <Button
+                                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                                size="sm"
+                                className="h-8 rounded-none px-3"
+                                onClick={() => setViewMode('list')}
+                                title="Card View"
+                            >
+                                <Activity className="w-4 h-4" />
                             </Button>
                         </div>
                     </div>
@@ -465,9 +561,24 @@ export default function WorkspacePage() {
                             </p>
                             <Button variant="outline" className="mt-6" onClick={() => setAddTaskOpen(true)}>Create Task</Button>
                         </div>
+                    ) : viewMode === 'clickup' ? (
+                        <TaskListView
+                            tasks={tasks as any}
+                            team={team}
+                            onStatusChange={(taskId, status) => handleTaskUpdate(taskId, { status } as any)}
+                            onPriorityChange={(taskId, priority) => handleTaskUpdate(taskId, { priority } as any)}
+                            onAssigneeChange={(taskId, userId) => handleTaskUpdate(taskId, { assigned_to: userId ?? undefined } as any)}
+                            onTaskClick={handleTaskClick as any}
+                            onQuickAdd={handleQuickAdd}
+                            onDelete={handleDeleteTask}
+                            onDuplicate={handleDuplicate}
+                            selectedTasks={selectedTasks}
+                            onSelectTask={handleSelectTask}
+                            onSelectAll={handleSelectAll}
+                        />
                     ) : viewMode === 'kanban' ? (
                         <KanbanBoard
-                            tasks={tasks}
+                            tasks={tasks as any}
                             onStatusChange={(taskId, newStatus) => handleUpdateTask(taskId, 'status', newStatus)}
                             onTaskClick={(task) => { setEditingTask(task); setEditTaskOpen(true); }}
                         />
@@ -671,6 +782,16 @@ export default function WorkspacePage() {
                     </Card>
                 </TabsContent>
             </Tabs>
+
+            {/* Task Detail Drawer */}
+            <TaskDrawer
+                task={selectedTask as any}
+                isOpen={drawerOpen}
+                onClose={() => { setDrawerOpen(false); setSelectedTask(null); }}
+                team={team}
+                onUpdate={(taskId, updates) => handleTaskUpdate(taskId, updates as Partial<Task>)}
+                onAddComment={handleAddComment}
+            />
         </div>
     );
 }

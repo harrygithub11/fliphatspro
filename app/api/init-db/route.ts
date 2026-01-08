@@ -3,6 +3,8 @@ import pool from '@/lib/db';
 import fs from 'fs';
 import path from 'path';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
     try {
         const schemaPath = path.join(process.cwd(), 'database_schema.sql');

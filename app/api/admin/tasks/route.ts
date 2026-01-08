@@ -2,6 +2,8 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 // GET: Fetch all tasks with customer info (enhanced with pagination, search, sort)
 export async function GET(request: Request) {
     try {
