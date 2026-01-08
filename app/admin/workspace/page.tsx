@@ -140,7 +140,7 @@ export default function WorkspacePage() {
                     due_date: finalDate || null,
                     priority: newTask.priority,
                     customer_id: newTask.customer_id || null,
-                    assigned_to: newTask.assigned_to || null
+                    assigned_to: (newTask.assigned_to && newTask.assigned_to !== 'unassigned') ? newTask.assigned_to : null
                 })
             });
             setAddTaskOpen(false);
@@ -299,10 +299,10 @@ export default function WorkspacePage() {
                                 </div>
                                 <div className="grid gap-2">
                                     <Label>Assign To</Label>
-                                    <Select value={newTask.assigned_to || ''} onValueChange={v => setNewTask({ ...newTask, assigned_to: v })}>
+                                    <Select value={newTask.assigned_to || 'unassigned'} onValueChange={v => setNewTask({ ...newTask, assigned_to: v })}>
                                         <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
                                         <SelectContent style={{ zIndex: 9999 }}>
-                                            <SelectItem value="">Unassigned</SelectItem>
+                                            <SelectItem value="unassigned">Unassigned</SelectItem>
                                             {Array.isArray(team) && team.map(member => (
                                                 <SelectItem key={member.id} value={String(member.id)}>{member.name}</SelectItem>
                                             ))}
