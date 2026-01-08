@@ -149,15 +149,36 @@ export default function WorkspacePage() {
         }
     };
 
-    const handleUpdateTask = async (taskId: number, field: string, value: string) => {
+    const handleUpdateTask = async (taskId: number, field: string, value: string | null) => {
         const oldTasks = [...tasks];
-        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, [field]: value } : t));
+
+        setTasks(prev => prev.map(t => {
+            if (t.id !== taskId) return t;
+
+            let updates: any = { [field]: value };
+
+            // Special handling for assignment to update the name immediately
+            if (field === 'assigned_to') {
+                if (!value || value === 'unassigned') {
+                    updates.assigned_to = null;
+                    updates.assigned_name = null;
+                } else {
+                    const member = team.find(m => String(m.id) === String(value));
+                    if (member) updates.assigned_name = member.name;
+                }
+            }
+
+            return { ...t, ...updates };
+        }));
 
         try {
             await fetch('/api/admin/tasks', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: taskId, [field]: value })
+                body: JSON.stringify({
+                    id: taskId,
+                    [field]: (field === 'assigned_to' && (value === 'unassigned' || !value)) ? null : value
+                })
             });
         } catch (e) {
             setTasks(oldTasks);
@@ -504,10 +525,10 @@ export default function WorkspacePage() {
                                             )}
 
                                             {task.customer_name && (
-                                                <div className="flex items-center gap-1.5 hover:text-primary transition-colors cursor-pointer">
+                                                <Link href={`/admin/leads/${task.customer_id}`} className="flex items-center gap-1.5 text-blue-600 hover:text-blue-700 hover:underline transition-colors cursor-pointer font-medium">
                                                     <User className="w-3.5 h-3.5" />
                                                     {task.customer_name}
-                                                </div>
+                                                </Link>
                                             )}
 
                                             <div className="flex items-center gap-1.5">
@@ -515,13 +536,25 @@ export default function WorkspacePage() {
                                                 Created by {task.created_by_name}
                                             </div>
 
-                                            {task.assigned_name ? (
-                                                <div className="ml-auto flex items-center gap-1.5 px-2 py-1 bg-blue-50 text-blue-700 border border-blue-100 rounded-full text-[10px] font-medium uppercase tracking-wide dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/30">
-                                                    Assigned to {task.assigned_name}
-                                                </div>
-                                            ) : (
-                                                <div className="ml-auto text-zinc-400 italic">Unassigned</div>
-                                            )}
+                                            <Select
+                                                value={task.assigned_to ? String(task.assigned_to) : "unassigned"}
+                                                onValueChange={v => handleUpdateTask(task.id, 'assigned_to', v)}
+                                            >
+                                                <SelectTrigger className="ml-auto w-auto h-auto border-none shadow-none p-0 [&>svg]:hidden focus:ring-0">
+                                                    <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-medium uppercase tracking-wide border transition-all hover:border-primary/50 cursor-pointer ${task.assigned_name
+                                                        ? 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/30'
+                                                        : 'text-zinc-400 border-transparent hover:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                                                        }`}>
+                                                        {task.assigned_name ? `Assigned to ${task.assigned_name}` : 'Unassigned'}
+                                                    </div>
+                                                </SelectTrigger>
+                                                <SelectContent align="end">
+                                                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                                                    {team.map(member => (
+                                                        <SelectItem key={member.id} value={String(member.id)}>{member.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
                                     </div>
                                 </div>
@@ -571,9 +604,9 @@ export default function WorkspacePage() {
                                                 <div className="text-sm text-zinc-600 dark:text-zinc-400">
                                                     {item.description}
                                                     {item.customer_name && (
-                                                        <span className="block mt-1 text-xs text-primary font-medium bg-primary/5 px-2 py-1 rounded w-fit">
+                                                        <Link href={`/admin/leads/${item.customer_id}`} className="block mt-1 text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 hover:underline px-2 py-1 rounded w-fit transition-all font-medium border border-blue-100 dark:bg-blue-900/20 dark:border-blue-900/30 dark:text-blue-300">
                                                             Target: {item.customer_name}
-                                                        </span>
+                                                        </Link>
                                                     )}
                                                 </div>
                                             </div>
