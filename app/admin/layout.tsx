@@ -11,6 +11,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const router = useRouter();
     const [userInitial, setUserInitial] = useState('A');
     const [userName, setUserName] = useState('');
+    const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [stats, setStats] = useState({ leadsToday: 0, tasksOpen: 0, dealsWon: 0 });
     const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
@@ -31,6 +32,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     setIsAuthenticated(true);
                     setUserInitial(data.admin.email[0].toUpperCase());
                     setUserName(data.admin.name || data.admin.email.split('@')[0]);
+                    setAvatarUrl(data.admin.avatar_url || null);
                 } else {
                     // Not authenticated, redirect to login
                     setIsAuthenticated(false);
@@ -194,8 +196,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <header className="h-20 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-6 shrink-0 z-40">
                     {/* Left: Greeting */}
                     <div className="flex items-center gap-4">
-                        <Link href="/admin/profile" className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground flex items-center justify-center font-bold text-lg hover:ring-4 ring-primary/20 transition-all shadow-lg">
-                            {userInitial}
+                        <Link href="/admin/profile" className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground flex items-center justify-center font-bold text-lg hover:ring-4 ring-primary/20 transition-all shadow-lg overflow-hidden">
+                            {avatarUrl ? (
+                                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                            ) : (
+                                userInitial
+                            )}
                         </Link>
                         <div>
                             <h2 className="text-lg font-semibold flex items-center gap-2">

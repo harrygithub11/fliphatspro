@@ -28,6 +28,7 @@ interface Customer {
     tags: string | any; // JSON string or parsed array
     owner: string;
     store_url?: string;
+    avatar_url?: string;
     created_at: string;
 }
 
@@ -441,8 +442,12 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
                 <Card>
                     <CardHeader className="pb-4">
                         <div className="flex justify-between items-start">
-                            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center text-2xl font-bold text-primary mb-4">
-                                {lead.name.charAt(0)}
+                            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center text-2xl font-bold text-primary mb-4 overflow-hidden">
+                                {lead.avatar_url ? (
+                                    <img src={lead.avatar_url} alt={lead.name} className="w-full h-full object-cover" />
+                                ) : (
+                                    lead.name.charAt(0)
+                                )}
                             </div>
                             <Select
                                 value={lead.score}
