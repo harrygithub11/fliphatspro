@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS customers (
     ltv DECIMAL(10, 2) DEFAULT 0.00,
     source VARCHAR(50) DEFAULT 'Website',
     score ENUM('hot', 'warm', 'cold') DEFAULT 'cold',
-    stage ENUM('new', 'contacted', 'qualified', 'proposal_sent', 'negotiation', 'won', 'lost') DEFAULT 'new',
+    stage ENUM('new', 'contacted', 'qualified', 'proposal_sent', 'negotiation', 'won', 'lost', 'follow_up_required', 'follow_up_done') DEFAULT 'new',
     tags JSON,
     owner VARCHAR(100) DEFAULT 'unassigned',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
