@@ -25,7 +25,7 @@ export function EmailsTab() {
                 ? `/api/admin/emails?status=${filterStatus}`
                 : '/api/admin/emails';
 
-            const res = await fetch(url);
+            const res = await fetch(url, { credentials: 'include' });
             const data = await res.json();
             if (data.success) {
                 setEmails(data.emails);

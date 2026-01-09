@@ -59,6 +59,7 @@ export function ComposeModal({ open, onOpenChange, initialTo = '', customerId }:
             const res = await fetch('/api/admin/emails/send', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({
                     recipients: { to: [{ email: formData.to }] }, // Simplified for MVP
                     subject: formData.subject,
