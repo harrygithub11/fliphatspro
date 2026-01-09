@@ -100,17 +100,14 @@ export function SMTPAccountsAdmin() {
             console.log('📥 Response data:', data);
 
             if (data.success) {
-                alert('✅ SUCCESS: Account saved!');
                 toast({ title: 'Success', description: 'Account added and verified!' });
                 setOpen(false);
                 fetchAccounts();
             } else {
-                alert('❌ ERROR: ' + data.message);
                 toast({ title: 'Error', description: data.message, variant: 'destructive' });
             }
         } catch (error: any) {
-            console.error('💥 EXCEPTION:', error);
-            alert('💥 EXCEPTION: ' + error.message);
+            console.error('SMTP Error:', error);
             toast({ title: 'Error', description: 'Failed to create account', variant: 'destructive' });
         } finally {
             setTesting(false);

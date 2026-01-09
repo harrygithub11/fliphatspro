@@ -32,7 +32,7 @@ export function ComposeModal({ open, onOpenChange, initialTo = '', customerId }:
     useEffect(() => {
         if (open) {
             // Load SMTP accounts
-            fetch('/api/admin/smtp-accounts')
+            fetch('/api/admin/smtp-accounts', { credentials: 'include' })
                 .then(res => res.json())
                 .then(data => {
                     if (data.success && data.accounts.length > 0) {
