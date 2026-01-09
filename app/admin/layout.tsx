@@ -6,6 +6,7 @@ import { LayoutDashboard, Users, ShoppingCart, ListTodo, Settings, LogOut, UserC
 import { Button } from '@/components/ui/button';
 import NotificationBell from '@/components/admin/NotificationBell';
 import { useState, useEffect } from 'react';
+import { Toaster } from "@/components/ui/toaster";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -242,6 +243,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     {children}
                 </div>
             </main>
+            <Toaster />
         </div>
     );
 }

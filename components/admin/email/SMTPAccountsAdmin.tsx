@@ -25,6 +25,7 @@ export function SMTPAccountsAdmin() {
     const [loading, setLoading] = useState(true);
     const [open, setOpen] = useState(false);
     const [testing, setTesting] = useState(false);
+    const [skipVerification, setSkipVerification] = useState(false);
     const { toast } = useToast();
 
     // Form State
@@ -83,7 +84,7 @@ export function SMTPAccountsAdmin() {
             const res = await fetch('/api/admin/smtp-accounts', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...formData, test_connection: true })
+                body: JSON.stringify({ ...formData, test_connection: !skipVerification })
             });
             const data = await res.json();
 
@@ -215,8 +216,21 @@ export function SMTPAccountsAdmin() {
                                 </div>
                             </div>
 
+                            <div className="flex items-center space-x-2 pb-2">
+                                <input
+                                    type="checkbox"
+                                    id="skipVerification"
+                                    className="rounded border-gray-300"
+                                    checked={skipVerification}
+                                    onChange={(e) => setSkipVerification(e.target.checked)}
+                                />
+                                <Label htmlFor="skipVerification" className="text-sm text-muted-foreground font-normal cursor-pointer">
+                                    Skip connection verification (Force Save)
+                                </Label>
+                            </div>
+
                             <Button type="submit" className="w-full" disabled={testing}>
-                                {testing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : 'Save & Verify Connection'}
+                                {testing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : (skipVerification ? 'Save Account' : 'Save & Verify Connection')}
                             </Button>
                         </form>
                     </DialogContent>
