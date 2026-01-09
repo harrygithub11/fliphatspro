@@ -57,7 +57,7 @@ export async function POST(req: Request) {
             connection.release();
         }
 
-        return NextResponse.json({ success: true, url: fileUrl });
+        return NextResponse.json({ success: true, url: `${fileUrl}?t=${Date.now()}` });
 
     } catch (error) {
         console.error('Upload Error:', error);
