@@ -151,15 +151,12 @@ export async function POST(request: Request) {
                 }
             }
 
-            // Log activity
-            await connection.execute(
-                `INSERT INTO admin_activity_log (admin_id, action_type, action_description, ip_address) 
-                 VALUES (?, 'csv_import', ?, ?)`,
-                [
-                    session.id,
-                    `Imported ${results.imported} leads from CSV`,
-                    request.headers.get('x-forwarded-for') || 'unknown'
-                ]
+            // Log activity using helper function
+            const { logAdminActivity } = await import('@/lib/activity-logger');
+            await logAdminActivity(
+                session.id,
+                'csv_import',
+                `Imported ${results.imported} leads from CSV (${results.total} total rows, ${results.skipped} skipped, ${results.failed} failed)`
             );
 
         } finally {
