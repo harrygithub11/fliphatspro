@@ -58,6 +58,7 @@ interface TeamMember {
     id: number;
     name: string;
     email: string;
+    avatar_url?: string;
 }
 
 export default function WorkspacePage() {

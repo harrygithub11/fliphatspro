@@ -17,6 +17,7 @@ interface TeamMember {
     email: string;
     name: string;
     role: string;
+    avatar_url?: string;
     created_at: string;
     last_login: string | null;
 }
@@ -160,8 +161,12 @@ export default function TeamManagementPage() {
                                 <TableRow key={member.id}>
                                     <TableCell className="font-medium">
                                         <div className="flex items-center gap-2">
-                                            <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold">
-                                                {member.name ? member.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '??'}
+                                            <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold overflow-hidden">
+                                                {member.avatar_url ? (
+                                                    <img src={member.avatar_url} alt={member.name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    member.name ? member.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '??'
+                                                )}
                                             </div>
                                             {member.name || 'Unknown'}
                                         </div>
