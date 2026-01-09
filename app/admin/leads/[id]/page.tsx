@@ -640,7 +640,7 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
                                         <Label>Initial Status</Label>
                                         <Select value={newDealStatus} onValueChange={setNewDealStatus}>
                                             <SelectTrigger><SelectValue /></SelectTrigger>
-                                            <SelectContent>
+                                            <SelectContent className="z-[10005]">
                                                 <SelectItem value="getting_ready">Draft/Proposal</SelectItem>
                                                 <SelectItem value="initiated">Initiated</SelectItem>
                                                 <SelectItem value="paid">Paid</SelectItem>
