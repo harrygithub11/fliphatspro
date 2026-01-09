@@ -152,6 +152,8 @@ export async function POST(request: Request) {
                     }
 
                     // Insert customer with timestamp if available
+                    const campaignName = campaignCol ? (String(row[campaignCol] || '').trim() || null) : null;
+
                     const [insertResult]: any = await connection.execute(
                         `INSERT INTO customers (name, phone, email, source, campaign_name, stage, score, owner, created_at) 
                          VALUES (?, ?, ?, 'csv_import', ?, 'new', 'cold', ?, ?)`,
@@ -159,7 +161,7 @@ export async function POST(request: Request) {
                             name || 'Unknown',
                             phone,
                             email,
-                            campaignCol ? (String(row[campaignCol] || '').trim() || null) : null,
+                            campaignName,
                             session.name || 'unassigned',
                             submissionTime || new Date().toISOString().slice(0, 19).replace('T', ' ')
                         ]
@@ -174,7 +176,7 @@ export async function POST(request: Request) {
                              VALUES (?, 'system_event', ?, ?, ?)`,
                             [
                                 customerId,
-                                'Lead submitted via form',
+                                'Lead submitted via form' + (campaignName ? ` (Campaign: ${campaignName})` : ''),
                                 session.id,
                                 submissionTime
                             ]
