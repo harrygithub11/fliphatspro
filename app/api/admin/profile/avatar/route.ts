@@ -2,8 +2,8 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import pool from '@/lib/db';
-import { writeFile } from 'fs/promises';
-import { join } from 'path';
+import { writeFile, mkdir } from 'fs/promises';
+import { join, dirname } from 'path';
 
 export async function POST(req: Request) {
     try {
@@ -30,6 +30,9 @@ export async function POST(req: Request) {
         // Generate unique filename
         const filename = `avatar_${session.id}_${Date.now()}_${file.name.replace(/\s/g, '_')}`;
         const path = join(process.cwd(), 'public/uploads', filename);
+
+        // Ensure directory exists
+        await mkdir(dirname(path), { recursive: true });
 
         // Save file locally (In production, use S3/Cloudinary)
         await writeFile(path, buffer);
