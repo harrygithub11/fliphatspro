@@ -158,7 +158,7 @@ export async function POST(request: Request) {
             // Notify Assignee
             if (assigned_to && assigned_to !== createdBy) {
                 const { createNotification } = await import('@/lib/notifications');
-                await createNotification(assigned_to, 'task_assigned', result.insertId, createdBy);
+                await createNotification(Number(assigned_to), 'task_assigned', result.insertId, createdBy);
             }
 
             return NextResponse.json({ success: true });
