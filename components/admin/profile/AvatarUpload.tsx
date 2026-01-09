@@ -46,6 +46,8 @@ export function AvatarUpload({ currentUrl, onUploadConfigured }: AvatarUploadPro
             if (data.success) {
                 toast({ description: "Avatar updated successfully", className: "bg-green-500 text-white" });
                 onUploadConfigured(data.url);
+                // Reload the page to update avatar in header and all locations
+                setTimeout(() => window.location.reload(), 1000);
             } else {
                 toast({ variant: 'destructive', description: data.message || "Failed to upload avatar" });
                 // Revert preview on failure
