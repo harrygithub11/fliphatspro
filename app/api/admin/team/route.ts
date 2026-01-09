@@ -16,7 +16,7 @@ export async function GET() {
 
         try {
             const [admins]: any = await connection.execute(
-                'SELECT id, name, email, role, created_at, last_login FROM admins ORDER BY name ASC'
+                'SELECT id, name, email, role, avatar_url, created_at, last_login FROM admins ORDER BY name ASC'
             );
 
             return NextResponse.json(admins);

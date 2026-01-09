@@ -16,7 +16,7 @@ export async function GET() {
         // Fetch full admin details from database including dates
         const connection = await pool.getConnection();
         const [rows]: any = await connection.execute(
-            'SELECT id, name, email, role, created_at, last_login FROM admins WHERE id = ?',
+            'SELECT id, name, email, role, avatar_url, created_at, last_login FROM admins WHERE id = ?',
             [session.id]
         );
         connection.release();
@@ -34,6 +34,7 @@ export async function GET() {
                 name: admin.name,
                 email: admin.email,
                 role: admin.role,
+                avatar_url: admin.avatar_url,
                 created_at: admin.created_at,
                 last_login: admin.last_login
             }
