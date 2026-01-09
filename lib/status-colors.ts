@@ -29,7 +29,7 @@ export type TaskStatusKey = keyof typeof STATUS_COLORS;
  * @param status - The task status key
  * @returns Color configuration object with bg, text, border
  */
-export function getStatusColors(status: string): typeof STATUS_COLORS.todo {
+export function getStatusColors(status: string) {
     const normalizedStatus = status.toLowerCase().replace(/\s+/g, '_') as TaskStatusKey;
     return STATUS_COLORS[normalizedStatus] || STATUS_COLORS.todo;
 }
