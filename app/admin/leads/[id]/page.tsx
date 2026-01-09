@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { ComposeModal } from '@/components/admin/email/ComposeModal';
 
 interface Customer {
     id: number;
@@ -126,6 +127,9 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
     const [proposalTitle, setProposalTitle] = useState("");
     const [proposalAmount, setProposalAmount] = useState("");
     const [proposalContent, setProposalContent] = useState("");
+
+    // Email State
+    const [composeOpen, setComposeOpen] = useState(false);
 
     // Dynamic stages
     const [stages, setStages] = useState<{ id: number, value: string, label: string, color: string }[]>([]);
@@ -537,6 +541,9 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
                         <Button variant="outline" className="w-full justify-start gap-2" onClick={() => handleQuickAction('call')}>
                             <PhoneCall className="w-4 h-4" /> Log Call
                         </Button>
+                        <Button variant="outline" className="w-full justify-start gap-2" onClick={() => setComposeOpen(true)}>
+                            <Mail className="w-4 h-4" /> Send Email
+                        </Button>
                         <Button variant="outline" className="w-full justify-start gap-2" onClick={() => handleQuickAction('whatsapp')}>
                             <MessageSquare className="w-4 h-4" /> WhatsApp
                         </Button>
@@ -801,6 +808,17 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
                                             </div>
                                         )}
 
+                                        <div className="flex-1 pb-6">
+                                            <p className="text-sm">
+                                                <span className="font-semibold">{item.created_by_name || 'System'}:</span>
+                                                <span className="ml-1 text-zinc-700 dark:text-zinc-300">
+                                                    {formatTimelineMessage(item.content, item.type)}
+                                                </span>
+                                            </p>
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                {new Date(item.created_at).toLocaleString()}
+                                            </p>
+                                        </div>
                                         <div className="flex-1 pb-1">
                                             <div className="flex items-center justify-between">
                                                 <span className="text-xs font-semibold">{item.created_by_name || 'System'}</span>
@@ -824,14 +842,13 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
                                 />
                                 <div className="flex justify-between items-center">
                                     <div className="flex gap-2">
-                                        <Button variant="ghost" size="icon" className="h-8 w-8"><Paperclip className="w-4 h-4" /></Button>
+                                        <Button size="sm" className="gap-2" onClick={() => handleLogActivity()} disabled={submitting}>
+                                            <Send className="w-3 h-3" /> {submitting ? 'Saving...' : 'Log Activity'}
+                                        </Button>
                                     </div>
-                                    <Button size="sm" className="gap-2" onClick={() => handleLogActivity()} disabled={submitting}>
-                                        <Send className="w-3 h-3" /> {submitting ? 'Saving...' : 'Log Activity'}
-                                    </Button>
-                                </div>
+                                </div >
                             </div>
-                        </TabsContent>
+                        </TabsContent >
 
                         <TabsContent value="files" className="p-4">
                             <div className="flex justify-between items-center mb-4">
@@ -879,9 +896,9 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
                                 ))}
                             </div>
                         </TabsContent>
-                    </Tabs>
-                </Card>
-            </div>
-        </div>
+                    </Tabs >
+                </Card >
+            </div >
+        </div >
     );
 }

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Users, ShoppingCart, ListTodo, Settings, LogOut, UserCog, FileText, Briefcase, Sparkles, TrendingUp, Target } from 'lucide-react';
+import { LayoutDashboard, Users, ShoppingCart, ListTodo, Settings, LogOut, UserCog, FileText, Briefcase, Sparkles, TrendingUp, Target, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import NotificationBell from '@/components/admin/NotificationBell';
 import { useState, useEffect } from 'react';
@@ -158,6 +158,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     {/* Workspace */}
                     <div className="space-y-1">
                         <h4 className="px-3 text-xs font-semibold text-muted-foreground/50 tracking-wider mb-2 mt-4 uppercase font-mono">Workspace</h4>
+                        <NavItem href="/admin/emails" icon={<Mail className="w-5 h-5" />} label="Email Center" active={isActive('/admin/emails')} />
                         <NavItem href="/admin/workspace" icon={<Briefcase className="w-5 h-5" />} label="Workspace" active={pathname.startsWith('/admin/workspace')} />
                         <NavItem href="/admin/kanban" icon={<ListTodo className="w-5 h-5" />} label="Project Board" active={isActive('/admin/kanban')} />
                         <NavItem href="/admin/pages" icon={<FileText className="w-5 h-5" />} label="Landing Pages" active={isActive('/admin/pages') || pathname.startsWith('/admin/pages/')} />
