@@ -29,14 +29,14 @@ export async function POST(req: Request) {
 
         // Generate unique filename
         const filename = `avatar_${session.id}_${Date.now()}_${file.name.replace(/\s/g, '_')}`;
-        const path = join(process.cwd(), 'public/uploads', filename);
+        const path = join(process.cwd(), 'public/uploads/avatars', filename);
 
         // Ensure directory exists
         await mkdir(dirname(path), { recursive: true });
 
         // Save file locally (In production, use S3/Cloudinary)
         await writeFile(path, buffer);
-        const fileUrl = `/uploads/${filename}`;
+        const fileUrl = `/uploads/avatars/${filename}`;
 
         // Update Database
         const connection = await pool.getConnection();
