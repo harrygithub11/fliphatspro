@@ -507,9 +507,6 @@ INSERT IGNORE INTO `admin_activity_logs` (`id`, `admin_id`, `action_type`, `acti
 (432, 1, 'interaction_created', 'Added system_event: Updated Deal #52 status to getting_ready', 'customer', 138, '2026-01-10 12:43:56', NULL),
 (433, 1, 'interaction_created', 'Added system_event: Updated Deal #52 status to draft', 'customer', 138, '2026-01-10 12:44:00', NULL);
 
-INSERT IGNORE INTO `admin_login_logs` (`id`, `admin_id`, `ip_address`, `user_agent`, `login_time`, `success`) VALUES
-(1, 1, '49.43.32.67', 'Mozilla/5.0 (Windows NT 10.0;
-
 INSERT IGNORE INTO `admin_preferences` (`id`, `admin_id`, `theme`, `notify_email`, `notify_in_app`, `default_view`, `updated_at`) VALUES
 (1, 1, 'system', 1, 1, 'dashboard', '2026-01-09 11:06:41');
 
