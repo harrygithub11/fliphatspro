@@ -66,60 +66,65 @@ async function syncAccount(account: any) {
         // Open Inbox
         let lock = await client.getMailboxLock('INBOX');
         try {
-            // Fetch unread messages
-            // We can also track last_synced_at UIDnext to get new messages efficiently
-            // For now, let's just get UNSEEN
-            for await (const message of client.fetch('UNSEEN', { source: true, envelope: true })) {
-                if (!message.source) continue;
+            // First search for unread messages to get their Sequence IDs or UIDs
+            // 'seen: false' means UNSEEN
+            const messagesToFetch = await client.search({ seen: false });
 
-                const parsed = await simpleParser(message.source);
-                const db = await connectDB();
+            // client.search returns number[] (sequence numbers)
+            if (messagesToFetch && messagesToFetch.length > 0) {
+                console.log(`Found ${messagesToFetch.length} unread messages.`);
 
-                // Check if email already exists (by messageId)
-                const messageId = parsed.messageId || `no-id-${Date.now()}`;
-                const [existing]: any = await db.execute('SELECT id FROM emails WHERE message_id = ?', [messageId]);
+                // Fetch using the list of sequence numbers we just found
+                for await (const message of client.fetch(messagesToFetch, { source: true, envelope: true, uid: true })) {
+                    if (!message.source) continue;
 
-                if (existing.length > 0) {
-                    // Already exists, maybe just update read status?
-                    // For now skip
-                    await db.end();
-                    continue;
+                    const parsed = await simpleParser(message.source);
+                    const db = await connectDB();
+
+                    try {
+                        // Check if email already exists (by messageId)
+                        const messageId = parsed.messageId || `no-id-${Date.now()}`;
+                        const [existing]: any = await db.execute('SELECT id FROM emails WHERE message_id = ?', [messageId]);
+
+                        if (existing.length > 0) {
+                            // Already exists, skip
+                            continue;
+                        }
+
+                        // Determine Customer
+                        const fromAddress = parsed.from?.value[0]?.address;
+                        const [customers]: any = await db.execute('SELECT id FROM customers WHERE email = ?', [fromAddress]);
+                        const customerId = customers.length > 0 ? customers[0].id : null;
+
+                        console.log(`Creating email from ${fromAddress} - ${parsed.subject}`);
+
+                        await db.execute(`
+                            INSERT INTO emails (
+                                smtp_account_id, customer_id, direction, folder, status, is_read,
+                                from_address, from_name, subject, body_html, body_text, 
+                                received_at, message_id, headers_json
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)
+                        `, [
+                            account.id,
+                            customerId,
+                            'inbound',
+                            'INBOX',
+                            'received',
+                            false,
+                            fromAddress,
+                            parsed.from?.value[0]?.name || '',
+                            parsed.subject,
+                            parsed.html || '',
+                            parsed.text || '',
+                            messageId,
+                            JSON.stringify(parsed.headers)
+                        ]);
+                    } finally {
+                        await db.end();
+                    }
                 }
-
-                // Determine Folder (Inbox)
-                // Find Customer (by from address)
-                const fromAddress = parsed.from?.value[0]?.address;
-                const [customers]: any = await db.execute('SELECT id FROM customers WHERE email = ?', [fromAddress]);
-                const customerId = customers.length > 0 ? customers[0].id : null;
-
-                console.log(`Creating email from ${fromAddress} - ${parsed.subject}`);
-
-                const [result]: any = await db.execute(`
-                    INSERT INTO emails (
-                        smtp_account_id, customer_id, direction, folder, status, is_read,
-                        from_address, from_name, subject, body_html, body_text, 
-                        received_at, message_id, headers_json
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)
-                `, [
-                    account.id,
-                    customerId,
-                    'inbound',
-                    'INBOX',
-                    'received',
-                    false, // is_read = false
-                    fromAddress,
-                    parsed.from?.value[0]?.name || '',
-                    parsed.subject,
-                    parsed.html || '',
-                    parsed.text || '',
-                    messageId,
-                    JSON.stringify(parsed.headers)
-                ]);
-
-                // Mark as Seen in IMAP? Optional, maybe keep as is or user pref.
-                // await client.messageFlagsAdd(message.uid, ['\\Seen']);
-
-                await db.end();
+            } else {
+                console.log("No unread messages found.");
             }
         } finally {
             lock.release();
@@ -146,7 +151,6 @@ async function runSync() {
     let db;
     try {
         db = await connectDB();
-        // Fetch accounts that have IMAP configured
         const [accounts]: any = await db.execute(
             'SELECT * FROM smtp_accounts WHERE is_active = 1 AND imap_host IS NOT NULL'
         );
