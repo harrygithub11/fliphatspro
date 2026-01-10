@@ -36,15 +36,29 @@ async function syncAccount(account: any) {
             return;
         }
 
+        // Simple Logger for ImapFlow
+        const logger = {
+            debug: (obj: any, msg?: string) => console.log(`[IMAP DEBUG] ${msg || ''}`, JSON.stringify(obj)),
+            info: (obj: any, msg?: string) => console.log(`[IMAP INFO] ${msg || ''}`, JSON.stringify(obj)),
+            warn: (obj: any, msg?: string) => console.warn(`[IMAP WARN] ${msg || ''}`, JSON.stringify(obj)),
+            error: (obj: any, msg?: string) => console.error(`[IMAP ERROR] ${msg || ''}`, JSON.stringify(obj)),
+            level: 'debug'
+        };
+
+        const host = (account.imap_host || account.host).trim();
+        const user = (account.imap_user || account.username).trim();
+
+        console.log(`Connecting to ${host}:${account.imap_port || 993} as ${user}`);
+
         client = new ImapFlow({
-            host: (account.imap_host || account.host).trim(),
+            host: host,
             port: account.imap_port || 993,
             secure: account.imap_secure !== 0,
             auth: {
-                user: (account.imap_user || account.username).trim(),
+                user: user,
                 pass: password
             },
-            logger: {} // Enable logging to debug "Command failed"
+            logger: logger as any
         });
 
         await client.connect();
@@ -118,7 +132,9 @@ async function syncAccount(account: any) {
         await db.execute('UPDATE smtp_accounts SET last_synced_at = NOW() WHERE id = ?', [account.id]);
 
     } catch (e: any) {
-        console.error(`Error syncing ${account.from_email}:`, e.message);
+        console.error(`Error syncing ${account.from_email}:`, e);
+        if (e.command) console.error("Failed Command:", e.command);
+        if (e.response) console.error("Server Response:", e.response);
     } finally {
         if (db) await db.end();
         if (client) client.close();
