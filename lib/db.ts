@@ -1,10 +1,10 @@
 import mysql from 'mysql2/promise';
 
-const pool = mysql.createPool({
+const dbConfig = {
     host: process.env.DB_HOST || '127.0.0.1',
-    port: parseInt(process.env.DB_PORT || '3307'),
+    port: parseInt(process.env.DB_PORT || '3306'),
     user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD ?? 'admin',
+    password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME || 'newyear',
     waitForConnections: true,
     connectionLimit: 50,
@@ -13,6 +13,15 @@ const pool = mysql.createPool({
     idleTimeout: 60000,
     enableKeepAlive: true,
     keepAliveInitialDelay: 0
+};
+
+console.log('[DB] Connecting to:', {
+    host: dbConfig.host,
+    port: dbConfig.port,
+    user: dbConfig.user,
+    database: dbConfig.database
 });
+
+const pool = mysql.createPool(dbConfig as any);
 
 export default pool;
