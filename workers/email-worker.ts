@@ -1,164 +1,108 @@
 
-// workers/email-worker.ts
+// workers/email-sender.ts
 // Run with: npx ts-node --project tsconfig.worker.json workers/email-worker.ts
 
-import { Worker, Job } from 'bullmq';
-import IORedis from 'ioredis';
+import { Worker } from 'bullmq';
+import mysql from 'mysql2/promise';
+import * as dotenv from 'dotenv';
+import path from 'path';
 import nodemailer from 'nodemailer';
 import { decrypt } from '../lib/smtp-encrypt';
-import mysql from 'mysql2/promise';
-import dotenv from 'dotenv';
-import path from 'path';
 
-// Load env specific to where this script is running
+// Load env
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-// Redis Connection
-const redisConnection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
-    maxRetriesPerRequest: null
-});
+const connection = {
+    host: process.env.REDIS_HOST || '127.0.0.1',
+    port: parseInt(process.env.REDIS_PORT || '6379'),
+    password: process.env.REDIS_PASSWORD,
+};
 
-interface EmailJobData {
-    emailId: number;
-    smtpAccountId: number;
+async function connectDB() {
+    return mysql.createConnection({
+        uri: process.env.DATABASE_URL,
+        charset: 'utf8mb4'
+    });
 }
 
-console.log('🚀 Email Worker Started. Waiting for jobs...');
+const worker = new Worker('email-queue', async job => {
+    console.log(`Processing job ${job.id}: Sending email ID ${job.data.emailId}`);
 
-const worker = new Worker('email-send-queue', async (job: Job<EmailJobData>) => {
-    const { emailId, smtpAccountId } = job.data;
-    console.log(`Processing Job ${job.id}: Email ID ${emailId}, Account ID ${smtpAccountId}`);
-
-    let email: any = null;
-    let account: any = null;
-
-    // Helper for fresh connections (Avoids pool timeouts during long SMTP calls)
-    const connectDB = async () => mysql.createConnection({
-        uri: process.env.DATABASE_URL,
-        charset: 'utf8mb4' // CRITICAL: Support emojis
-    });
-
-    // STEP 1: Fetch Data
-    let dbRead;
+    const db = await connectDB();
     try {
-        dbRead = await connectDB();
-        const [emailRows]: any = await dbRead.execute('SELECT * FROM emails WHERE id = ?', [emailId]);
-        const [accountRows]: any = await dbRead.execute('SELECT * FROM smtp_accounts WHERE id = ?', [smtpAccountId]);
+        // 1. Fetch Email & Account Details
+        const [rows]: any = await db.execute(`
+            SELECT e.*, 
+                   sa.host, sa.port, sa.username, sa.encrypted_password, sa.secure, sa.from_email as account_email
+            FROM emails e
+            JOIN smtp_accounts sa ON e.smtp_account_id = sa.id
+            WHERE e.id = ?
+        `, [job.data.emailId]);
 
-        if (emailRows.length === 0 || accountRows.length === 0) {
-            throw new Error(`Invalid Email (${emailId}) or Account (${smtpAccountId}) ID`);
+        if (rows.length === 0) {
+            throw new Error(`Email ID ${job.data.emailId} not found`);
         }
-        email = emailRows[0];
-        account = accountRows[0];
-    } finally {
-        if (dbRead) await dbRead.end();
-    }
 
-    try {
-        // STEP 2: Decrypt
+        const email = rows[0];
+
+        // 2. Decrypt Password
         let password;
         try {
-            password = decrypt(account.encrypted_password);
+            password = decrypt(email.encrypted_password);
         } catch (e) {
-            console.error(`Decryption failed for account ${account.id}`, e);
-            throw new Error('Credential decryption failed');
+            throw new Error(`Failed to decrypt password for account ${email.account_email}`);
         }
 
-        // STEP 3: Configure Transporter
+        // 3. Create Transporter
         const transporter = nodemailer.createTransport({
-            host: account.host,
-            port: account.port,
-            secure: account.port === 465,
+            host: email.host,
+            port: email.port,
+            secure: email.secure === 1, // true for 465, false for 587 usually
             auth: {
-                user: account.username,
-                pass: password
-            }
+                user: email.username,
+                pass: password,
+            },
         });
 
-        // STEP 4: Send Mail (SLOW NETWORK CALL)
-        let toAddresses = [];
-        try {
-            const rawTo = typeof email.recipient_to === 'string' ? JSON.parse(email.recipient_to) : email.recipient_to;
-            toAddresses = rawTo.map((r: any) => r.email).join(', ');
-        } catch (e) {
-            toAddresses = email.recipient_to;
-        }
-
-        console.log(`Sending email to ${toAddresses}...`);
+        // 4. Send Mail
+        const recipients = JSON.parse(email.recipient_to || '[]');
+        const toList = recipients.map((r: any) => r.email).join(', ');
 
         const info = await transporter.sendMail({
-            from: `"${account.from_name}" <${account.from_email}>`,
-            to: toAddresses,
+            from: `"${email.from_name || email.account_email}" <${email.account_email}>`,
+            to: toList,
             subject: email.subject,
             text: email.body_text,
-            html: email.body_html
+            html: email.body_html,
+            inReplyTo: email.in_reply_to, // Threading
+            references: email.in_reply_to // Threading
         });
 
-        console.log(`✅ Email Sent: ${info.messageId}`);
+        console.log(`Message sent: ${info.messageId}`);
 
-        // STEP 5: Update Status
-        let dbWrite;
-        try {
-            dbWrite = await connectDB();
-            await dbWrite.execute(
-                'UPDATE emails SET status = ?, sent_at = NOW(), headers_json = ? WHERE id = ?',
-                ['sent', JSON.stringify(info), emailId]
-            );
-
-            // FIX: Ensure 4 placeholders match 4 params (finished_at uses NOW())
-            // OR 5 placeholders for 5 params. We use 5 here to be explicit.
-            await dbWrite.execute(
-                'INSERT INTO email_send_jobs (email_id, status, attempt_count, finished_at) VALUES (?, ?, ?, ?)',
-                [emailId, 'completed', job.attemptsMade || 0, new Date()]
-            );
-        } finally {
-            if (dbWrite) await dbWrite.end();
-        }
+        // 5. Update DB Status
+        await db.execute(`
+            UPDATE emails 
+            SET status = 'sent', 
+                message_id = ?, 
+                sent_at = NOW() 
+            WHERE id = ?
+        `, [info.messageId, email.id]);
 
     } catch (error: any) {
-        console.error(`❌ Job ${job.id} Failed:`, error.message);
+        console.error(`Failed to send email ${job.data.emailId}:`, error);
 
-        // Fail Logic
-        let dbFail;
-        try {
-            dbFail = await connectDB();
-            const errorMsg = error.message ? error.message.substring(0, 500) : 'Unknown Error';
+        await db.execute(`
+            UPDATE emails 
+            SET status = 'failed'
+            WHERE id = ?
+        `, [job.data.emailId]);
 
-            await dbFail.execute(
-                'UPDATE emails SET status = ?, error_message = ? WHERE id = ?',
-                ['failed', errorMsg, emailId]
-            );
-
-            // FIX: Match placeholders to params
-            await dbFail.execute(
-                'INSERT INTO email_send_jobs (email_id, status, attempt_count, last_error, finished_at) VALUES (?, ?, ?, ?, ?)',
-                [
-                    emailId || 0,
-                    'failed',
-                    Number(job.attemptsMade) || 0,
-                    errorMsg,
-                    new Date()
-                ]
-            );
-        } catch (dbError) {
-            console.error('Failed to log error to DB:', dbError);
-        } finally {
-            if (dbFail) await dbFail.end();
-        }
-
-        // Prevent infinite retry for "Malformed Packet"
-        if (error.message.includes('Malformed') || error.message.includes('Packet') || error.message.includes('Connection lost')) {
-            console.error('🛑 Swallowing DB/Network Error to prevent retry loop.');
-            return;
-        }
-
-        throw error;
+        throw error; // Let BullMQ handle retries
+    } finally {
+        await db.end();
     }
-
-}, {
-    connection: redisConnection as any,
-    concurrency: 5
-});
+}, { connection });
 
 worker.on('completed', job => {
     console.log(`Job ${job.id} has completed!`);
@@ -167,3 +111,5 @@ worker.on('completed', job => {
 worker.on('failed', (job, err) => {
     console.log(`Job ${job?.id} has failed with ${err.message}`);
 });
+
+console.log("Email Sender Worker Started...");
