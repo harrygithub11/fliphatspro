@@ -96,14 +96,25 @@ async function syncAccount(account: any) {
                         const [customers]: any = await db.execute('SELECT id FROM customers WHERE email = ?', [fromAddress]);
                         const customerId = customers.length > 0 ? customers[0].id : null;
 
+                        // Parse 'To' field
+                        const recipientTo = Array.isArray(parsed.to)
+                            ? parsed.to.map((t: any) => t.value).flat()
+                            : (parsed.to?.value || []);
+
+                        // Format for DB JSON
+                        const recipientToJson = JSON.stringify(recipientTo.map((r: any) => ({
+                            name: r.name || '',
+                            email: r.address
+                        })));
+
                         console.log(`Creating email from ${fromAddress} - ${parsed.subject}`);
 
                         await db.execute(`
                             INSERT INTO emails (
                                 smtp_account_id, customer_id, direction, folder, status, is_read,
                                 from_address, from_name, subject, body_html, body_text, 
-                                received_at, message_id, headers_json
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)
+                                received_at, message_id, headers_json, recipient_to
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)
                         `, [
                             account.id,
                             customerId,
@@ -117,7 +128,8 @@ async function syncAccount(account: any) {
                             parsed.html || '',
                             parsed.text || '',
                             messageId,
-                            JSON.stringify(parsed.headers)
+                            JSON.stringify(parsed.headers),
+                            recipientToJson
                         ]);
                     } finally {
                         await db.end();
