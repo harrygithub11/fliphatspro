@@ -7,8 +7,6 @@
         "build": "next build",
         "start": "next start -p 3056",
         "lint": "next lint",
-        "lint": "next lint",
-        "lint": "next lint",
         "worker": "npx ts-node --project tsconfig.worker.json workers/email-worker.ts"
     },
     "dependencies": {
