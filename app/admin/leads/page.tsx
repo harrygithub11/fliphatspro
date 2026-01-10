@@ -38,6 +38,23 @@ interface Customer {
     total_activities?: number;
     new_activity_count?: number;
     location?: string;
+    budget?: number;
+    ltv?: number;
+    notes?: string;
+    // FB / Ad Data
+    fb_lead_id?: string;
+    fb_created_time?: string;
+    ad_id?: string;
+    ad_name?: string;
+    adset_id?: string;
+    adset_name?: string;
+    form_id?: string;
+    form_name?: string;
+    is_organic?: boolean;
+    platform?: string;
+    fb_lead_status?: string;
+    ad_account_id?: string;
+    campaign_id?: string;
 }
 
 export default function LeadsPage() {
@@ -54,6 +71,12 @@ export default function LeadsPage() {
     const [newLeadBudget, setNewLeadBudget] = useState('');
     const [newLeadNotes, setNewLeadNotes] = useState('');
     const [newLeadSource, setNewLeadSource] = useState('manual');
+
+    // Ad Data Manual Entry
+    const [newLeadPlatform, setNewLeadPlatform] = useState('');
+    const [newLeadCampaign, setNewLeadCampaign] = useState('');
+    const [newLeadAdName, setNewLeadAdName] = useState('');
+
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [csvImportOpen, setCsvImportOpen] = useState(false);
     const [deleteLeadId, setDeleteLeadId] = useState<number | null>(null);
@@ -162,7 +185,11 @@ export default function LeadsPage() {
                     source: newLeadSource,
                     location: newLeadLocation,
                     budget: newLeadBudget,
-                    notes: newLeadNotes
+                    notes: newLeadNotes,
+                    // Ad Data
+                    platform: newLeadPlatform,
+                    campaign_name: newLeadCampaign,
+                    ad_name: newLeadAdName
                 })
             });
             const json = await res.json();
@@ -181,6 +208,9 @@ export default function LeadsPage() {
                 setNewLeadBudget('');
                 setNewLeadNotes('');
                 setNewLeadSource('manual');
+                setNewLeadPlatform('');
+                setNewLeadCampaign('');
+                setNewLeadAdName('');
             } else {
                 alert("Failed: " + json.message);
             }

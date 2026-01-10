@@ -89,6 +89,32 @@ export async function POST(request: Request) {
         // Detect Campaign / Ad Name
         const campaignPatterns = ['campaign_name', 'campaign name', 'campaign', 'ad_name', 'ad name', 'adset_name', 'adset name', 'source_detail'];
         const campaignCol = detectColumn(headers, campaignPatterns);
+        const adIdCol = detectColumn(headers, ['ad_id']);
+        const adNameCol = detectColumn(headers, ['ad_name']);
+        const adsetIdCol = detectColumn(headers, ['adset_id']);
+        const adsetNameCol = detectColumn(headers, ['adset_name']);
+        const campaignIdCol = detectColumn(headers, ['campaign_id']);
+        const campaignNameCol = detectColumn(headers, ['campaign_name']); // Specific match
+        const formIdCol = detectColumn(headers, ['form_id']);
+        const formNameCol = detectColumn(headers, ['form_name']);
+        const platformCol = detectColumn(headers, ['platform']);
+        const isOrganicCol = detectColumn(headers, ['is_organic']);
+        const leadStatusCol = detectColumn(headers, ['lead_status']);
+        const fbLeadIdCol = detectColumn(headers, ['id', 'lead_id']); // "id" matches the user's sample
+
+        const adIdCol = detectColumn(headers, ['ad_id']);
+        const adNameCol = detectColumn(headers, ['ad_name']);
+        const adsetIdCol = detectColumn(headers, ['adset_id']);
+        const adsetNameCol = detectColumn(headers, ['adset_name']);
+        const campaignIdCol = detectColumn(headers, ['campaign_id']);
+        const campaignNameCol = detectColumn(headers, ['campaign_name']); // Specific match
+        const formIdCol = detectColumn(headers, ['form_id']);
+        const formNameCol = detectColumn(headers, ['form_name']);
+        const platformCol = detectColumn(headers, ['platform']);
+        const isOrganicCol = detectColumn(headers, ['is_organic']);
+        const leadStatusCol = detectColumn(headers, ['lead_status']);
+        const fbLeadIdCol = detectColumn(headers, ['id', 'lead_id']); // "id" matches the user's sample
+
 
         // Detect Location
         const locationPatterns = ['location', 'city', 'address', 'region', 'state', 'country', 'place'];
@@ -147,141 +173,174 @@ export async function POST(request: Request) {
                     // Extract campaign name early for use in duplicate check and insert
                     const campaignName = campaignCol ? (String(row[campaignCol] || '').trim() || null) : null;
 
-                    // Check for duplicate email
-                    if (email) {
-                        const [existingRows]: any = await connection.execute(
-                            'SELECT id, name, phone, campaign_name, location FROM customers WHERE email = ?',
-                            [email]
-                        );
+                    // Extract FB Fields
+                    const adId = adIdCol ? String(row[adIdCol] || '') : null;
+                    const adName = adNameCol ? String(row[adNameCol] || '') : null;
+                    const adsetId = adsetIdCol ? String(row[adsetIdCol] || '') : null;
+                    const adsetName = adsetNameCol ? String(row[adsetNameCol] || '') : null;
+                    const campaignId = campaignIdCol ? String(row[campaignIdCol] || '') : null;
+                    const specificCampaignName = campaignNameCol ? String(row[campaignNameCol] || '') : campaignName; // Prefer specific if available
+                    const formId = formIdCol ? String(row[formIdCol] || '') : null;
+                    const formName = formNameCol ? String(row[formNameCol] || '') : null;
+                    const platform = platformCol ? String(row[platformCol] || '') : null;
+                    const isOrganic = isOrganicCol ? String(row[isOrganicCol]) === 'true' : false;
+                    const leadStatus = leadStatusCol ? String(row[leadStatusCol] || '') : null;
+                    const fbLeadId = fbLeadIdCol ? String(row[fbLeadIdCol] || '') : null;
 
-                        if (existingRows.length > 0) {
-                            const existing = existingRows[0];
-                            const updates: string[] = [];
-                            const updateParams: any[] = [];
-                            const updatedFields: string[] = [];
 
-                            // Enrichment Logic: Only update if existing is missing/empty and new has value
 
-                            // 1. Campaign Name
-                            if (campaignName && !existing.campaign_name) {
-                                updates.push('campaign_name = ?');
-                                updateParams.push(campaignName);
-                                updatedFields.push('Campaign');
-                            }
 
-                            // 2. Phone
-                            if (phone && !existing.phone) {
-                                updates.push('phone = ?');
-                                updateParams.push(phone);
-                                updatedFields.push('Phone');
-                            }
+                    if (existingRows.length > 0) {
+                        const existing = existingRows[0];
+                        const updates: string[] = [];
+                        const updateParams: any[] = [];
+                        const updatedFields: string[] = [];
 
-                            // 3. Name (only if unknown)
-                            if (name && (!existing.name || existing.name === 'Unknown')) {
-                                updates.push('name = ?');
-                                updateParams.push(name);
-                                updatedFields.push('Name');
-                            }
+                        // Enrichment Logic: Only update if existing is missing/empty and new has value
 
-                            // 4. Location
-                            if (location && !existing.location) {
-                                updates.push('location = ?');
-                                updateParams.push(location);
-                                updatedFields.push('Location');
-                            }
-
-                            if (updates.length > 0) {
-                                updateParams.push(existing.id);
-                                await connection.execute(
-                                    `UPDATE customers SET ${updates.join(', ')} WHERE id = ?`,
-                                    updateParams
-                                );
-
-                                // Log enrichment
-                                await connection.execute(
-                                    `INSERT INTO interactions (customer_id, type, content, created_by) 
-                                     VALUES (?, 'system_event', ?, ?)`,
-                                    [existing.id, `Lead enriched via import: Added ${updatedFields.join(', ')}`, session.id]
-                                );
-
-                                results.updated++;
-                            } else {
-                                results.skipped++;
-                            }
-                            continue;
+                        // 1. Campaign Name
+                        if (campaignName && !existing.campaign_name) {
+                            updates.push('campaign_name = ?');
+                            updateParams.push(campaignName);
+                            updatedFields.push('Campaign');
                         }
+
+                        // 2. Phone
+                        if (phone && !existing.phone) {
+                            updates.push('phone = ?');
+                            updateParams.push(phone);
+                            updatedFields.push('Phone');
+                        }
+
+                        // 3. Name (only if unknown)
+                        if (name && (!existing.name || existing.name === 'Unknown')) {
+                            updates.push('name = ?');
+                            updateParams.push(name);
+                            updatedFields.push('Name');
+                        }
+
+                        // 4. Location
+                        if (location && !existing.location) {
+                            updates.push('location = ?');
+                            updateParams.push(location);
+                            updatedFields.push('Location');
+                        }
+
+                        // 5. FB Fields (Enrich if missing)
+                        if (platform && !existing.platform) { updates.push('platform = ?'); updateParams.push(platform); }
+                        if (adId && !existing.ad_id) { updates.push('ad_id = ?'); updateParams.push(adId); }
+                        if (adName && !existing.ad_name) { updates.push('ad_name = ?'); updateParams.push(adName); }
+                        if (adsetName && !existing.adset_name) { updates.push('adset_name = ?'); updateParams.push(adsetName); }
+                        if (campaignId && !existing.campaign_id) { updates.push('campaign_id = ?'); updateParams.push(campaignId); }
+                        if (fbLeadId && !existing.fb_lead_id) { updates.push('fb_lead_id = ?'); updateParams.push(fbLeadId); }
+
+
+                        // 5. FB Fields (Enrich if missing)
+                        if (platform && !existing.platform) { updates.push('platform = ?'); updateParams.push(platform); }
+                        if (adId && !existing.ad_id) { updates.push('ad_id = ?'); updateParams.push(adId); }
+                        if (adName && !existing.ad_name) { updates.push('ad_name = ?'); updateParams.push(adName); }
+                        if (adsetName && !existing.adset_name) { updates.push('adset_name = ?'); updateParams.push(adsetName); }
+                        if (campaignId && !existing.campaign_id) { updates.push('campaign_id = ?'); updateParams.push(campaignId); }
+                        if (fbLeadId && !existing.fb_lead_id) { updates.push('fb_lead_id = ?'); updateParams.push(fbLeadId); }
+
+
+                        if (updates.length > 0) {
+                            updateParams.push(existing.id);
+                            await connection.execute(
+                                `UPDATE customers SET ${updates.join(', ')} WHERE id = ?`,
+                                updateParams
+                            );
+
+                            // Log enrichment
+                            await connection.execute(
+                                `INSERT INTO interactions (customer_id, type, content, created_by) 
+                                     VALUES (?, 'system_event', ?, ?)`,
+                                [existing.id, `Lead enriched via import: Added ${updatedFields.join(', ')}`, session.id]
+                            );
+
+                            results.updated++;
+                        } else {
+                            results.skipped++;
+                        }
+                        continue;
                     }
+                }
 
                     // Insert customer with timestamp if available
 
+                    // Insert customer with timestamp if available
                     const [insertResult]: any = await connection.execute(
-                        `INSERT INTO customers (name, phone, email, source, campaign_name, location, stage, score, owner, created_at) 
-                         VALUES (?, ?, ?, 'csv_import', ?, ?, 'new', 'cold', ?, ?)`,
+                    `INSERT INTO customers (
+                            name, phone, email, source, campaign_name, location, stage, score, owner, created_at,
+                            ad_id, ad_name, adset_id, adset_name, campaign_id, form_id, form_name, is_organic, platform, fb_lead_status, fb_lead_id, fb_created_time
+                        ) 
+                         VALUES (?, ?, ?, 'csv_import', ?, ?, 'new', 'cold', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [
+                        name || 'Unknown',
+                        phone,
+                        email,
+                        specificCampaignName,
+                        location,
+                        session.name || 'unassigned',
+                        submissionTime || new Date().toISOString().slice(0, 19).replace('T', ' '),
+                        adId, adName, adsetId, adsetName, campaignId, formId, formName, isOrganic, platform, leadStatus, fbLeadId, submissionTime
+                    ]
+                );
+
+                const customerId = insertResult.insertId;
+
+                // Create initial timeline entry if we have a timestamp
+                if (submissionTime) {
+                    await connection.execute(
+                        `INSERT INTO interactions (customer_id, type, content, created_by, created_at) 
+                             VALUES (?, 'system_event', ?, ?, ?)`,
                         [
-                            name || 'Unknown',
-                            phone,
-                            email,
-                            campaignName,
-                            location,
-                            session.name || 'unassigned',
-                            submissionTime || new Date().toISOString().slice(0, 19).replace('T', ' ')
+                            customerId,
+                            'Lead submitted via form' + (campaignName ? ` (Campaign: ${campaignName})` : ''),
+                            session.id,
+                            submissionTime
                         ]
                     );
-
-                    const customerId = insertResult.insertId;
-
-                    // Create initial timeline entry if we have a timestamp
-                    if (submissionTime) {
-                        await connection.execute(
-                            `INSERT INTO interactions (customer_id, type, content, created_by, created_at) 
-                             VALUES (?, 'system_event', ?, ?, ?)`,
-                            [
-                                customerId,
-                                'Lead submitted via form' + (campaignName ? ` (Campaign: ${campaignName})` : ''),
-                                session.id,
-                                submissionTime
-                            ]
-                        );
-                    }
-
-                    results.imported++;
-
-                } catch (dbError: any) {
-                    results.failed++;
-                    results.errors.push(`Row ${i + 2}: ${dbError.message}`);
                 }
+
+                results.imported++;
+
+            } catch (dbError: any) {
+                results.failed++;
+                results.errors.push(`Row ${i + 2}: ${dbError.message}`);
             }
+        }
 
             // Log activity using helper function
             const { logAdminActivity } = await import('@/lib/activity-logger');
-            await logAdminActivity(
-                session.id,
-                'csv_import',
-                `Imported ${results.imported} leads, Enriched ${results.updated} leads (${results.total} total rows, ${results.skipped} skipped, ${results.failed} failed)`
-            );
+        await logAdminActivity(
+            session.id,
+            'csv_import',
+            `Imported ${results.imported} leads, Enriched ${results.updated} leads (${results.total} total rows, ${results.skipped} skipped, ${results.failed} failed)`
+        );
 
-        } finally {
-            connection.release();
-        }
-
-        return NextResponse.json({
-            success: true,
-            message: `Successfully imported ${results.imported} leads and enriched ${results.updated} existing leads`,
-            detectedColumns: {
-                name: nameCol,
-                phone: phoneCol,
-                email: emailCol,
-                timestamp: timestampCol
-            },
-            results
-        });
-
-    } catch (error) {
-        console.error('CSV Import Error:', error);
-        return NextResponse.json({
-            success: false,
-            message: 'Import failed',
-            error: error instanceof Error ? error.message : 'Unknown error'
-        }, { status: 500 });
+    } finally {
+        connection.release();
     }
+
+    return NextResponse.json({
+        success: true,
+        message: `Successfully imported ${results.imported} leads and enriched ${results.updated} existing leads`,
+        detectedColumns: {
+            name: nameCol,
+            phone: phoneCol,
+            email: emailCol,
+            timestamp: timestampCol
+        },
+        results
+    });
+
+} catch (error) {
+    console.error('CSV Import Error:', error);
+    return NextResponse.json({
+        success: false,
+        message: 'Import failed',
+        error: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
+}
 }

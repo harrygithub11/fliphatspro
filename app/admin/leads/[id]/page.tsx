@@ -32,6 +32,23 @@ interface Customer {
     avatar_url?: string;
     created_at: string;
     location?: string;
+    budget?: number;
+    ltv?: number;
+    notes?: string;
+    // FB / Ad Data
+    fb_lead_id?: string;
+    fb_created_time?: string;
+    ad_id?: string;
+    ad_name?: string;
+    adset_id?: string;
+    adset_name?: string;
+    campaign_id?: string;
+    campaign_name?: string;
+    form_id?: string;
+    form_name?: string;
+    is_organic?: boolean;
+    platform?: string;
+    fb_lead_status?: string;
 }
 
 interface Deal {
@@ -131,6 +148,7 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
 
     // Email State
     const [composeOpen, setComposeOpen] = useState(false);
+    const [editProfileOpen, setEditProfileOpen] = useState(false); // Edit Profile Modal
 
     // Dynamic stages
     const [stages, setStages] = useState<{ id: number, value: string, label: string, color: string }[]>([]);
@@ -248,7 +266,7 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
         }
     };
 
-    const updateLead = async (field: string, value: string) => {
+    const updateLead = async (field: string, value: string | number) => {
         // Optimistic Update
         const oldData = { ...data! };
         setData({
@@ -480,6 +498,9 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
                                     ))}
                                 </SelectContent>
                             </Select>
+                            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" onClick={() => setEditProfileOpen(true)}>
+                                <FileText className="h-4 w-4" />
+                            </Button>
                         </div>
                         <CardTitle className="text-xl">{lead.name}</CardTitle>
                         {lead.location && (
@@ -590,6 +611,78 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
                                 </div>
                             </DialogContent>
                         </Dialog>
+                    </CardContent>
+                </Card>
+
+                {/* Ad Intelligence Card */}
+                {(lead.platform || lead.campaign_name || lead.ad_name || lead.form_name) && (
+                    <Card>
+                        <CardHeader className="py-4">
+                            <CardTitle className="text-sm font-medium">Ad Intelligence</CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid gap-3 text-xs">
+                            {lead.platform && (
+                                <div className="flex justify-between items-center bg-muted/30 p-2 rounded-md">
+                                    <span className="text-muted-foreground uppercase text-[10px] tracking-wider font-semibold">Platform</span>
+                                    <Badge variant="secondary" className="uppercase text-[10px] h-5">{lead.platform}</Badge>
+                                </div>
+                            )}
+                            {lead.campaign_name && (
+                                <div>
+                                    <span className="text-muted-foreground block mb-1 text-[10px] uppercase tracking-wider font-semibold">Campaign</span>
+                                    <span className="font-medium block leading-tight">{lead.campaign_name}</span>
+                                </div>
+                            )}
+                            {lead.ad_name && (
+                                <div>
+                                    <span className="text-muted-foreground block mb-1 text-[10px] uppercase tracking-wider font-semibold">Ad Creative</span>
+                                    <span className="font-medium block leading-tight">{lead.ad_name}</span>
+                                </div>
+                            )}
+                            {lead.adset_name && (
+                                <div>
+                                    <span className="text-muted-foreground block mb-1 text-[10px] uppercase tracking-wider font-semibold">Ad Set</span>
+                                    <span className="font-medium block leading-tight">{lead.adset_name}</span>
+                                </div>
+                            )}
+                            {lead.form_name && (
+                                <div>
+                                    <span className="text-muted-foreground block mb-1 text-[10px] uppercase tracking-wider font-semibold">Form</span>
+                                    <span className="font-medium block leading-tight">{lead.form_name}</span>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* System Data Card */}
+                <Card>
+                    <CardHeader className="py-2">
+                        <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">System Details</CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid gap-2 text-xs text-muted-foreground">
+                        <div className="flex justify-between border-b pb-1 border-border/50">
+                            <span>Internal ID</span>
+                            <span className="font-mono">{lead.id}</span>
+                        </div>
+                        {lead.fb_lead_id && (
+                            <div className="flex justify-between border-b pb-1 border-border/50">
+                                <span>FB Lead ID</span>
+                                <div className="flex items-center gap-1">
+                                    <span className="font-mono text-[10px] truncate max-w-[80px]" title={lead.fb_lead_id}>{lead.fb_lead_id}</span>
+                                </div>
+                            </div>
+                        )}
+                        <div className="flex justify-between">
+                            <span>Created</span>
+                            <span>{new Date(lead.created_at).toLocaleDateString()}</span>
+                        </div>
+                        {lead.fb_created_time && (
+                            <div className="flex justify-between">
+                                <span>FB Time</span>
+                                <span>{new Date(lead.fb_created_time).toLocaleDateString()}</span>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>
@@ -931,7 +1024,107 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
                                 ))}
                             </div>
                         </TabsContent>
-                    </Tabs >
+                    </Tabs>
+
+                    {/* Edit Profile Modal */}
+                    <Dialog open={editProfileOpen} onOpenChange={setEditProfileOpen}>
+                        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                            <DialogHeader>
+                                <DialogTitle>Edit Lead Profile</DialogTitle>
+                            </DialogHeader>
+                            <div className="grid gap-6 py-4">
+                                {/* Basic Info */}
+                                <div>
+                                    <h4 className="text-sm font-semibold mb-3 flex items-center gap-2"><div className="w-1 h-4 bg-primary rounded-full"></div> Basic Information</h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label>Name</Label>
+                                            <Input value={lead.name} onChange={(e) => updateLead('name', e.target.value)} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Email</Label>
+                                            <Input value={lead.email} onChange={(e) => updateLead('email', e.target.value)} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Phone</Label>
+                                            <Input value={lead.phone} onChange={(e) => updateLead('phone', e.target.value)} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Location</Label>
+                                            <Input value={lead.location || ''} onChange={(e) => updateLead('location', e.target.value)} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Budget</Label>
+                                            <Input type="number" value={lead.budget || ''} onChange={(e) => updateLead('budget', e.target.value)} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>LTV (Lifetime Value)</Label>
+                                            <Input type="number" value={lead.ltv || ''} onChange={(e) => updateLead('ltv', e.target.value)} />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <Separator />
+
+                                {/* Ad Intelligence */}
+                                <div>
+                                    <h4 className="text-sm font-semibold mb-3 flex items-center gap-2"><div className="w-1 h-4 bg-blue-500 rounded-full"></div> Ad Intelligence (Manual Override)</h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label>Campaign Name</Label>
+                                            <Input value={lead.campaign_name || ''} onChange={(e) => updateLead('campaign_name', e.target.value)} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Ad Set Name</Label>
+                                            <Input value={lead.adset_name || ''} onChange={(e) => updateLead('adset_name', e.target.value)} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Ad Name</Label>
+                                            <Input value={lead.ad_name || ''} onChange={(e) => updateLead('ad_name', e.target.value)} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Platform</Label>
+                                            <Select value={lead.platform || ''} onValueChange={(v) => updateLead('platform', v)}>
+                                                <SelectTrigger><SelectValue placeholder="Unknown" /></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="ig">Instagram</SelectItem>
+                                                    <SelectItem value="fb">Facebook</SelectItem>
+                                                    <SelectItem value="google">Google</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Form Name</Label>
+                                            <Input value={lead.form_name || ''} onChange={(e) => updateLead('form_name', e.target.value)} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Lead Status (FB)</Label>
+                                            <Input value={lead.fb_lead_status || ''} onChange={(e) => updateLead('fb_lead_status', e.target.value)} />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <Separator />
+
+
+                                {/* System IDs */}
+                                <div>
+                                    <h4 className="text-sm font-semibold mb-3 flex items-center gap-2"><div className="w-1 h-4 bg-zinc-500 rounded-full"></div> System Identifiers</h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label>Facebook Lead ID</Label>
+                                            <Input value={lead.fb_lead_id || ''} onChange={(e) => updateLead('fb_lead_id', e.target.value)} className="font-mono text-xs" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Notes</Label>
+                                            <Textarea value={lead.notes || ''} onChange={(e) => updateLead('notes', e.target.value)} className="min-h-[80px]" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </DialogContent>
+                    </Dialog>
                 </Card >
             </div>
             {composeOpen && (
