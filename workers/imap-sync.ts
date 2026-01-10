@@ -44,7 +44,7 @@ async function syncAccount(account: any) {
                 user: (account.imap_user || account.username).trim(),
                 pass: password
             },
-            logger: false // Disable verbose logs
+            logger: {} // Enable logging to debug "Command failed"
         });
 
         await client.connect();
