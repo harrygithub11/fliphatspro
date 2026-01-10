@@ -16,7 +16,7 @@ export interface Attachment {
 interface AttachmentUploadProps {
     attachments: Attachment[]
     onChange: (attachments: Attachment[]) => void
-    onUpload: (attachments: Attachment[]) => void
+    onUpload?: (attachments: Attachment[]) => void
 }
 
 export default function AttachmentUpload({ attachments, onChange, onUpload }: AttachmentUploadProps) {
@@ -44,7 +44,9 @@ export default function AttachmentUpload({ attachments, onChange, onUpload }: At
             })
         }
 
-        onUpload([...attachments, ...newAttachments])
+        const updatedAttachments = [...attachments, ...newAttachments]
+        onChange(updatedAttachments)
+        if (onUpload) onUpload(updatedAttachments)
     }
 
     const removeAttachment = (id: string) => {
