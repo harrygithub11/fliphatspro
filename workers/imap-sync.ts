@@ -26,6 +26,7 @@ async function syncAccount(account: any) {
 
     let db;
     let client: ImapFlow | null = null;
+    let lock;
 
     try {
         let password;
@@ -63,32 +64,28 @@ async function syncAccount(account: any) {
 
         await client.connect();
 
-        // Open Inbox
-        let lock = await client.getMailboxLock('INBOX');
+        // Connect DB once
+        db = await connectDB();
+
+        // Open Inbox & Lock
+        lock = await client.getMailboxLock('INBOX');
         try {
-            // First search for unread messages to get their Sequence IDs or UIDs
             // 'seen: false' means UNSEEN
             const messagesToFetch = await client.search({ seen: false });
 
-            // client.search returns number[] (sequence numbers)
             if (messagesToFetch && messagesToFetch.length > 0) {
                 console.log(`Found ${messagesToFetch.length} unread messages.`);
 
-                db = await connectDB();
-
-                // Fetch using the list of sequence numbers we just found
                 for await (const message of client.fetch(messagesToFetch, { source: true, envelope: true, uid: true })) {
                     if (!message.source) continue;
 
                     try {
                         const parsed = await simpleParser(message.source);
 
-                        // Check if email already exists (by messageId)
                         const messageId = parsed.messageId || `no-id-${Date.now()}`;
                         const [existing]: any = await db.execute('SELECT id FROM emails WHERE message_id = ?', [messageId]);
 
                         if (existing.length > 0) {
-                            // Already exists, just mark as seen on server so we don't fetch again
                             console.log(`Skipping duplicate: ${messageId}`);
                             await client.messageFlagsAdd(message.uid, ['\\Seen'], { uid: true });
                             continue;
@@ -104,7 +101,6 @@ async function syncAccount(account: any) {
                             ? parsed.to.map((t: any) => t.value).flat()
                             : (parsed.to?.value || []);
 
-                        // Format for DB JSON
                         const recipientToJson = JSON.stringify(recipientTo.map((r: any) => ({
                             name: r.name || '',
                             email: r.address
@@ -135,32 +131,33 @@ async function syncAccount(account: any) {
                             recipientToJson
                         ]);
 
-                        // SUCCESS! Now mark as seen on IMAP server
+                        // SUCCESS! Mark as seen
                         await client.messageFlagsAdd(message.uid, ['\\Seen'], { uid: true });
 
                     } catch (err) {
                         console.error(`Failed to process message ${message.seq}:`, err);
-                        // Do NOT mark as seen, so it tries again next time
                     }
                 }
             } else {
                 console.log("No unread messages found.");
             }
-
-            await client.logout();
-
-            // Update last synced
-            db = await connectDB();
-            await db.execute('UPDATE smtp_accounts SET last_synced_at = NOW() WHERE id = ?', [account.id]);
-
-        } catch (e: any) {
-            console.error(`Error syncing ${account.from_email}:`, e);
-            if (e.command) console.error("Failed Command:", e.command);
-            if (e.response) console.error("Server Response:", e.response);
         } finally {
-            if (db) await db.end();
-            if (client) client.close();
+            // Release Lock
+            if (lock) lock.release();
         }
+
+        await client.logout();
+
+        // Update last synced
+        await db.execute('UPDATE smtp_accounts SET last_synced_at = NOW() WHERE id = ?', [account.id]);
+
+    } catch (e: any) {
+        console.error(`Error syncing ${account.from_email}:`, e);
+        if (e.command) console.error("Failed Command:", e.command);
+        if (e.response) console.error("Server Response:", e.response);
+    } finally {
+        if (db) await db.end();
+        if (client) client.close();
     }
 }
 
