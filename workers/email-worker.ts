@@ -65,8 +65,22 @@ const worker = new Worker('email-queue', async job => {
         });
 
         // 4. Send Mail
-        const recipients = JSON.parse(email.recipient_to || '[]');
-        const toList = recipients.map((r: any) => r.email).join(', ');
+        let recipients: any[] = [];
+        try {
+            if (typeof email.recipient_to === 'string') {
+                recipients = JSON.parse(email.recipient_to);
+            } else if (Array.isArray(email.recipient_to)) {
+                recipients = email.recipient_to;
+            } else if (email.recipient_to) {
+                // If it's an object but not an array, wrap it
+                recipients = [email.recipient_to];
+            }
+        } catch (e) {
+            console.error(`Malformed recipient_to for email ${email.id}:`, email.recipient_to);
+            throw new Error(`Invalid recipient data: ${email.recipient_to}`);
+        }
+
+        const toList = recipients.map((r: any) => r.email || r).join(', ');
 
         const info = await transporter.sendMail({
             from: `"${email.from_name || email.account_email}" <${email.account_email}>`,
