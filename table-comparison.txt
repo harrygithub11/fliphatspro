@@ -1,0 +1,73 @@
+TABLES IN SQL DUMP:
+  [OK] admin_activity_log
+  [OK] admin_activity_logs
+  [MISSING] admin_login_history
+  [OK] admin_login_logs
+  [OK] admin_preferences
+  [MISSING] admin_sessions
+  [OK] admins
+  [OK] comment_reads
+  [OK] customers
+  [MISSING] email_attachments
+  [MISSING] email_bounces
+  [MISSING] email_send_jobs
+  [MISSING] email_templates
+  [MISSING] email_tracking_events
+  [MISSING] emails
+  [OK] files
+  [OK] interactions
+  [OK] landing_pages
+  [OK] lead_reads
+  [OK] lead_scores
+  [OK] lead_stages
+  [MISSING] notifications
+  [OK] orders
+  [OK] project_submissions
+  [OK] settings
+  [OK] site_settings
+  [OK] smtp_accounts
+  [OK] system_settings
+  [MISSING] task_assignees
+  [MISSING] task_attachments
+  [OK] task_comments
+  [OK] task_history
+  [MISSING] task_reads
+  [OK] tasks
+
+MISSING TABLES (in SQL dump but NOT in Prisma schema):
+  - admin_login_history
+  - admin_sessions
+  - email_attachments
+  - email_bounces
+  - email_send_jobs
+  - email_templates
+  - email_tracking_events
+  - emails
+  - notifications
+  - task_assignees
+  - task_attachments
+  - task_reads
+
+EXTRA TABLES (in Prisma schema but NOT in SQL dump):
+  - cachedemail
+  - contact
+  - emailaccount
+  - emailanalytics
+  - emailattachment
+  - emaildraft
+  - emailfolder
+  - emaillabel
+  - emaillabeling
+  - emaillog
+  - emailreadstatus
+  - emailrule
+  - emailtemplate
+  - emailthread
+  - emailthreadmember
+  - emailtracking
+  - scheduledemail
+  - sharedmailbox
+  - webhook
+
+Summary: 34 tables in SQL dump, 41 in Prisma
+Missing: 12, Extra: 19
