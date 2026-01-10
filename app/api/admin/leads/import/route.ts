@@ -90,11 +90,15 @@ export async function POST(request: Request) {
         const campaignPatterns = ['campaign_name', 'campaign name', 'campaign', 'ad_name', 'ad name', 'adset_name', 'adset name', 'source_detail'];
         const campaignCol = detectColumn(headers, campaignPatterns);
 
+        // Detect Location
+        const locationPatterns = ['location', 'city', 'address', 'region', 'state', 'country', 'place'];
+        const locationCol = detectColumn(headers, locationPatterns);
+
         if (!nameCol && !emailCol) {
             return NextResponse.json({
                 success: false,
                 message: 'Could not detect name or email columns. CSV must have at least name or email column.',
-                detectedColumns: { name: nameCol, phone: phoneCol, email: emailCol }
+                detectedColumns: { name: nameCol, phone: phoneCol, email: emailCol, location: locationCol }
             }, { status: 400 });
         }
 
@@ -115,6 +119,7 @@ export async function POST(request: Request) {
                 const name = nameCol ? String(row[nameCol] || '').trim() : '';
                 const phone = phoneCol ? cleanPhone(String(row[phoneCol] || '')) : '';
                 const email = emailCol ? String(row[emailCol] || '').trim() : '';
+                const location = locationCol ? String(row[locationCol] || '').trim() : null;
 
                 // Parse timestamp if available
                 let submissionTime = null;
@@ -145,7 +150,7 @@ export async function POST(request: Request) {
                     // Check for duplicate email
                     if (email) {
                         const [existingRows]: any = await connection.execute(
-                            'SELECT id, name, phone, campaign_name FROM customers WHERE email = ?',
+                            'SELECT id, name, phone, campaign_name, location FROM customers WHERE email = ?',
                             [email]
                         );
 
@@ -178,6 +183,13 @@ export async function POST(request: Request) {
                                 updatedFields.push('Name');
                             }
 
+                            // 4. Location
+                            if (location && !existing.location) {
+                                updates.push('location = ?');
+                                updateParams.push(location);
+                                updatedFields.push('Location');
+                            }
+
                             if (updates.length > 0) {
                                 updateParams.push(existing.id);
                                 await connection.execute(
@@ -203,13 +215,14 @@ export async function POST(request: Request) {
                     // Insert customer with timestamp if available
 
                     const [insertResult]: any = await connection.execute(
-                        `INSERT INTO customers (name, phone, email, source, campaign_name, stage, score, owner, created_at) 
-                         VALUES (?, ?, ?, 'csv_import', ?, 'new', 'cold', ?, ?)`,
+                        `INSERT INTO customers (name, phone, email, source, campaign_name, location, stage, score, owner, created_at) 
+                         VALUES (?, ?, ?, 'csv_import', ?, ?, 'new', 'cold', ?, ?)`,
                         [
                             name || 'Unknown',
                             phone,
                             email,
                             campaignName,
+                            location,
                             session.name || 'unassigned',
                             submissionTime || new Date().toISOString().slice(0, 19).replace('T', ' ')
                         ]

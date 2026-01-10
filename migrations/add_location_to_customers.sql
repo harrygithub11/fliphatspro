@@ -1,0 +1,1 @@
+ALTER TABLE customers ADD COLUMN location VARCHAR(255) NULL AFTER notes;

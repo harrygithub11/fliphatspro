@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import {
     Phone, Mail, Globe, Calendar, Clock,
     MessageSquare, PhoneCall, FileText, CheckCircle2,
-    Plus, Send, Paperclip, Rocket
+    Plus, Send, Paperclip, Rocket, MapPin
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -31,6 +31,7 @@ interface Customer {
     store_url?: string;
     avatar_url?: string;
     created_at: string;
+    location?: string;
 }
 
 interface Deal {
@@ -470,6 +471,12 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
                             </Select>
                         </div>
                         <CardTitle className="text-xl">{lead.name}</CardTitle>
+                        {lead.location && (
+                            <div className="flex items-center gap-1.5 text-sm text-neutral-500 mt-1">
+                                <MapPin className="w-3.5 h-3.5" />
+                                {lead.location}
+                            </div>
+                        )}
                         <CardDescription className="flex items-center gap-2 mt-2">
                             <Select
                                 value={lead.stage}
