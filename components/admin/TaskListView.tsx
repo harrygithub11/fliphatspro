@@ -133,12 +133,7 @@ function TaskRow({
             {/* Drag Handle */}
             <GripVertical className="w-4 h-4 text-zinc-400 opacity-0 group-hover:opacity-100 cursor-grab" />
 
-            {/* Checkbox */}
-            <Checkbox
-                checked={isSelected}
-                onCheckedChange={onSelect}
-                className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-            />
+
 
             {/* Status Indicator */}
             <button
@@ -373,7 +368,7 @@ function StatusGroup({
                     {quickAddOpen && (
                         <div className="flex items-center gap-2 px-4 py-2 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 animate-in slide-in-from-top-1 duration-200">
                             <div className="w-4" /> {/* Grip placeholder */}
-                            <Checkbox disabled className="opacity-50" />
+
                             <StatusIcon className={`w-5 h-5 ${config.color} opacity-50`} />
 
                             <Input
@@ -447,7 +442,7 @@ export default function TaskListView({
             {/* Unified Column Header */}
             <div className="flex items-center gap-2 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 bg-zinc-50/50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-800">
                 <div className="w-4" /> {/* grip */}
-                <div className="w-4" /> {/* check */}
+
                 <div className="w-5" /> {/* icon */}
                 <div className="flex-1">Name</div>
                 <div className="w-10 text-center">Assignee</div>
