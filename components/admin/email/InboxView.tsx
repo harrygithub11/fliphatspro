@@ -17,10 +17,13 @@ interface Email {
     subject: string;
     from_name: string;
     from_address: string;
+    account_email: string; // Recipient account
+    customer_name: string;
     body_html: string;
     body_text: string;
     created_at: string;
-    is_read: number;
+    received_at: string;
+    is_read: boolean | number; // Handle 0/1 or true/false
 }
 
 export function InboxView() {
@@ -96,16 +99,32 @@ export function InboxView() {
                                 <button
                                     key={email.id}
                                     className={`flex flex-col items-start gap-1 p-4 text-left border-b hover:bg-accent transition-colors ${selectedEmail?.id === email.id ? 'bg-accent' : ''} ${!email.is_read ? 'font-semibold bg-blue-50/50 dark:bg-blue-900/10' : ''}`}
-                                    onClick={() => setSelectedEmail(email)}
+                                    onClick={() => {
+                                        setSelectedEmail(email);
+                                        if (!email.is_read) {
+                                            // Optimistic update
+                                            setEmails(prev => prev.map(e => e.id === email.id ? { ...e, is_read: true } : e));
+                                            fetch(`/api/admin/emails/${email.id}`, {
+                                                method: 'PATCH',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ is_read: true })
+                                            });
+                                        }
+                                    }}
                                 >
                                     <div className="flex justify-between w-full mb-1">
                                         <span className="font-medium truncate max-w-[180px]">{email.from_name || email.from_address}</span>
                                         <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                            {formatDistanceToNow(new Date(email.created_at), { addSuffix: true })}
+                                            {formatDistanceToNow(new Date(email.received_at || email.created_at), { addSuffix: true })}
                                         </span>
                                     </div>
                                     <span className="text-sm truncate w-full">{email.subject || '(No Subject)'}</span>
-                                    <p className="text-xs text-muted-foreground line-clamp-2 w-full text-left">
+                                    {email.account_email && (
+                                        <Badge variant="outline" className="text-[10px] h-4 px-1 py-0 text-muted-foreground mt-0.5">
+                                            to: {email.account_email}
+                                        </Badge>
+                                    )}
+                                    <p className="text-xs text-muted-foreground line-clamp-2 w-full text-left mt-1">
                                         {email.body_text?.substring(0, 100) || 'No preview available'}
                                     </p>
                                 </button>
@@ -128,9 +147,11 @@ export function InboxView() {
                                     </div>
                                     <div>
                                         <span className="font-medium text-foreground">{selectedEmail.from_name}</span>
-                                        <span className="mx-1">&lt;{selectedEmail.from_address}&gt;</span>
-                                        <div className="text-xs">
-                                            {new Date(selectedEmail.created_at).toLocaleString()}
+                                        <span className="mx-1 text-muted-foreground">&lt;{selectedEmail.from_address}&gt;</span>
+                                        <div className="text-xs text-muted-foreground flex gap-2">
+                                            <span>To: {selectedEmail.account_email}</span>
+                                            <span>•</span>
+                                            <span>{new Date(selectedEmail.received_at || selectedEmail.created_at).toLocaleString()}</span>
                                         </div>
                                     </div>
                                 </div>

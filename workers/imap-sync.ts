@@ -5,140 +5,150 @@
 import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
 import mysql from 'mysql2/promise';
-import { decrypt } from '../lib/smtp-encrypt';
-import dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
 import path from 'path';
+import { decrypt } from '../lib/smtp-encrypt';
 
+// Load env
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-// DB Connection Helper
-const connectDB = async () => mysql.createConnection({
-    uri: process.env.DATABASE_URL,
-    charset: 'utf8mb4'
-});
+const SYNC_INTERVAL_MS = 60000; // Check every 1 minute
+
+async function connectDB() {
+    return mysql.createConnection({
+        uri: process.env.DATABASE_URL,
+        charset: 'utf8mb4'
+    });
+}
 
 async function syncAccount(account: any) {
-    if (!account.imap_host || !account.imap_user || !account.imap_encrypted_password) {
-        console.log(`Skipping Account ${account.id}: Missing IMAP config`);
-        return;
-    }
+    console.log(`Checking ${account.from_email} (${account.imap_host})...`);
 
-    let password;
-    try {
-        password = decrypt(account.imap_encrypted_password);
-    } catch (e) {
-        console.error(`Decryption failed for IMAP account ${account.id}`, e);
-        return;
-    }
-
-    const client = new ImapFlow({
-        host: account.imap_host,
-        port: account.imap_port || 993,
-        secure: true,
-        auth: {
-            user: account.imap_user,
-            pass: password
-        },
-        logger: false as any
-    });
+    let db;
+    let client: ImapFlow | null = null;
 
     try {
+        let password;
+        try {
+            password = decrypt(account.imap_encrypted_password || account.encrypted_password);
+        } catch (e) {
+            console.error(`Failed to decrypt password for ${account.from_email}`);
+            return;
+        }
+
+        client = new ImapFlow({
+            host: account.imap_host || account.host, // Fallback to SMTP host if same
+            port: account.imap_port || 993,
+            secure: account.imap_secure !== 0,
+            auth: {
+                user: account.imap_user || account.username,
+                pass: password
+            },
+            logger: false // Disable verbose logs
+        });
+
         await client.connect();
 
-        // Select INBOX
+        // Open Inbox
         let lock = await client.getMailboxLock('INBOX');
         try {
-            // Search for messages since last sync or last 24 hours if null
-            // For simplicity, we just fetch UNSEEN or last 50 messages.
-            // Better strategy: Store UIDVALIDITY and update `last_synced_at`.
+            // Fetch unread messages
+            // We can also track last_synced_at UIDnext to get new messages efficiently
+            // For now, let's just get UNSEEN
+            for await (const message of client.fetch('UNSEEN', { source: true, envelope: true })) {
+                if (!message.source) continue;
 
-            // Example: Fetch last 10 messages to ensure we have recent history
-            // In prod, use '1:*' with standard fetch and check DB for existence.
-            const stats = await client.status('INBOX', { messages: true });
-            const total = stats.messages || 0;
-            const fetchFrom = Math.max(1, total - 20); // Sync last 20 emails for now
+                const parsed = await simpleParser(message.source);
+                const db = await connectDB();
 
-            const messageStream = client.fetch(`${fetchFrom}:*`, {
-                envelope: true,
-                source: true,
-                flags: true,
-                uid: true
-            });
+                // Check if email already exists (by messageId)
+                const messageId = parsed.messageId || `no-id-${Date.now()}`;
+                const [existing]: any = await db.execute('SELECT id FROM emails WHERE message_id = ?', [messageId]);
 
-            const db = await connectDB();
-
-            for await (let message of messageStream) {
-                try {
-                    const parsed = await simpleParser(message.source);
-
-                    // Check if exists
-                    const [existing]: any = await db.execute(
-                        'SELECT id FROM emails WHERE message_id = ? AND smtp_account_id = ?',
-                        [parsed.messageId, account.id]
-                    );
-
-                    if (existing.length === 0) {
-                        const fromAddr = parsed.from?.value[0];
-
-                        await db.execute(
-                            `INSERT INTO emails 
-                            (customer_id, smtp_account_id, status, direction, folder, subject, body_html, body_text, 
-                            from_name, from_address, recipient_to, message_id, in_reply_to, created_at, is_read)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                            [
-                                null, // customer_id (could lookup later)
-                                account.id,
-                                'sent', // It's "received" but status column is mostly for outbound. confusing.
-                                // Let's rely on 'direction'='inbound'.
-                                'inbound',
-                                'INBOX',
-                                parsed.subject,
-                                parsed.html || parsed.textAsHtml,
-                                parsed.text,
-                                fromAddr?.name || '',
-                                fromAddr?.address || '',
-                                JSON.stringify(parsed.to?.value || []),
-                                parsed.messageId,
-                                parsed.inReplyTo,
-                                parsed.date || new Date(),
-                                false // Unread
-                            ]
-                        );
-                        console.log(`📥 Imported: ${parsed.subject}`);
-                    }
-                } catch (err) {
-                    console.error('Error parsing/saving email:', err);
+                if (existing.length > 0) {
+                    // Already exists, maybe just update read status?
+                    // For now skip
+                    await db.end();
+                    continue;
                 }
+
+                // Determine Folder (Inbox)
+                // Find Customer (by from address)
+                const fromAddress = parsed.from?.value[0]?.address;
+                const [customers]: any = await db.execute('SELECT id FROM customers WHERE email = ?', [fromAddress]);
+                const customerId = customers.length > 0 ? customers[0].id : null;
+
+                console.log(`Creating email from ${fromAddress} - ${parsed.subject}`);
+
+                const [result]: any = await db.execute(`
+                    INSERT INTO emails (
+                        smtp_account_id, customer_id, direction, folder, status, is_read,
+                        from_address, from_name, subject, body_html, body_text, 
+                        received_at, message_id, headers_json
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)
+                `, [
+                    account.id,
+                    customerId,
+                    'inbound',
+                    'INBOX',
+                    'received',
+                    false, // is_read = false
+                    fromAddress,
+                    parsed.from?.value[0]?.name || '',
+                    parsed.subject,
+                    parsed.html || '',
+                    parsed.text || '',
+                    messageId,
+                    JSON.stringify(parsed.headers)
+                ]);
+
+                // Mark as Seen in IMAP? Optional, maybe keep as is or user pref.
+                // await client.messageFlagsAdd(message.uid, ['\\Seen']);
+
+                await db.end();
             }
-
-            await db.end();
-
         } finally {
             lock.release();
         }
 
         await client.logout();
-    } catch (err: any) {
-        console.error(`IMAP Error for ${account.name}:`, err.message);
+
+        // Update last synced
+        db = await connectDB();
+        await db.execute('UPDATE smtp_accounts SET last_synced_at = NOW() WHERE id = ?', [account.id]);
+
+    } catch (e: any) {
+        console.error(`Error syncing ${account.from_email}:`, e.message);
+    } finally {
+        if (db) await db.end();
+        if (client) client.close();
     }
 }
 
-async function run() {
-    console.log('🔄 Starting IMAP Sync...');
-    const db = await connectDB();
+async function runSync() {
+    console.log("Starting Sync Poll...");
+    let db;
     try {
-        const [accounts]: any = await db.execute('SELECT * FROM smtp_accounts WHERE is_active = 1');
-        await db.end();
+        db = await connectDB();
+        // Fetch accounts that have IMAP configured
+        const [accounts]: any = await db.execute(
+            'SELECT * FROM smtp_accounts WHERE is_active = 1 AND imap_host IS NOT NULL'
+        );
+
+        console.log(`Found ${accounts.length} accounts to sync.`);
 
         for (const account of accounts) {
             await syncAccount(account);
         }
+
     } catch (e) {
-        console.error('Sync Error:', e);
+        console.error("Sync Loop Error:", e);
+    } finally {
         if (db) await db.end();
     }
-    console.log('✅ Sync Finished.');
-    process.exit(0);
+
+    console.log(`Sync finished. Sleeping for ${SYNC_INTERVAL_MS / 1000}s...`);
+    setTimeout(runSync, SYNC_INTERVAL_MS);
 }
 
-run();
+runSync();
