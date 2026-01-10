@@ -195,6 +195,27 @@ model AdminActivityLog {
   @@map("admin_activity_logs")
 }
 
+model AdminPreferences {
+  id           Int       @id @default(autoincrement())
+  admin_id     Int?
+  theme        String?   @default("system") @db.VarChar(20)
+  notify_email Boolean?  @default(true)
+  notify_in_app Boolean? @default(true)
+  default_view String?   @default("dashboard") @db.VarChar(50)
+  updated_at   DateTime? @default(now()) @db.Timestamp(0)
+
+  @@map("admin_preferences")
+}
+
+model CommentRead {
+  id         Int       @id @default(autoincrement())
+  comment_id Int
+  user_id    Int
+  seen_at    DateTime? @default(now()) @db.Timestamp(0)
+
+  @@map("comment_reads")
+}
+
 enum AdminRole {
   super_admin
   support
