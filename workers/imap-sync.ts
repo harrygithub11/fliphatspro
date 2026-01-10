@@ -37,11 +37,11 @@ async function syncAccount(account: any) {
         }
 
         client = new ImapFlow({
-            host: account.imap_host || account.host, // Fallback to SMTP host if same
+            host: (account.imap_host || account.host).trim(),
             port: account.imap_port || 993,
             secure: account.imap_secure !== 0,
             auth: {
-                user: account.imap_user || account.username,
+                user: (account.imap_user || account.username).trim(),
                 pass: password
             },
             logger: false // Disable verbose logs
