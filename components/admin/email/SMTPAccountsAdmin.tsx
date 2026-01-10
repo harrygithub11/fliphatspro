@@ -21,6 +21,9 @@ interface SMTPAccount {
     port: number;
     username: string;
     from_name: string;
+    imap_host?: string;
+    imap_port?: number;
+    imap_user?: string;
 }
 
 export function SMTPAccountsAdmin() {
@@ -40,7 +43,11 @@ export function SMTPAccountsAdmin() {
         username: '',
         password: '',
         from_email: '',
-        from_name: ''
+        from_name: '',
+        imap_host: '',
+        imap_port: '993',
+        imap_user: '',
+        imap_password: ''
     });
 
     const handleProviderChange = (value: string) => {
@@ -48,14 +55,19 @@ export function SMTPAccountsAdmin() {
         if (value === 'gmail') {
             newData.host = 'smtp.gmail.com';
             newData.port = '587';
+            newData.imap_host = 'imap.gmail.com';
+            newData.imap_port = '993';
             if (!newData.name) newData.name = 'Gmail Support';
         } else if (value === 'outlook') {
             newData.host = 'smtp.office365.com';
             newData.port = '587';
+            newData.imap_host = 'outlook.office365.com';
+            newData.imap_port = '993';
             if (!newData.name) newData.name = 'Outlook Mail';
         } else if (value === 'sendgrid') {
             newData.host = 'smtp.sendgrid.net';
             newData.port = '587';
+            // SendGrid is send-only usually
             if (!newData.name) newData.name = 'SendGrid';
         }
         setFormData(newData);
@@ -95,7 +107,11 @@ export function SMTPAccountsAdmin() {
             username: account.username,
             password: '', // Don't fill password for security, let them re-enter if updating
             from_email: account.from_email,
-            from_name: account.from_name
+            from_name: account.from_name,
+            imap_host: account.imap_host || '',
+            imap_port: account.imap_port ? String(account.imap_port) : '993',
+            imap_user: account.imap_user || '',
+            imap_password: ''
         });
         setOpen(true);
     };
@@ -110,7 +126,11 @@ export function SMTPAccountsAdmin() {
             username: '',
             password: '',
             from_email: '',
-            from_name: ''
+            from_name: '',
+            imap_host: '',
+            imap_port: '993',
+            imap_user: '',
+            imap_password: ''
         });
         setOpen(true);
     };
@@ -272,6 +292,47 @@ export function SMTPAccountsAdmin() {
                                         onChange={e => setFormData({ ...formData, password: e.target.value })}
                                         required={!editingId}
                                     />
+                                </div>
+                            </div>
+
+                            <div className="border-t pt-4 mt-4">
+                                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                                    <Server className="w-4 h-4" /> Incoming Mail (IMAP)
+                                </h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>IMAP Host</Label>
+                                        <Input
+                                            placeholder="imap.gmail.com"
+                                            value={formData.imap_host}
+                                            onChange={e => setFormData({ ...formData, imap_host: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>IMAP Port</Label>
+                                        <Input
+                                            placeholder="993"
+                                            value={formData.imap_port}
+                                            onChange={e => setFormData({ ...formData, imap_port: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>IMAP User</Label>
+                                        <Input
+                                            placeholder="Usually same as username"
+                                            value={formData.imap_user}
+                                            onChange={e => setFormData({ ...formData, imap_user: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>IMAP Password</Label>
+                                        <Input
+                                            type="password"
+                                            placeholder="Leave blank to use SMTP password"
+                                            value={formData.imap_password}
+                                            onChange={e => setFormData({ ...formData, imap_password: e.target.value })}
+                                        />
+                                    </div>
                                 </div>
                             </div>
 

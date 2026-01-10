@@ -887,13 +887,13 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
                         </TabsContent>
                     </Tabs >
                 </Card >
-            </div >
-            <ComposeModal
-                open={composeOpen}
-                onOpenChange={setComposeOpen}
-                initialTo={lead?.email || ''}
-                customerId={lead?.id}
-            />
-        </div >
-    );
+                {composeOpen && (
+                    <ComposeModal
+                        open={composeOpen}
+                        onOpenChange={setComposeOpen}
+                        defaultTo={lead?.email || ''} // Updated prop name
+                        customerId={lead?.id}
+                    />
+                )}</div >
+            );
 }

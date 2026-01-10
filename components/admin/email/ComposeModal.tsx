@@ -13,18 +13,19 @@ import { Loader2, Paperclip, Send } from 'lucide-react';
 interface ComposeModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    initialTo?: string;
+    defaultTo?: string; // Changed from initialTo to match InboxView usage
+    defaultSubject?: string;
     customerId?: number;
 }
 
-export function ComposeModal({ open, onOpenChange, initialTo = '', customerId }: ComposeModalProps) {
+export function ComposeModal({ open, onOpenChange, defaultTo = '', defaultSubject = '', customerId }: ComposeModalProps) {
     const { toast } = useToast();
     const [sending, setSending] = useState(false);
     const [accounts, setAccounts] = useState<any[]>([]);
 
     const [formData, setFormData] = useState({
-        to: initialTo,
-        subject: '',
+        to: defaultTo,
+        subject: defaultSubject || '',
         body: '',
         smtp_account_id: ''
     });
@@ -41,12 +42,22 @@ export function ComposeModal({ open, onOpenChange, initialTo = '', customerId }:
                         setFormData(prev => ({ ...prev, smtp_account_id: String(data.accounts[0].id) }));
                     }
                 });
-        }
-    }, [open]);
 
+            // Set defaults when opening
+            setFormData(prev => ({
+                ...prev,
+                to: defaultTo || prev.to,
+                subject: defaultSubject || prev.subject
+            }));
+        }
+    }, [open, defaultTo, defaultSubject]);
+
+    // Removed specific initialTo effect as it's handled on open now
+    /*
     useEffect(() => {
         if (initialTo) setFormData(prev => ({ ...prev, to: initialTo }));
     }, [initialTo]);
+    */
 
     const handleSend = async () => {
         if (!formData.to || !formData.subject || !formData.smtp_account_id) {
