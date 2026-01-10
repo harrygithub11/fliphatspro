@@ -21,7 +21,7 @@ export async function GET() {
                      AND created_at > COALESCE((SELECT last_read_at FROM lead_reads WHERE lead_id = c.id AND admin_id = ?), '1970-01-01')) as new_activity_count
                 FROM customers c
                 LEFT JOIN orders o ON c.id = o.customer_id
-                GROUP BY c.id
+                GROUP BY c.id, c.created_at
                 ORDER BY c.created_at DESC
             `, [1]); // TODO: Use actual current user ID from session/auth
             return NextResponse.json(rows);
