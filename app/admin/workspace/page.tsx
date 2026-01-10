@@ -21,6 +21,7 @@ import Link from 'next/link';
 import { KanbanBoard } from '@/components/admin/KanbanBoard';
 import TaskListView from '@/components/admin/TaskListView';
 import TaskDrawer from '@/components/admin/TaskDrawer';
+import { CustomerActivityThread } from '@/components/admin/CustomerActivityThread';
 
 interface Task {
     id: number;
@@ -63,7 +64,7 @@ interface TeamMember {
 
 export default function WorkspacePage() {
     const [tasks, setTasks] = useState<Task[]>([]);
-    const [timeline, setTimeline] = useState<TimelineItem[]>([]);
+    const [timeline, setTimeline] = useState<any[]>([]);
     const [team, setTeam] = useState<TeamMember[]>([]);
     const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState('all');
@@ -97,12 +98,13 @@ export default function WorkspacePage() {
     };
 
     const fetchTimeline = async () => {
-        let url = '/api/admin/interactions?limit=100';
+        let url = '/api/admin/interactions/threads?limit=50';
         if (activityUserFilter !== 'all') url += `&admin_id=${activityUserFilter}`;
+        if (activityTypeFilter !== 'all') url += `&type=${activityTypeFilter}`;
 
         const res = await fetch(url);
         const data = await res.json();
-        if (data.success) setTimeline(data.interactions);
+        if (data.success) setTimeline(data.threads);
     };
 
     const fetchTeam = async () => {
@@ -314,12 +316,7 @@ export default function WorkspacePage() {
         completed: tasks.filter(t => t.status === 'done').length
     };
 
-    const filteredTimeline = timeline.filter(item => {
-        if (activityTypeFilter === 'all') return true;
-        if (activityTypeFilter === 'notes') return ['note', 'call', 'whatsapp'].some(t => item.action_type.includes(t));
-        if (activityTypeFilter === 'system') return !['note', 'call', 'whatsapp'].some(t => item.action_type.includes(t));
-        return true;
-    });
+    const filteredTimeline = timeline;
 
     if (loading) return (
         <div className="flex h-[80vh] items-center justify-center">
@@ -833,54 +830,16 @@ export default function WorkspacePage() {
                             </div>
                         </CardHeader>
                         <CardContent className="px-0 pl-4">
-                            <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-zinc-200 before:to-transparent dark:before:via-zinc-800">
+                            <div className="relative space-y-6 pt-4">
                                 {filteredTimeline.length === 0 ? (
                                     <div className="text-center py-10 pl-8 text-muted-foreground">No activity history found.</div>
                                 ) : (
-                                    filteredTimeline.map((item, index) => {
-                                        const isSystem = !['note', 'call', 'whatsapp'].some(t => item.action_type.includes(t));
-                                        const isNote = item.action_type.includes('note');
-                                        const isCall = item.action_type.includes('call');
-
-                                        return (
-                                            <div key={index} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                                                {/* Icon Bubble */}
-                                                <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-white dark:border-zinc-950 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 ${isNote ? 'bg-amber-100 text-amber-600' :
-                                                    isCall ? 'bg-blue-100 text-blue-600' :
-                                                        'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
-                                                    }`}>
-                                                    {getActionIcon(item.action_type)}
-                                                </div>
-
-                                                {/* Content Card */}
-                                                <div className={`w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow ${isNote ? 'bg-amber-50/60 border-amber-200/60 dark:bg-amber-900/10' :
-                                                    isCall ? 'bg-blue-50/60 border-blue-200/60 dark:bg-blue-900/10' :
-                                                        'bg-white/60 dark:bg-zinc-900/60 border-zinc-200/50 dark:border-zinc-800/50'
-                                                    }`}>
-                                                    <div className="flex items-center justify-between mb-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">{item.admin_name}</span>
-                                                            <Badge variant="outline" className={`text-[10px] h-5 px-1.5 font-medium ${isNote ? 'bg-amber-100 text-amber-700 border-amber-200' :
-                                                                isCall ? 'bg-blue-100 text-blue-700 border-blue-200' :
-                                                                    'bg-zinc-100 text-zinc-500 border-zinc-200'
-                                                                }`}>
-                                                                {isNote ? 'NOTE' : isCall ? 'CALL' : 'SYSTEM'}
-                                                            </Badge>
-                                                        </div>
-                                                        <time className="font-mono text-[10px] text-zinc-400">{new Date(item.created_at).toLocaleString()}</time>
-                                                    </div>
-                                                    <div className="text-sm text-zinc-600 dark:text-zinc-400">
-                                                        {item.description}
-                                                        {item.customer_name && (
-                                                            <Link href={`/admin/leads/${item.customer_id}`} className="block mt-1 text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 hover:underline px-2 py-1 rounded w-fit transition-all font-medium border border-blue-100 dark:bg-blue-900/20 dark:border-blue-900/30 dark:text-blue-300">
-                                                                Target: {item.customer_name}
-                                                            </Link>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )
-                                    })
+                                    filteredTimeline.map((thread: any) => (
+                                        <CustomerActivityThread
+                                            key={thread.customer_id}
+                                            customer={thread}
+                                        />
+                                    ))
                                 )}
                             </div>
                         </CardContent>
