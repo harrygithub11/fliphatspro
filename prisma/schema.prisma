@@ -676,11 +676,12 @@ model LeadScore {
 }
 
 model SiteSetting {
-  id         Int      @id @default(autoincrement())
-  key        String?  @db.VarChar(191)
-  value      String?  @db.LongText
-  created_at DateTime? @default(now()) @db.Timestamp(0)
-  updated_at DateTime? @default(now()) @updatedAt @db.Timestamp(0)
+  id            Int       @id @default(autoincrement())
+  setting_key   String    @db.VarChar(100)
+  setting_value String?   @db.Text
+  description   String?   @db.VarChar(255)
+  created_at    DateTime? @default(now()) @db.Timestamp(0)
+  updated_at    DateTime? @default(now()) @updatedAt @db.Timestamp(0)
 
   @@map("site_settings")
 }
@@ -708,9 +709,12 @@ model AdminActivityLogOld {
 }
 
 model Setting {
-  id    Int     @id @default(autoincrement())
-  key   String? @db.VarChar(191)
-  value String? @db.LongText
+  id            Int       @id @default(autoincrement())
+  setting_key   String    @db.VarChar(100)
+  setting_value String?   @db.Text
+  description   String?   @db.VarChar(255)
+  created_at    DateTime? @default(now()) @db.Timestamp(0)
+  updated_at    DateTime? @default(now()) @updatedAt @db.Timestamp(0)
 
   @@map("settings")
 }
@@ -738,21 +742,24 @@ model SmtpAccountOld {
 
 model TaskComment {
   id         Int       @id @default(autoincrement())
-  task_id    Int?
-  admin_id   Int?      @default(0)
-  comment    String?   @db.Text
-  created_at DateTime? @default(now()) @db.Timestamp(0)
+  task_id    Int
+  author_id  Int
+  body       String    @db.Text
+  created_at DateTime? @default(now()) @db.DateTime(0)
+  edited_at  DateTime? @db.DateTime(0)
 
   @@map("task_comments")
 }
 
 model TaskHistory {
-  id         Int       @id @default(autoincrement())
-  task_id    Int?
-  admin_id   Int?      @default(0)
-  action     String?   @db.VarChar(100)
-  details    String?   @db.Text
-  created_at DateTime? @default(now()) @db.Timestamp(0)
+  id          Int       @id @default(autoincrement())
+  task_id     Int
+  changed_by  Int?
+  change_type String    @db.VarChar(64)
+  field_name  String?   @db.VarChar(64)
+  old_value   String?   @db.Text
+  new_value   String?   @db.Text
+  created_at  DateTime? @default(now()) @db.DateTime(0)
 
   @@map("task_history")
 }
