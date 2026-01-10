@@ -106,7 +106,7 @@ export function EmailsTab() {
                                             {getStatusBadge(email.status)}
                                         </div>
                                         <div className="text-xs text-muted-foreground flex gap-4">
-                                            <span>To: {JSON.parse(email.recipient_to || '[]').map((r: any) => r.email).join(', ')}</span>
+                                            <span>To: {(typeof email.recipient_to === 'string' ? JSON.parse(email.recipient_to || '[]') : email.recipient_to || []).map((r: any) => r.email).join(', ')}</span>
                                             <span>From: {email.smtp_account_name}</span>
                                         </div>
                                         {email.error_message && (
