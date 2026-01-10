@@ -21,12 +21,147 @@ async function connectDB() {
     });
 }
 
+async function syncFolder(client: ImapFlow, db: any, account: any, folderName: string) {
+    console.log(`[SYNC] Syncing folder: ${folderName} for ${account.from_email}`);
+
+    let lock;
+    try {
+        lock = await client.getMailboxLock(folderName);
+
+        // Search for recent messages. We'll fetch the last 50 for now to avoid overloading.
+        // In the Sent folder, we don't necessarily look for 'unseen'.
+        const searchCriteria = folderName === 'INBOX' ? { seen: false } : { all: true };
+        const messagesToFetch = await client.search(searchCriteria);
+
+        if (messagesToFetch && messagesToFetch.length > 0) {
+            // Take the last 50 if there are many
+            const recentUids = messagesToFetch.slice(-50);
+            console.log(`[${folderName}] Found ${messagesToFetch.length} messages, syncing ${recentUids.length} most recent.`);
+
+            for await (const message of client.fetch(recentUids, { source: true, envelope: true, uid: true, flags: true })) {
+                if (!message.source) continue;
+
+                try {
+                    const parsed = await simpleParser(message.source);
+                    const messageId = parsed.messageId || `no-id-${Date.now()}-${Math.random()}`;
+
+                    // Check if already exists
+                    const [existing]: any = await db.execute('SELECT id FROM emails WHERE message_id = ?', [messageId]);
+                    if (existing.length > 0) {
+                        if (folderName === 'INBOX') {
+                            await client.messageFlagsAdd(message.uid, ['\\Seen'], { uid: true });
+                        }
+                        continue;
+                    }
+
+                    // Determine Direction and Folder
+                    const direction = folderName.toLowerCase().includes('sent') ? 'outbound' : 'inbound';
+
+                    // Determine Customer
+                    const fromAddress = parsed.from?.value[0]?.address;
+                    const toAddress = parsed.to && (Array.isArray(parsed.to) ? parsed.to[0]?.value[0]?.address : (parsed.to as any).value[0]?.address);
+
+                    const lookupEmail = direction === 'inbound' ? fromAddress : toAddress;
+                    const [customers]: any = await db.execute('SELECT id FROM customers WHERE email = ?', [lookupEmail]);
+                    const customerId = customers.length > 0 ? customers[0].id : null;
+
+                    // Parse 'To' field
+                    const recipientTo = Array.isArray(parsed.to)
+                        ? (parsed.to as any).map((t: any) => t.value).flat()
+                        : (parsed.to?.value || []);
+
+                    const recipientToJson = JSON.stringify(recipientTo.map((r: any) => ({
+                        name: r.name || '',
+                        email: r.address
+                    })));
+
+                    // Attachments logic
+                    const hasAttachments = parsed.attachments && parsed.attachments.length > 0;
+                    const attachmentCount = parsed.attachments?.length || 0;
+
+                    // Threading Logic
+                    let threadId = `thread_${messageId}`;
+                    const inReplyTo = parsed.inReplyTo || '';
+
+                    if (inReplyTo) {
+                        const [parent]: any = await db.execute('SELECT thread_id FROM emails WHERE message_id = ?', [inReplyTo]);
+                        if (parent.length > 0) threadId = parent[0].thread_id;
+                    } else {
+                        const cleanSubject = (parsed.subject || '').replace(/^Re:\s+/i, '').trim();
+                        if (cleanSubject && customerId) {
+                            const [match]: any = await db.execute(
+                                'SELECT thread_id FROM emails WHERE customer_id = ? AND (subject LIKE ? OR subject = ?) ORDER BY created_at DESC LIMIT 1',
+                                [customerId, `Re: ${cleanSubject}`, cleanSubject]
+                            );
+                            if (match.length > 0) threadId = match[0].thread_id;
+                        }
+                    }
+
+                    const receivedAt = parsed.date || new Date();
+
+                    await db.execute(`
+                        INSERT INTO emails (
+                            smtp_account_id, customer_id, direction, folder, status, is_read,
+                            from_address, from_name, subject, body_html, body_text, 
+                            received_at, message_id, in_reply_to, thread_id, headers_json, recipient_to,
+                            has_attachments, attachment_count
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    `, [
+                        account.id,
+                        customerId,
+                        direction,
+                        folderName,
+                        direction === 'inbound' ? 'received' : 'sent',
+                        folderName === 'INBOX' ? false : true,
+                        fromAddress,
+                        parsed.from?.value[0]?.name || '',
+                        parsed.subject,
+                        parsed.html || '',
+                        parsed.text || '',
+                        receivedAt,
+                        messageId,
+                        inReplyTo,
+                        threadId,
+                        JSON.stringify(parsed.headers),
+                        recipientToJson,
+                        hasAttachments,
+                        attachmentCount
+                    ]);
+
+                    // Log Interaction
+                    if (customerId) {
+                        const interactionType = direction === 'inbound' ? 'email_inbound' : 'email_outbound';
+                        await db.execute(`
+                            INSERT INTO interactions (customer_id, type, content, created_at, created_by)
+                            VALUES (?, ?, ?, NOW(), NULL)
+                        `, [
+                            customerId,
+                            interactionType,
+                            `${direction === 'inbound' ? 'Received' : 'Sent'} Email: ${parsed.subject?.substring(0, 100)}`
+                        ]);
+                    }
+
+                    if (folderName === 'INBOX') {
+                        await client.messageFlagsAdd(message.uid, ['\\Seen'], { uid: true });
+                    }
+
+                } catch (err) {
+                    console.error(`Failed to process message in ${folderName}:`, err);
+                }
+            }
+        }
+    } catch (e: any) {
+        console.error(`Error syncing folder ${folderName}:`, e.message);
+    } finally {
+        if (lock) lock.release();
+    }
+}
+
 async function syncAccount(account: any) {
     console.log(`Checking ${account.from_email} (${account.imap_host})...`);
 
     let db;
     let client: ImapFlow | null = null;
-    let lock;
 
     try {
         let password;
@@ -37,19 +172,8 @@ async function syncAccount(account: any) {
             return;
         }
 
-        // Simple Logger for ImapFlow
-        const logger = {
-            debug: (obj: any, msg?: string) => console.log(`[IMAP DEBUG] ${msg || ''}`, JSON.stringify(obj)),
-            info: (obj: any, msg?: string) => console.log(`[IMAP INFO] ${msg || ''}`, JSON.stringify(obj)),
-            warn: (obj: any, msg?: string) => console.warn(`[IMAP WARN] ${msg || ''}`, JSON.stringify(obj)),
-            error: (obj: any, msg?: string) => console.error(`[IMAP ERROR] ${msg || ''}`, JSON.stringify(obj)),
-            level: 'debug'
-        };
-
         const host = (account.imap_host || account.host).trim();
         const user = (account.imap_user || account.username).trim();
-
-        console.log(`Connecting to ${host}:${account.imap_port || 993} as ${user}`);
 
         client = new ImapFlow({
             host: host,
@@ -58,135 +182,34 @@ async function syncAccount(account: any) {
             auth: {
                 user: user,
                 pass: password
-            },
-            logger: logger as any
+            }
         });
 
         await client.connect();
-
-        // Connect DB once
         db = await connectDB();
 
-        // Open Inbox & Lock
-        lock = await client.getMailboxLock('INBOX');
-        try {
-            // 'seen: false' means UNSEEN
-            const messagesToFetch = await client.search({ seen: false });
+        // 1. Sync INBOX
+        await syncFolder(client, db, account, 'INBOX');
 
-            if (messagesToFetch && messagesToFetch.length > 0) {
-                console.log(`Found ${messagesToFetch.length} unread messages.`);
+        // 2. Sync Sent
+        // Try different common names for Sent folder
+        const folders = await client.list();
+        const sentFolder = folders.find(f =>
+            f.path.toUpperCase() === 'SENT' ||
+            f.path.toUpperCase() === 'INBOX.SENT' ||
+            f.path.toUpperCase() === 'SENT ITEMS' ||
+            f.name.toUpperCase() === 'SENT'
+        );
 
-                for await (const message of client.fetch(messagesToFetch, { source: true, envelope: true, uid: true })) {
-                    if (!message.source) continue;
-
-                    try {
-                        const parsed = await simpleParser(message.source);
-
-                        const messageId = parsed.messageId || `no-id-${Date.now()}`;
-                        const [existing]: any = await db.execute('SELECT id FROM emails WHERE message_id = ?', [messageId]);
-
-                        if (existing.length > 0) {
-                            console.log(`Skipping duplicate: ${messageId}`);
-                            await client.messageFlagsAdd(message.uid, ['\\Seen'], { uid: true });
-                            continue;
-                        }
-
-                        // Determine Customer
-                        const fromAddress = parsed.from?.value[0]?.address;
-                        const [customers]: any = await db.execute('SELECT id FROM customers WHERE email = ?', [fromAddress]);
-                        const customerId = customers.length > 0 ? customers[0].id : null;
-
-                        // Parse 'To' field
-                        const recipientTo = Array.isArray(parsed.to)
-                            ? parsed.to.map((t: any) => t.value).flat()
-                            : (parsed.to?.value || []);
-
-                        const recipientToJson = JSON.stringify(recipientTo.map((r: any) => ({
-                            name: r.name || '',
-                            email: r.address
-                        })));
-
-                        console.log(`Creating email from ${fromAddress} - ${parsed.subject}`);
-
-                        // 1. Threading Logic
-                        let threadId = `thread_${messageId}`; // Default
-                        const inReplyTo = parsed.inReplyTo || '';
-
-                        if (inReplyTo) {
-                            const [parent]: any = await db.execute('SELECT thread_id FROM emails WHERE message_id = ?', [inReplyTo]);
-                            if (parent.length > 0) threadId = parent[0].thread_id;
-                        } else {
-                            // Match by subject (Re: ...) and Customer
-                            const cleanSubject = (parsed.subject || '').replace(/^Re:\s+/i, '').trim();
-                            if (cleanSubject && customerId) {
-                                const [match]: any = await db.execute(
-                                    'SELECT thread_id FROM emails WHERE customer_id = ? AND (subject LIKE ? OR subject = ?) ORDER BY created_at DESC LIMIT 1',
-                                    [customerId, `Re: ${cleanSubject}`, cleanSubject]
-                                );
-                                if (match.length > 0) threadId = match[0].thread_id;
-                            }
-                        }
-
-                        await db.execute(`
-                            INSERT INTO emails (
-                                smtp_account_id, customer_id, direction, folder, status, is_read,
-                                from_address, from_name, subject, body_html, body_text, 
-                                received_at, message_id, in_reply_to, thread_id, headers_json, recipient_to
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, ?)
-                        `, [
-                            account.id,
-                            customerId,
-                            'inbound',
-                            'INBOX',
-                            'received',
-                            false,
-                            fromAddress,
-                            parsed.from?.value[0]?.name || '',
-                            parsed.subject,
-                            parsed.html || '',
-                            parsed.text || '',
-                            messageId,
-                            inReplyTo,
-                            threadId,
-                            JSON.stringify(parsed.headers),
-                            recipientToJson
-                        ]);
-
-                        // 3. Log as Interaction (for Global Activity/Timeline)
-                        if (customerId) {
-                            await db.execute(`
-                                INSERT INTO interactions (customer_id, type, content, created_at, created_by)
-                                VALUES (?, 'email_inbound', ?, NOW(), NULL)
-                            `, [
-                                customerId,
-                                `Email Received: ${parsed.subject?.substring(0, 100)}`
-                            ]);
-                        }
-
-                        // SUCCESS! Mark as seen
-                        await client.messageFlagsAdd(message.uid, ['\\Seen'], { uid: true });
-
-                    } catch (err) {
-                        console.error(`Failed to process message ${message.seq}:`, err);
-                    }
-                }
-            } else {
-                console.log("No unread messages found.");
-            }
-        } finally {
-            // Release Lock
-            if (lock) lock.release();
+        if (sentFolder) {
+            await syncFolder(client, db, account, sentFolder.path);
         }
 
         await client.logout();
-
-        // Update last synced
         await db.execute('UPDATE smtp_accounts SET last_synced_at = NOW() WHERE id = ?', [account.id]);
 
     } catch (e: any) {
-        console.error(`Error syncing ${account.from_email}:`, e);
-        if (e.command) console.error("Failed Command:", e.command);
-        if (e.response) console.error("Server Response:", e.response);
+        console.error(`Error syncing account ${account.from_email}:`, e);
     } finally {
         if (db) await db.end();
         if (client) client.close();

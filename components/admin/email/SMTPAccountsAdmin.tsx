@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Plus, Server, Trash2, CheckCircle2 } from 'lucide-react';
+import { Loader2, Plus, Server, Trash2, CheckCircle2, Inbox, FileText } from 'lucide-react';
 
 interface SMTPAccount {
     id: number;
@@ -24,6 +24,9 @@ interface SMTPAccount {
     imap_host?: string;
     imap_port?: number;
     imap_user?: string;
+    signature_text?: string;
+    signature_html?: string;
+    use_signature?: boolean | number;
 }
 
 export function SMTPAccountsAdmin() {
@@ -47,7 +50,10 @@ export function SMTPAccountsAdmin() {
         imap_host: '',
         imap_port: '993',
         imap_user: '',
-        imap_password: ''
+        imap_password: '',
+        signature_text: '',
+        signature_html: '',
+        use_signature: true
     });
 
     const handleProviderChange = (value: string) => {
@@ -67,7 +73,6 @@ export function SMTPAccountsAdmin() {
         } else if (value === 'sendgrid') {
             newData.host = 'smtp.sendgrid.net';
             newData.port = '587';
-            // SendGrid is send-only usually
             if (!newData.name) newData.name = 'SendGrid';
         }
         setFormData(newData);
@@ -103,15 +108,18 @@ export function SMTPAccountsAdmin() {
             name: account.name,
             provider: account.provider,
             host: account.host,
-            port: account.port ? String(account.port) : '587', // Ensure string for input
+            port: account.port ? String(account.port) : '587',
             username: account.username,
-            password: '', // Don't fill password for security, let them re-enter if updating
+            password: '',
             from_email: account.from_email,
             from_name: account.from_name,
             imap_host: account.imap_host || '',
             imap_port: account.imap_port ? String(account.imap_port) : '993',
             imap_user: account.imap_user || '',
-            imap_password: ''
+            imap_password: '',
+            signature_text: account.signature_text || '',
+            signature_html: account.signature_html || '',
+            use_signature: !!account.use_signature
         });
         setOpen(true);
     };
@@ -130,7 +138,10 @@ export function SMTPAccountsAdmin() {
             imap_host: '',
             imap_port: '993',
             imap_user: '',
-            imap_password: ''
+            imap_password: '',
+            signature_text: '',
+            signature_html: '',
+            use_signature: true
         });
         setOpen(true);
     };
@@ -139,7 +150,6 @@ export function SMTPAccountsAdmin() {
         e.preventDefault();
         setTesting(true);
 
-        // Logic split for Create vs Update
         const url = editingId ? `/api/admin/smtp-accounts/${editingId}` : '/api/admin/smtp-accounts';
         const method = editingId ? 'PUT' : 'POST';
 
@@ -198,106 +208,109 @@ export function SMTPAccountsAdmin() {
                     <DialogTrigger asChild>
                         <Button onClick={handleAddNew}><Plus className="w-4 h-4 mr-2" /> Add Account</Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-2xl">
+                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>{editingId ? 'Edit SMTP Account' : 'Add SMTP Account'}</DialogTitle>
                         </DialogHeader>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Account Name</Label>
-                                    <Input
-                                        placeholder="e.g. Support Gmail"
-                                        value={formData.name}
-                                        onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                        required
-                                    />
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            <div className="space-y-4">
+                                <h3 className="text-sm font-semibold flex items-center gap-2 border-b pb-2">
+                                    <Server className="w-4 h-4" /> SMTP Settings (Sending)
+                                </h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Account Name</Label>
+                                        <Input
+                                            placeholder="e.g. Support Gmail"
+                                            value={formData.name}
+                                            onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Provider</Label>
+                                        <Select
+                                            value={formData.provider}
+                                            onValueChange={handleProviderChange}
+                                        >
+                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                {providers.map(p => (
+                                                    <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label>Provider</Label>
-                                    <Select
-                                        value={formData.provider}
-                                        onValueChange={handleProviderChange}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {providers.map(p => (
-                                                <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+
+                                <div className="grid grid-cols-3 gap-4">
+                                    <div className="col-span-2 space-y-2">
+                                        <Label>SMTP Host</Label>
+                                        <Input
+                                            placeholder="smtp.gmail.com"
+                                            value={formData.host}
+                                            onChange={e => setFormData({ ...formData, host: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Port</Label>
+                                        <Input
+                                            placeholder="587"
+                                            value={formData.port}
+                                            onChange={e => setFormData({ ...formData, port: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>From Name</Label>
+                                        <Input
+                                            placeholder="Support Team"
+                                            value={formData.from_name}
+                                            onChange={e => setFormData({ ...formData, from_name: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>From Email</Label>
+                                        <Input
+                                            type="email"
+                                            placeholder="support@example.com"
+                                            value={formData.from_email}
+                                            onChange={e => setFormData({ ...formData, from_email: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Username</Label>
+                                        <Input
+                                            value={formData.username}
+                                            onChange={e => setFormData({ ...formData, username: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Password / API Key</Label>
+                                        <Input
+                                            type="password"
+                                            placeholder={editingId ? "Leave blank to keep existing password" : "Enter password"}
+                                            value={formData.password}
+                                            onChange={e => setFormData({ ...formData, password: e.target.value })}
+                                            required={!editingId}
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-3 gap-4">
-                                <div className="col-span-2 space-y-2">
-                                    <Label>SMTP Host</Label>
-                                    <Input
-                                        placeholder="smtp.gmail.com"
-                                        value={formData.host}
-                                        onChange={e => setFormData({ ...formData, host: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Port</Label>
-                                    <Input
-                                        placeholder="587"
-                                        value={formData.port}
-                                        onChange={e => setFormData({ ...formData, port: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label>From Name</Label>
-                                    <Input
-                                        placeholder="Support Team"
-                                        value={formData.from_name}
-                                        onChange={e => setFormData({ ...formData, from_name: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>From Email</Label>
-                                    <Input
-                                        type="email"
-                                        placeholder="support@example.com"
-                                        value={formData.from_email}
-                                        onChange={e => setFormData({ ...formData, from_email: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Username</Label>
-                                    <Input
-                                        value={formData.username}
-                                        onChange={e => setFormData({ ...formData, username: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Password / API Key</Label>
-                                    <Input
-                                        type="password"
-                                        placeholder={editingId ? "Leave blank to keep existing password" : "Enter password"}
-                                        value={formData.password}
-                                        onChange={e => setFormData({ ...formData, password: e.target.value })}
-                                        required={!editingId}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="border-t pt-4 mt-4">
-                                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                                    <Server className="w-4 h-4" /> Incoming Mail (IMAP)
+                            <div className="space-y-4">
+                                <h3 className="text-sm font-semibold flex items-center gap-2 border-b pb-2">
+                                    <Inbox className="w-4 h-4" /> IMAP Settings (Syncing)
                                 </h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
@@ -316,23 +329,31 @@ export function SMTPAccountsAdmin() {
                                             onChange={e => setFormData({ ...formData, imap_port: e.target.value })}
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label>IMAP User</Label>
-                                        <Input
-                                            placeholder="Usually same as username"
-                                            value={formData.imap_user}
-                                            onChange={e => setFormData({ ...formData, imap_user: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>IMAP Password</Label>
-                                        <Input
-                                            type="password"
-                                            placeholder="Leave blank to use SMTP password"
-                                            value={formData.imap_password}
-                                            onChange={e => setFormData({ ...formData, imap_password: e.target.value })}
-                                        />
-                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <h3 className="text-sm font-semibold flex items-center gap-2 border-b pb-2">
+                                    <FileText className="w-4 h-4" /> Email Signature
+                                </h3>
+                                <div className="flex items-center space-x-2">
+                                    <input
+                                        type="checkbox"
+                                        id="use_signature"
+                                        className="rounded border-gray-300"
+                                        checked={formData.use_signature}
+                                        onChange={(e) => setFormData({ ...formData, use_signature: e.target.checked })}
+                                    />
+                                    <Label htmlFor="use_signature">Enable automatic signature</Label>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>HTML Signature</Label>
+                                    <textarea
+                                        className="w-full min-h-[100px] p-2 rounded-md border bg-background text-sm"
+                                        placeholder="<p>Regards,<br>Team</p>"
+                                        value={formData.signature_html}
+                                        onChange={e => setFormData({ ...formData, signature_html: e.target.value })}
+                                    />
                                 </div>
                             </div>
 

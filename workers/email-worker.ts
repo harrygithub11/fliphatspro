@@ -30,10 +30,12 @@ const worker = new Worker('email-queue', async job => {
 
     const db = await connectDB();
     try {
-        // 1. Fetch Email & Account Details
+        // 1. Fetch Email & Account Details (including new signature fields)
         const [rows]: any = await db.execute(`
             SELECT e.*, 
-                   sa.host, sa.port, sa.username, sa.encrypted_password, sa.from_email as account_email
+                   sa.host as sa_host, sa.port as sa_port, sa.username as sa_username, sa.encrypted_password as sa_password, sa.from_email as account_email,
+                   sa.imap_host, sa.imap_port, sa.imap_secure,
+                   sa.signature_text, sa.signature_html, sa.use_signature
             FROM emails e
             JOIN smtp_accounts sa ON e.smtp_account_id = sa.id
             WHERE e.id = ?
@@ -48,71 +50,134 @@ const worker = new Worker('email-queue', async job => {
         // 2. Decrypt Password
         let password;
         try {
-            password = decrypt(email.encrypted_password);
+            password = decrypt(email.sa_password);
         } catch (e) {
             throw new Error(`Failed to decrypt password for account ${email.account_email}`);
         }
 
-        // 3. Create Transporter (port-based security: 465 is secure, 587 is STARTTLS)
+        // 3. Apply Signature if enabled
+        let finalHtml = email.body_html || '';
+        let finalText = email.body_text || '';
+
+        if (email.use_signature) {
+            if (email.signature_html) {
+                finalHtml = `${finalHtml}<br><br><div class="signature">${email.signature_html}</div>`;
+            }
+            if (email.signature_text) {
+                finalText = `${finalText}\n\n--\n${email.signature_text}`;
+            }
+        }
+
+        // 4. Create Transporter
         const transporter = nodemailer.createTransport({
-            host: email.host,
-            port: email.port,
-            secure: email.port === 465, // true for 465, false for 587
+            host: email.sa_host,
+            port: email.sa_port,
+            secure: email.sa_port === 465,
             auth: {
-                user: email.username,
+                user: email.sa_username,
                 pass: password,
             },
         });
 
-        // 4. Send Mail
+        // 5. Send Mail
         let recipients: any[] = [];
         try {
-            if (typeof email.recipient_to === 'string') {
-                recipients = JSON.parse(email.recipient_to);
-            } else if (Array.isArray(email.recipient_to)) {
-                recipients = email.recipient_to;
-            } else if (email.recipient_to) {
-                // If it's an object but not an array, wrap it
-                recipients = [email.recipient_to];
-            }
-        } catch (e) {
-            console.error(`Malformed recipient_to for email ${email.id}:`, email.recipient_to);
-            throw new Error(`Invalid recipient data: ${email.recipient_to}`);
-        }
+            recipients = typeof email.recipient_to === 'string' ? JSON.parse(email.recipient_to) : email.recipient_to;
+        } catch (e) { recipients = []; }
 
-        const toList = recipients.map((r: any) => r.email || r).join(', ');
+        const toList = Array.isArray(recipients) ? recipients.map((r: any) => r.email || r).join(', ') : '';
+        const firstRecipient = Array.isArray(recipients) ? recipients[0]?.email || recipients[0] : toList;
+
+        // 5b. Generate Tracking Pixel
+        const trackingUuid = require('crypto').randomUUID();
+        const trackingUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/emails/track/open/${trackingUuid}`;
+
+        // Inject pixel at the end of HTML
+        if (finalHtml) {
+            finalHtml += `<img src="${trackingUrl}" width="1" height="1" style="display:none" alt="" />`;
+        }
 
         const info = await transporter.sendMail({
             from: `"${email.from_name || email.account_email}" <${email.account_email}>`,
             to: toList,
             subject: email.subject,
-            text: email.body_text,
-            html: email.body_html,
-            inReplyTo: email.in_reply_to, // Threading
-            references: email.in_reply_to // Threading
+            text: finalText,
+            html: finalHtml,
+            inReplyTo: email.in_reply_to,
+            references: email.in_reply_to
         });
 
-        console.log(`Message sent: ${info.messageId}`);
+        console.log(`Message sent via SMTP: ${info.messageId}`);
 
-        // 5. Update DB Status
+        // 5c. Log Tracking Record
+        await db.execute(`
+            INSERT INTO email_tracking (email_id, smtp_account_id, recipient_email, tracking_uuid)
+            VALUES (?, ?, ?, ?)
+        `, [email.id, email.smtp_account_id, firstRecipient, trackingUuid]);
+
+        // 6. IMAP Append (Save to Sent Folder)
+        const { ImapFlow } = await import('imapflow');
+        const imapClient = new ImapFlow({
+            host: email.imap_host || email.sa_host,
+            port: email.imap_port || 993,
+            secure: email.imap_secure !== 0,
+            auth: {
+                user: email.sa_username,
+                pass: password
+            }
+        });
+
+        try {
+            await imapClient.connect();
+            const folders = await imapClient.list();
+            const sentFolder = folders.find(f =>
+                f.path.toUpperCase() === 'SENT' ||
+                f.path.toUpperCase() === 'INBOX.SENT' ||
+                f.path.toUpperCase() === 'SENT ITEMS' ||
+                f.name.toUpperCase() === 'SENT'
+            );
+
+            if (sentFolder) {
+                // Get the RFC822 source for appending
+                // Note: nodemailer info doesn't give source directly. We'd ideally regenerate it or fetch from SMTP if supported.
+                // For simplicity, we'll use a basic append with the html/text content.
+                // ImapFlow append takes a Buffer or String of the FULL RFC822 message.
+                // Generating a basic RFC822 message here:
+                let rfcMessage = `From: "${email.from_name || email.account_email}" <${email.account_email}>\r\n`;
+                rfcMessage += `To: ${toList}\r\n`;
+                rfcMessage += `Subject: ${email.subject}\r\n`;
+                rfcMessage += `Date: ${new Date().toUTCString()}\r\n`;
+                rfcMessage += `Message-ID: <${info.messageId}>\r\n`;
+                rfcMessage += `Content-Type: text/html; charset=utf-8\r\n\r\n`;
+                rfcMessage += finalHtml;
+
+                await imapClient.append(sentFolder.path, rfcMessage, ['\\Seen']);
+                console.log(`Email appended to IMAP folder: ${sentFolder.path}`);
+            }
+            await imapClient.logout();
+        } catch (imapErr: any) {
+            console.error('IMAP Append Failed:', imapErr.message);
+            // Don't fail the job if just IMAP append fails
+        }
+
+        // 7. Update DB & Analytics
         await db.execute(`
             UPDATE emails 
-            SET status = 'sent', 
-                message_id = ?, 
-                sent_at = NOW() 
+            SET status = 'sent', message_id = ?, sent_at = NOW() 
             WHERE id = ?
         `, [info.messageId, email.id]);
 
+        const today = new Date().toISOString().split('T')[0];
+        await db.execute(`
+            INSERT INTO email_analytics (smtp_account_id, stat_date, emails_sent)
+            VALUES (?, ?, 1)
+            ON DUPLICATE KEY UPDATE emails_sent = emails_sent + 1
+        `, [email.smtp_account_id, today]);
+
     } catch (error: any) {
         console.error(`Failed to send email ${job.data.emailId}:`, error);
-
-        await db.execute(`
-            UPDATE emails 
-            SET status = 'failed'
-            WHERE id = ?
-        `, [job.data.emailId]);
-
-        throw error; // Let BullMQ handle retries
+        await db.execute("UPDATE emails SET status = 'failed' WHERE id = ?", [job.data.emailId]);
+        throw error;
     } finally {
         await db.end();
     }

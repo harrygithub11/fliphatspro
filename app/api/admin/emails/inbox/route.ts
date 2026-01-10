@@ -19,9 +19,11 @@ export async function GET(req: NextRequest) {
             SELECT 
                 e.id, e.subject, e.body_text, e.received_at, e.created_at, e.is_read,
                 e.from_name, e.from_address, e.folder, e.direction, e.recipient_to, e.thread_id,
+                e.has_attachments, e.attachment_count,
                 (SELECT COUNT(*) FROM emails WHERE thread_id = e.thread_id) as thread_count,
                 c.id as customer_id, c.name as customer_name, c.email as customer_email,
-                sa.from_email as account_email
+                sa.from_email as account_email,
+                et.opened_at, et.clicked_at, et.open_count
             FROM emails e
             INNER JOIN (
                 SELECT MAX(id) as last_id
@@ -33,7 +35,7 @@ export async function GET(req: NextRequest) {
 
         if (folder === 'SENT') {
             query += ` AND direction = 'outbound' `;
-        } else {
+        } else if (folder !== 'all') {
             query += ` AND folder = ? `;
             params.push(folder);
         }
@@ -48,6 +50,7 @@ export async function GET(req: NextRequest) {
             ) t ON e.id = t.last_id
             LEFT JOIN customers c ON e.customer_id = c.id
             LEFT JOIN smtp_accounts sa ON e.smtp_account_id = sa.id
+            LEFT JOIN email_tracking et ON e.id = et.email_id
             WHERE 1=1
         `;
 

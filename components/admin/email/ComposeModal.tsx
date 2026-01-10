@@ -22,6 +22,8 @@ export function ComposeModal({ open, onOpenChange, defaultTo = '', defaultSubjec
     const { toast } = useToast();
     const [sending, setSending] = useState(false);
     const [accounts, setAccounts] = useState<any[]>([]);
+    const [templates, setTemplates] = useState<any[]>([]);
+    const [draftId, setDraftId] = useState<number | null>(null);
 
     const [formData, setFormData] = useState({
         to: defaultTo,
@@ -38,9 +40,17 @@ export function ComposeModal({ open, onOpenChange, defaultTo = '', defaultSubjec
                 .then(data => {
                     if (data.success && data.accounts.length > 0) {
                         setAccounts(data.accounts);
-                        // Default to first account
-                        setFormData(prev => ({ ...prev, smtp_account_id: String(data.accounts[0].id) }));
+                        if (!formData.smtp_account_id) {
+                            setFormData(prev => ({ ...prev, smtp_account_id: String(data.accounts[0].id) }));
+                        }
                     }
+                });
+
+            // Load Templates
+            fetch('/api/admin/emails/templates', { credentials: 'include' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) setTemplates(data.templates);
                 });
 
             // Set defaults when opening
@@ -52,12 +62,43 @@ export function ComposeModal({ open, onOpenChange, defaultTo = '', defaultSubjec
         }
     }, [open, defaultTo, defaultSubject]);
 
-    // Removed specific initialTo effect as it's handled on open now
-    /*
+    // Auto-save Draft
     useEffect(() => {
-        if (initialTo) setFormData(prev => ({ ...prev, to: initialTo }));
-    }, [initialTo]);
-    */
+        if (!open || !formData.smtp_account_id || (!formData.body && !formData.subject)) return;
+
+        const timer = setTimeout(async () => {
+            try {
+                const res = await fetch('/api/admin/emails/drafts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        id: draftId,
+                        smtp_account_id: parseInt(formData.smtp_account_id),
+                        to: formData.to,
+                        subject: formData.subject,
+                        body_text: formData.body,
+                        body_html: `<p>${formData.body}</p>`
+                    })
+                });
+                const data = await res.json();
+                if (data.success && !draftId) setDraftId(data.id);
+            } catch (err) {
+                console.error('Draft auto-save failed', err);
+            }
+        }, 10000); // 10s auto-save
+
+        return () => clearTimeout(timer);
+    }, [formData, draftId, open]);
+
+    const handleApplyTemplate = (template: any) => {
+        setFormData(prev => ({
+            ...prev,
+            subject: template.subject || prev.subject,
+            body: template.body_text || template.body_html?.replace(/<[^>]*>/g, '') || prev.body
+        }));
+        toast({ title: "Template Applied", description: `Applied "${template.name}"` });
+    };
 
     const handleSend = async () => {
         if (!formData.to || !formData.subject || !formData.smtp_account_id) {
@@ -72,9 +113,9 @@ export function ComposeModal({ open, onOpenChange, defaultTo = '', defaultSubjec
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({
-                    recipients: { to: [{ email: formData.to }] }, // Simplified for MVP
+                    recipients: { to: [{ email: formData.to }] },
                     subject: formData.subject,
-                    body_html: `<p>${formData.body}</p>`, // Wrap in p for now, assume RTE later
+                    body_html: `<p>${formData.body}</p>`,
                     body_text: formData.body,
                     smtp_account_id: parseInt(formData.smtp_account_id),
                     related_customer_id: customerId
@@ -84,8 +125,13 @@ export function ComposeModal({ open, onOpenChange, defaultTo = '', defaultSubjec
 
             if (data.success) {
                 toast({ title: "Email Queued", description: "Your email is being sent." });
+                // Delete draft if it exists
+                if (draftId) {
+                    fetch(`/api/admin/emails/drafts?id=${draftId}`, { method: 'DELETE', credentials: 'include' });
+                }
                 onOpenChange(false);
-                setFormData({ ...formData, subject: '', body: '' }); // Reset
+                setFormData({ ...formData, subject: '', body: '' });
+                setDraftId(null);
             } else {
                 toast({ title: "Error", description: data.message, variant: "destructive" });
             }
@@ -130,13 +176,28 @@ export function ComposeModal({ open, onOpenChange, defaultTo = '', defaultSubjec
                         </div>
                     </div>
 
-                    <div className="space-y-2">
-                        <Label>Subject</Label>
-                        <Input
-                            value={formData.subject}
-                            onChange={e => setFormData({ ...formData, subject: e.target.value })}
-                            placeholder="Email Subject"
-                        />
+                    <div className="grid grid-cols-4 gap-4 items-end">
+                        <div className="col-span-3 space-y-2">
+                            <Label>Subject</Label>
+                            <Input
+                                value={formData.subject}
+                                onChange={e => setFormData({ ...formData, subject: e.target.value })}
+                                placeholder="Email Subject"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Template</Label>
+                            <Select onValueChange={(val) => handleApplyTemplate(templates.find(t => String(t.id) === val))}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Apply..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {templates.map(t => (
+                                        <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
 
                     <div className="space-y-2">
@@ -151,9 +212,12 @@ export function ComposeModal({ open, onOpenChange, defaultTo = '', defaultSubjec
                 </div>
                 <DialogFooter>
                     <div className="flex justify-between w-full items-center">
-                        <Button variant="ghost" size="sm">
-                            <Paperclip className="w-4 h-4 mr-2" /> Attach Files
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button variant="ghost" size="sm">
+                                <Paperclip className="w-4 h-4 mr-2" /> Attach
+                            </Button>
+                            {draftId && <span className="text-xs text-muted-foreground self-center">Draft saved</span>}
+                        </div>
                         <div className="flex gap-2">
                             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
                             <Button onClick={handleSend} disabled={sending}>
