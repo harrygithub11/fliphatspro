@@ -18,6 +18,9 @@ interface SMTPAccount {
     is_active: number;
     created_at: string;
     host: string;
+    port: number;
+    username: string;
+    from_name: string;
 }
 
 export function SMTPAccountsAdmin() {
