@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Mail, Phone, MoreHorizontal, Plus, Upload, Trash2 } from 'lucide-react';
+import { Search, Mail, Phone, MoreHorizontal, Plus, Upload, Trash2, MapPin } from 'lucide-react';
 import { CSVImportModal } from '@/components/admin/CSVImportModal';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
@@ -37,6 +37,7 @@ interface Customer {
     campaign_name?: string;
     total_activities?: number;
     new_activity_count?: number;
+    location?: string;
 }
 
 export default function LeadsPage() {
@@ -198,10 +199,15 @@ export default function LeadsPage() {
         return <Badge variant="outline" className={className}>{stageConfig.label}</Badge>;
     };
 
+
     const filtered = leads.filter(l => {
         // Search filter
-        const matchesSearch = l.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            l.email?.toLowerCase().includes(searchTerm.toLowerCase());
+        const lowerSearch = searchTerm.toLowerCase();
+        const matchesSearch =
+            l.name?.toLowerCase().includes(lowerSearch) ||
+            l.email?.toLowerCase().includes(lowerSearch) ||
+            l.phone?.toLowerCase().includes(lowerSearch) ||
+            l.location?.toLowerCase().includes(lowerSearch);
 
         // My Leads filter
         const matchesOwner = !showMyLeadsOnly || (currentUser && l.owner === currentUser.name);
@@ -337,7 +343,7 @@ export default function LeadsPage() {
                             <div className="relative w-72">
                                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                                 <Input
-                                    placeholder="Search via Name, Phone, Email..."
+                                    placeholder="Search via Name, Email, Phone, Location..."
                                     className="pl-8"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -388,8 +394,16 @@ export default function LeadsPage() {
                                     <TableRow key={lead.id} className="group cursor-pointer hover:bg-muted/50">
                                         <TableCell>
                                             <a href={`/admin/leads/${lead.id}`} className="block">
-                                                <div className="font-medium text-primary group-hover:underline">{lead.name}</div>
+                                                <div className="font-medium text-primary group-hover:underline flex items-center gap-2">
+                                                    {lead.name}
+                                                    {lead.location && (
+                                                        <span className="text-xs font-normal text-muted-foreground flex items-center gap-0.5">
+                                                            <MapPin className="w-3 h-3" /> {lead.location}
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <div className="text-xs text-muted-foreground">{lead.email}</div>
+                                                {lead.phone && <div className="text-xs text-muted-foreground">{lead.phone}</div>}
                                             </a>
                                         </TableCell>
                                         <TableCell>
