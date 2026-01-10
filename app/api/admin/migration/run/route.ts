@@ -47,6 +47,17 @@ export async function GET() {
             results.push(`emails error: ${e.message}`);
         }
 
+        // 3. Add received_at separate step
+        try {
+            await connection.execute(`
+                ALTER TABLE emails
+                ADD COLUMN received_at DATETIME NULL AFTER sent_at;
+            `);
+            results.push("Added received_at to emails");
+        } catch (e: any) {
+            results.push(`received_at error: ${e.message}`);
+        }
+
         return NextResponse.json({ success: true, results });
     } finally {
         connection.release();
