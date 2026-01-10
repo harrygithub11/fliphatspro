@@ -8,7 +8,8 @@
         "start": "next start -p 3056",
         "lint": "next lint",
         "lint": "next lint",
-        "worker": "npx ts-node --esm workers/email-worker.ts"
+        "lint": "next lint",
+        "worker": "npx ts-node --project tsconfig.worker.json workers/email-worker.ts"
     },
     "dependencies": {
         "@radix-ui/react-accordion": "^1.2.12",
