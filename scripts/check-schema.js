@@ -1,21 +1,21 @@
-require('dotenv').config();
 const mysql = require('mysql2/promise');
+const path = require('path');
+const dotenv = require('dotenv');
 
-async function checkSchema() {
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+async function run() {
+    console.log('Connecting to DB to check schema...');
+    const connection = await mysql.createConnection(process.env.DATABASE_URL);
+
     try {
-        const connection = await mysql.createConnection({
-            host: process.env.DB_HOST || 'localhost',
-            user: process.env.DB_USER || 'root',
-            password: process.env.DB_PASSWORD ?? '',
-            database: process.env.DB_NAME || 'newyearlp',
-        });
-
-        const [rows] = await connection.execute("DESCRIBE admin_activity_logs");
-        console.log(JSON.stringify(rows, null, 2));
+        const [rows] = await connection.execute('DESCRIBE email_send_jobs');
+        console.table(rows);
+    } catch (e) {
+        console.error('Error:', e);
+    } finally {
         await connection.end();
-    } catch (error) {
-        console.error(error);
     }
 }
 
-checkSchema();
+run();
