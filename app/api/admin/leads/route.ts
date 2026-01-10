@@ -18,7 +18,7 @@ export async function GET() {
                     (SELECT COUNT(*) FROM interactions WHERE customer_id = c.id) as total_activities,
                     (SELECT COUNT(*) FROM interactions 
                      WHERE customer_id = c.id 
-                     AND created_at > COALESCE((SELECT last_read_at FROM lead_reads WHERE lead_id = c.id AND admin_id = ?), '1970-01-01')) as new_activity_count
+                     AND created_at > COALESCE((SELECT MAX(last_read_at) FROM lead_reads WHERE lead_id = c.id AND admin_id = ?), '1970-01-01')) as new_activity_count
                 FROM customers c
                 LEFT JOIN orders o ON c.id = o.customer_id
                 GROUP BY c.id, c.created_at

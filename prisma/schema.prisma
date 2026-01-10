@@ -828,3 +828,17 @@ model TaskHistory {
 
   @@map("task_history")
 }
+
+model Notification {
+  id                Int       @id @default(autoincrement())
+  user_id           Int
+  type              String    @db.VarChar(50)
+  title             String    @db.VarChar(255)
+  message           String?   @db.Text
+  is_read           Boolean   @default(false)
+  related_entity_type String? @db.VarChar(50)
+  related_entity_id Int?
+  created_at        DateTime? @default(now()) @db.Timestamp(0)
+
+  @@map("notifications")
+}
