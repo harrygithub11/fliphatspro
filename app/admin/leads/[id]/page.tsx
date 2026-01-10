@@ -138,6 +138,9 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
     // Dynamic scores
     const [scores, setScores] = useState<{ id: number, value: string, label: string, color: string, emoji: string }[]>([]);
 
+    // Timeline Filter
+    const [timelineFilter, setTimelineFilter] = useState<'all' | 'notes' | 'system'>('all');
+
     useEffect(() => {
         async function fetchProfile() {
             try {
@@ -182,6 +185,14 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
     if (!data) return <div className="p-10 text-center text-red-500">Lead not found.</div>;
 
     const { deals, tasks, timeline, files } = data;
+
+    // Filter Timeline
+    const filteredTimeline = timeline.filter(item => {
+        if (timelineFilter === 'all') return true;
+        if (timelineFilter === 'notes') return ['internal_note', 'call_log', 'whatsapp_msg', 'email_sent'].includes(item.type);
+        if (timelineFilter === 'system') return item.type === 'system_event';
+        return true;
+    });
 
     // Derived state
     const lead = data?.profile;
@@ -786,10 +797,38 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
                         </div>
 
                         <TabsContent value="timeline" className="flex-1 flex flex-col overflow-hidden mt-0">
+                            {/* Timeline Filters */}
+                            <div className="px-4 py-2 border-b bg-zinc-50/50 flex gap-2">
+                                <Button
+                                    variant={timelineFilter === 'all' ? 'default' : 'outline'}
+                                    size="sm"
+                                    onClick={() => setTimelineFilter('all')}
+                                    className="h-7 text-xs rounded-full"
+                                >
+                                    All
+                                </Button>
+                                <Button
+                                    variant={timelineFilter === 'notes' ? 'default' : 'outline'}
+                                    size="sm"
+                                    onClick={() => setTimelineFilter('notes')}
+                                    className="h-7 text-xs rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+                                >
+                                    Notes & Calls
+                                </Button>
+                                <Button
+                                    variant={timelineFilter === 'system' ? 'default' : 'outline'}
+                                    size="sm"
+                                    onClick={() => setTimelineFilter('system')}
+                                    className="h-7 text-xs rounded-full bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border-zinc-200"
+                                >
+                                    System Activity
+                                </Button>
+                            </div>
+
                             {/* Feed */}
                             <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                                {timeline.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No history yet.</p>}
-                                {timeline.map((item, i) => (
+                                {filteredTimeline.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No activity found.</p>}
+                                {filteredTimeline.map((item, i) => (
                                     <div key={item.id} className="flex gap-4 relative">
                                         {/* Line connector */}
                                         {i !== timeline.length - 1 && (
