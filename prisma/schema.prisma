@@ -677,8 +677,8 @@ model LeadScore {
 
 model SiteSetting {
   id         Int      @id @default(autoincrement())
-  key        String   @unique @db.VarChar(191)
-  value      String?   @db.LongText
+  key        String?  @db.VarChar(191)
+  value      String?  @db.LongText
   created_at DateTime? @default(now()) @db.Timestamp(0)
   updated_at DateTime? @default(now()) @updatedAt @db.Timestamp(0)
 
@@ -709,7 +709,7 @@ model AdminActivityLogOld {
 
 model Setting {
   id    Int     @id @default(autoincrement())
-  key   String  @unique @db.VarChar(191)
+  key   String? @db.VarChar(191)
   value String? @db.LongText
 
   @@map("settings")
@@ -738,9 +738,9 @@ model SmtpAccountOld {
 
 model TaskComment {
   id         Int       @id @default(autoincrement())
-  task_id    Int
-  admin_id   Int
-  comment    String    @db.Text
+  task_id    Int?
+  admin_id   Int?      @default(0)
+  comment    String?   @db.Text
   created_at DateTime? @default(now()) @db.Timestamp(0)
 
   @@map("task_comments")
@@ -748,9 +748,9 @@ model TaskComment {
 
 model TaskHistory {
   id         Int       @id @default(autoincrement())
-  task_id    Int
-  admin_id   Int
-  action     String    @db.VarChar(100)
+  task_id    Int?
+  admin_id   Int?      @default(0)
+  action     String?   @db.VarChar(100)
   details    String?   @db.Text
   created_at DateTime? @default(now()) @db.Timestamp(0)
 
