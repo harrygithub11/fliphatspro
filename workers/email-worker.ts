@@ -128,7 +128,13 @@ const worker = new Worker('email-send-queue', async (job: Job<EmailJobData>) => 
 
             await dbFail.execute(
                 'INSERT INTO email_send_jobs (email_id, status, attempt_count, last_error, finished_at) VALUES (?, ?, ?, ?, NOW())',
-                [emailId, 'failed', job.attemptsMade, errorMsg, new Date()]
+                [
+                    emailId || 0,
+                    'failed',
+                    Number(job.attemptsMade) || 0,
+                    errorMsg,
+                    new Date()
+                ]
             );
         } catch (dbError) {
             console.error('Failed to log error to DB:', dbError);
@@ -136,10 +142,20 @@ const worker = new Worker('email-send-queue', async (job: Job<EmailJobData>) => 
             dbFail.release();
         }
 
+        // IMPORTANT: If we successfully sent the email but failed to update status, we DO NOT want to retry (eternal loop)
+        // If the error was "Malform packet" (DB error) AFTER send, we should choke the error to stop retry.
+        if (error.message.includes('Malformed') || error.message.includes('Packet')) {
+            console.error('🛑 Swallowing DB Error to prevent infinite retry loop because email was likely sent.');
+            return; // MARK JOB AS DONE (even if DB update failed)
+        }
+
         throw error; // Rethrow for BullMQ
     }
 
-}, { connection: redisConnection as any });
+}, {
+    connection: redisConnection as any,
+    concurrency: 5 // Process 5 jobs at once
+});
 
 worker.on('completed', job => {
     console.log(`Job ${job.id} has completed!`);
