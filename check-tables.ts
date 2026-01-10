@@ -13,7 +13,7 @@ async function checkTables() {
         password: process.env.DB_PASSWORD || 'NEWyear11@@',
         database: process.env.DB_NAME || 'newyear'
     });
-    const [rows] = await connection.execute('SHOW TABLES');
+    const [rows]: any = await connection.execute('SHOW TABLES');
     console.log('Tables:', rows.map((r: any) => Object.values(r)[0]));
     await connection.end();
 }
