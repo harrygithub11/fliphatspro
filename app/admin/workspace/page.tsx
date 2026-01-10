@@ -70,6 +70,7 @@ export default function WorkspacePage() {
     const [priorityFilter, setPriorityFilter] = useState('all');
     const [userFilter, setUserFilter] = useState('all');
     const [activityUserFilter, setActivityUserFilter] = useState('all');
+    const [activityTypeFilter, setActivityTypeFilter] = useState('all');
     const [viewMode, setViewMode] = useState<'list' | 'kanban' | 'clickup'>('clickup');
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [drawerOpen, setDrawerOpen] = useState(false);
@@ -312,6 +313,13 @@ export default function WorkspacePage() {
         highPriority: tasks.filter(t => t.priority === 'high').length,
         completed: tasks.filter(t => t.status === 'done').length
     };
+
+    const filteredTimeline = timeline.filter(item => {
+        if (activityTypeFilter === 'all') return true;
+        if (activityTypeFilter === 'notes') return ['note', 'call', 'whatsapp'].some(t => item.action_type.includes(t));
+        if (activityTypeFilter === 'system') return !['note', 'call', 'whatsapp'].some(t => item.action_type.includes(t));
+        return true;
+    });
 
     if (loading) return (
         <div className="flex h-[80vh] items-center justify-center">
@@ -799,8 +807,20 @@ export default function WorkspacePage() {
                                 <CardTitle className="text-lg font-semibold">Activity Stream</CardTitle>
                                 <CardDescription>Real-time log of team interactions and updates</CardDescription>
                             </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <Select value={activityTypeFilter} onValueChange={setActivityTypeFilter}>
+                                <SelectTrigger className="w-[130px] bg-white dark:bg-zinc-900 h-9 text-xs">
+                                    <SelectValue placeholder="All Activity" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Activity</SelectItem>
+                                    <SelectItem value="notes">Notes & Calls</SelectItem>
+                                    <SelectItem value="system">System Updates</SelectItem>
+                                </SelectContent>
+                            </Select>
                             <Select value={activityUserFilter} onValueChange={setActivityUserFilter}>
-                                <SelectTrigger className="w-[180px] bg-white dark:bg-zinc-900">
+                                <SelectTrigger className="w-[150px] bg-white dark:bg-zinc-900 h-9 text-xs">
                                     <SelectValue placeholder="All Users" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -810,23 +830,43 @@ export default function WorkspacePage() {
                                     ))}
                                 </SelectContent>
                             </Select>
-                        </CardHeader>
-                        <CardContent className="px-0 pl-4">
-                            <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-zinc-200 before:to-transparent dark:before:via-zinc-800">
-                                {timeline.length === 0 ? (
-                                    <div className="text-center py-10 pl-8 text-muted-foreground">No activity history found.</div>
-                                ) : (
-                                    timeline.map((item, index) => (
+                        </div>
+                    </CardHeader>
+                    <CardContent className="px-0 pl-4">
+                        <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-zinc-200 before:to-transparent dark:before:via-zinc-800">
+                            {filteredTimeline.length === 0 ? (
+                                <div className="text-center py-10 pl-8 text-muted-foreground">No activity history found.</div>
+                            ) : (
+                                filteredTimeline.map((item, index) => {
+                                    const isSystem = !['note', 'call', 'whatsapp'].some(t => item.action_type.includes(t));
+                                    const isNote = item.action_type.includes('note');
+                                    const isCall = item.action_type.includes('call');
+
+                                    return (
                                         <div key={index} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
                                             {/* Icon Bubble */}
-                                            <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-white dark:border-zinc-950 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
+                                            <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-white dark:border-zinc-950 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 ${isNote ? 'bg-amber-100 text-amber-600' :
+                                                isCall ? 'bg-blue-100 text-blue-600' :
+                                                    'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
+                                                }`}>
                                                 {getActionIcon(item.action_type)}
                                             </div>
 
                                             {/* Content Card */}
-                                            <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border border-zinc-200/50 dark:border-zinc-800/50 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow">
+                                            <div className={`w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow ${isNote ? 'bg-amber-50/60 border-amber-200/60 dark:bg-amber-900/10' :
+                                                isCall ? 'bg-blue-50/60 border-blue-200/60 dark:bg-blue-900/10' :
+                                                    'bg-white/60 dark:bg-zinc-900/60 border-zinc-200/50 dark:border-zinc-800/50'
+                                                }`}>
                                                 <div className="flex items-center justify-between mb-1">
-                                                    <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">{item.admin_name}</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">{item.admin_name}</span>
+                                                        <Badge variant="outline" className={`text-[10px] h-5 px-1.5 font-medium ${isNote ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                                                            isCall ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                                                                'bg-zinc-100 text-zinc-500 border-zinc-200'
+                                                            }`}>
+                                                            {isNote ? 'NOTE' : isCall ? 'CALL' : 'SYSTEM'}
+                                                        </Badge>
+                                                    </div>
                                                     <time className="font-mono text-[10px] text-zinc-400">{new Date(item.created_at).toLocaleString()}</time>
                                                 </div>
                                                 <div className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -839,24 +879,25 @@ export default function WorkspacePage() {
                                                 </div>
                                             </div>
                                         </div>
-                                    ))
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-            </Tabs>
+                                    )
+                                })
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+        </Tabs>
 
-            {/* Task Detail Drawer */}
-            <TaskDrawer
-                task={selectedTask as any}
-                isOpen={drawerOpen}
-                onClose={() => { setDrawerOpen(false); setSelectedTask(null); }}
-                team={team}
-                customers={leads}
-                onUpdate={(taskId, updates) => updateTask(taskId, updates as Partial<Task>)}
-                onAddComment={handleAddComment}
-            />
-        </div>
+            {/* Task Detail Drawer */ }
+    <TaskDrawer
+        task={selectedTask as any}
+        isOpen={drawerOpen}
+        onClose={() => { setDrawerOpen(false); setSelectedTask(null); }}
+        team={team}
+        customers={leads}
+        onUpdate={(taskId, updates) => updateTask(taskId, updates as Partial<Task>)}
+        onAddComment={handleAddComment}
+    />
+        </div >
     );
 }
