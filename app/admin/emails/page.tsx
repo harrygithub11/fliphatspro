@@ -1222,7 +1222,7 @@ export default function MailSystemPage() {
                   <div className="flex items-center gap-3 mr-4">
                     <button
                       onClick={() => setShowTemplates(!showTemplates)}
-                      className="btn-smooth px-4 py-2 flex items-center gap-2 border-2 border-gray-border text-text-black text-sm font-bold rounded-lg hover:border-text-black hover:bg-gray-50"
+                      className="btn-smooth px-4 py-2 flex items-center gap-2 border-2 border-[#E5E7EB] text-[#1A1A1A] text-sm font-bold rounded-lg hover:border-black hover:bg-[#F5F5F5]"
                     >
                       <FileText className="w-4 h-4" />
                       Templates ({templates.length})
@@ -1245,7 +1245,7 @@ export default function MailSystemPage() {
                     <button
                       onClick={() => saveDraft(false)}
                       disabled={loading}
-                      className="btn-smooth px-5 py-2.5 flex items-center gap-2 border-2 border-gray-border text-text-black text-sm font-bold rounded-lg hover:border-text-black hover:bg-gray-50"
+                      className="btn-smooth px-5 py-2.5 flex items-center gap-2 border-2 border-[#E5E7EB] text-[#1A1A1A] text-sm font-bold rounded-lg hover:border-black hover:bg-[#F5F5F5]"
                     >
                       <Save className="w-4 h-4" />
                       Save Draft
@@ -1263,20 +1263,20 @@ export default function MailSystemPage() {
               </div>
 
               {showDrafts && (
-                <div className="border-b border-gray-border bg-gray-50 p-4">
+                <div className="border-b border-[#E5E7EB] bg-gray-50 p-4">
                   <div className="max-w-4xl">
                     <h3 className="font-bold mb-3 flex items-center gap-2">
                       <FileText className="w-4 h-4" />
                       Saved Drafts ({drafts.length})
                     </h3>
                     {drafts.length === 0 ? (
-                      <p className="text-sm text-gray-secondary">No saved drafts</p>
+                      <p className="text-sm text-gray-500">No saved drafts</p>
                     ) : (
                       <div className="space-y-2">
                         {drafts.map((draft) => (
                           <div
                             key={draft.id}
-                            className="bg-white border border-gray-border rounded-lg p-3 hover:border-text-black transition-all duration-200 cursor-pointer group"
+                            className="bg-white border border-[#E5E7EB] rounded-lg p-3 hover:border-black transition-all duration-200 cursor-pointer group"
                             onClick={() => loadDraft(draft)}
                           >
                             <div className="flex items-start justify-between gap-3">
