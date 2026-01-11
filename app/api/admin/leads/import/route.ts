@@ -110,6 +110,10 @@ export async function POST(request: Request) {
         const locationPatterns = ['location', 'city', 'address', 'region', 'state', 'country', 'place'];
         const locationCol = detectColumn(headers, locationPatterns);
 
+        // Detect Budget
+        const budgetPatterns = ['budget', 'ad_spend', 'amount', 'value', 'cost'];
+        const budgetCol = detectColumn(headers, budgetPatterns);
+
         if (!nameCol && !emailCol) {
             return NextResponse.json({
                 success: false,
@@ -136,6 +140,8 @@ export async function POST(request: Request) {
                 const phone = phoneCol ? cleanPhone(String(row[phoneCol] || '')) : '';
                 const email = emailCol ? String(row[emailCol] || '').trim() : '';
                 const location = locationCol ? String(row[locationCol] || '').trim() : null;
+                const budgetRaw = budgetCol ? parseFloat(String(row[budgetCol] || '').replace(/[^0-9.]/g, '')) : 0;
+                const budget = isNaN(budgetRaw) ? 0 : budgetRaw;
 
                 // Parse timestamp if available
                 let submissionTime = null;
@@ -273,9 +279,9 @@ export async function POST(request: Request) {
                     const [insertResult]: any = await connection.execute(
                         `INSERT INTO customers (
                             name, phone, email, source, campaign_name, location, stage, score, owner, created_at,
-                            ad_id, ad_name, adset_id, adset_name, campaign_id, form_id, form_name, is_organic, platform, fb_lead_status, fb_lead_id, fb_created_time
+                            ad_id, ad_name, adset_id, adset_name, campaign_id, form_id, form_name, is_organic, platform, fb_lead_status, fb_lead_id, fb_created_time, budget
                         ) 
-                         VALUES (?, ?, ?, 'csv_import', ?, ?, 'new', 'cold', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                         VALUES (?, ?, ?, 'csv_import', ?, ?, 'new', 'cold', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                         [
                             name || 'Unknown',
                             phone,
@@ -284,7 +290,7 @@ export async function POST(request: Request) {
                             location,
                             session.name || 'unassigned',
                             submissionTime || new Date().toISOString().slice(0, 19).replace('T', ' '),
-                            adId, adName, adsetId, adsetName, campaignId, formId, formName, isOrganic, platform, leadStatus, fbLeadId, submissionTime
+                            adId, adName, adsetId, adsetName, campaignId, formId, formName, isOrganic, platform, leadStatus, fbLeadId, submissionTime, budget
                         ]
                     );
 
