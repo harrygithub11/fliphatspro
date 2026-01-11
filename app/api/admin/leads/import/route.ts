@@ -50,22 +50,62 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: false, message: 'No file uploaded' }, { status: 400 });
         }
 
-        // Read file content
-        const text = await file.text();
+        // Read file content as ArrayBuffer to handle encoding
+        const buffer = await file.arrayBuffer();
+        const decoder = new TextDecoder('utf-8'); // Try UTF-8 first
+        let text = decoder.decode(buffer);
+
+        // Check for common UTF-16LE characteristics (null bytes) which Facebook exports often have
+        // Or specific BOM
+        if (text.includes('\uFFFD') || text.indexOf('\x00') !== -1) {
+            console.log('Detected potential UTF-16 encoding or binary garbage, trying UTF-16LE...');
+            const utf16Decoder = new TextDecoder('utf-16le');
+            text = utf16Decoder.decode(buffer);
+        }
+
+        console.log('CSV Import Debug - Text Preview (first 100 chars):', text.substring(0, 100));
 
         // Parse CSV
-        const parseResult = Papa.parse(text, {
+        // Initial Parse Use Auto-Detect
+        let parseResult = Papa.parse(text, {
             header: true,
             skipEmptyLines: true,
             transformHeader: (header: string) => header.trim(),
         });
 
-        if (parseResult.errors.length > 0) {
+        console.log('CSV Import Debug - Initial Parse:', {
+            errors: parseResult.errors.length,
+            rows: parseResult.data.length,
+            fields: parseResult.meta.fields
+        });
+
+        // Fallback: If only 1 column detected, try Tab delimiter (TSV)
+        if (parseResult.meta.fields && parseResult.meta.fields.length <= 1) {
+            console.log('Single column detected, trying Tab delimiter...');
+            const tsvResult = Papa.parse(text, {
+                header: true,
+                skipEmptyLines: true,
+                delimiter: '\t',
+                transformHeader: (header: string) => header.trim(),
+            });
+
+            // If TSV gave us more columns, use it
+            if (tsvResult.meta.fields && tsvResult.meta.fields.length > 1) {
+                parseResult = tsvResult;
+            }
+        }
+
+        if (parseResult.errors.length > 0 && parseResult.data.length === 0) {
             return NextResponse.json({
                 success: false,
                 message: 'Invalid CSV format',
                 errors: parseResult.errors
             }, { status: 400 });
+        }
+
+        // If there are errors but we have data, we'll just log them and continue with valid rows
+        if (parseResult.errors.length > 0) {
+            console.warn('CSV Parse Warnings:', parseResult.errors);
         }
 
         const rows = parseResult.data as Record<string, any>[];
