@@ -40,6 +40,7 @@ export default function MailSystemPage() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [showComposeModal, setShowComposeModal] = useState(false)
 
   const [to, setTo] = useState('')
   const [subject, setSubject] = useState('')
@@ -419,7 +420,7 @@ export default function MailSystemPage() {
     setBody(replyText)
     setHtmlBody(`<br><br><p>On ${new Date(selectedEmail.date).toLocaleString()}, <strong>${selectedEmail.from}</strong> wrote:</p><blockquote style="border-left: 3px solid #ccc; padding-left: 10px; margin-left: 0;">${selectedEmail.htmlContent || selectedEmail.text.replace(/\n/g, '<br>')}</blockquote>`)
     setAttachments([])
-    setView('compose')
+    setShowComposeModal(true)
   }
 
   const handleDelete = async () => {
@@ -467,10 +468,9 @@ export default function MailSystemPage() {
         setTimeout(() => setShowSuccess(false), 2000)
         toast.success('Email sent successfully')
         setTimeout(() => {
-          setTo(''); setSubject(''); setBody(''); setHtmlBody('')
           setAttachments([])
           setCurrentDraftId(null)
-          setView('inbox')
+          setShowComposeModal(false)
           // Reload inbox immediately to show sent email
           loadInbox()
           fetchDrafts()
@@ -555,7 +555,7 @@ export default function MailSystemPage() {
     setHtmlBody(draft.htmlBody || '')
     setCurrentDraftId(draft.id)
     setShowDrafts(false)
-    setView('compose')
+    setShowComposeModal(true)
     toast.success('Draft loaded')
   }
 
@@ -1040,9 +1040,8 @@ export default function MailSystemPage() {
                     <span className="hidden sm:inline">Inbox</span> ({emails.length})
                   </button>
                   <button
-                    onClick={() => setView('compose')}
-                    className={`px-6 py-4 font-bold text-sm tracking-wider uppercase transition-all duration-300 flex items-center gap-2 ${view === 'compose' ? 'bg-black text-white border-b-2 border-[#D11A2A]' : 'text-gray-600 hover:bg-[#F5F5F5] border-b-2 border-transparent'
-                      }`}
+                    onClick={() => setShowComposeModal(true)}
+                    className="px-6 py-4 font-bold text-sm tracking-wider uppercase transition-all duration-300 flex items-center gap-2 text-gray-600 hover:bg-[#F5F5F5] border-b-2 border-transparent hover:text-black"
                   >
                     <Edit className="w-4 h-4" />
                     <span className="hidden sm:inline">Compose</span>
@@ -1109,48 +1108,6 @@ export default function MailSystemPage() {
                   </div>
                 )}
 
-                {view === 'compose' && (
-                  <div className="flex items-center gap-3 mr-4">
-                    <button
-                      onClick={() => setShowTemplates(!showTemplates)}
-                      className="btn-smooth px-4 py-2 flex items-center gap-2 border-2 border-[#E5E7EB] text-[#1A1A1A] text-sm font-bold rounded-lg hover:border-black hover:bg-[#F5F5F5]"
-                    >
-                      <FileText className="w-4 h-4" />
-                      Templates ({templates.length})
-                    </button>
-                    {autoSaveStatus !== 'idle' && (
-                      <span className="text-xs flex items-center gap-1.5 text-gray-600">
-                        {autoSaveStatus === 'saving' ? (
-                          <>
-                            <Clock className="w-3.5 h-3.5 animate-pulse" />
-                            Saving...
-                          </>
-                        ) : (
-                          <>
-                            <Check className="w-3.5 h-3.5 text-green-600" />
-                            Saved
-                          </>
-                        )}
-                      </span>
-                    )}
-                    <button
-                      onClick={() => saveDraft(false)}
-                      disabled={loading}
-                      className="btn-smooth px-5 py-2.5 flex items-center gap-2 border-2 border-[#E5E7EB] text-[#1A1A1A] text-sm font-bold rounded-lg hover:border-black hover:bg-[#F5F5F5]"
-                    >
-                      <Save className="w-4 h-4" />
-                      Save Draft
-                    </button>
-                    <button
-                      onClick={() => setShowSignatureModal(true)}
-                      className={`btn-smooth px-5 py-2.5 flex items-center gap-2 border-2 text-sm font-bold rounded-lg ${useSignature ? 'border-[#16A34A] bg-[#E6F7F0] text-[#0F5132]' : 'border-[#E5E7EB] text-[#1A1A1A] hover:border-black'
-                        }`}
-                    >
-                      <PenTool className="w-4 h-4" />
-                      Signature {useSignature && '✓'}
-                    </button>
-                  </div>
-                )}
               </div>
 
               {showDrafts && (
@@ -1211,7 +1168,8 @@ export default function MailSystemPage() {
                 </div>
               )}
 
-              {view === 'inbox' && (
+              {/* Always show inbox content/filters, logic handled by state */}
+              {true && (
                 <>
                   <div className="border-b border-gray-border p-4 bg-gray-50">
                     <div className="flex gap-3 mb-3">
@@ -1458,97 +1416,168 @@ export default function MailSystemPage() {
                       )}
                     </div>
                   </div>
+
                 </>
               )}
 
-              {view === 'compose' && (
-                <div className="p-6 animate-in fade-in duration-300">
-                  <div className="max-w-3xl space-y-4">
-                    <div>
-                      <label className="block font-bold text-sm tracking-wider uppercase text-gray-secondary mb-2">From</label>
-                      <input type="text" value={currentAccount?.email || ''} disabled className="w-full px-4 py-3 border border-[#E5E7EB] bg-gray-50 rounded-lg" />
-                    </div>
-                    <div>
-                      <label className="block font-bold text-sm tracking-wider uppercase text-gray-secondary mb-2">To</label>
-                      <input
-                        type="email"
-                        value={to}
-                        onChange={(e) => setTo(e.target.value)}
-                        className="w-full px-4 py-3 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent transition-all duration-200"
-                        placeholder="recipient@example.com"
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-bold text-sm tracking-wider uppercase text-gray-secondary mb-2">Subject</label>
-                      <input
-                        type="text"
-                        value={subject}
-                        onChange={(e) => setSubject(e.target.value)}
-                        className="w-full px-4 py-3 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent transition-all duration-200"
-                      />
-                    </div>
-
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="block font-bold text-sm tracking-wider uppercase text-gray-secondary">Message</label>
+              {/* Compose Modal */}
+              {showComposeModal && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6">
+                  <div
+                    className="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity"
+                    onClick={() => {
+                      if (to || subject || (useRichText ? htmlBody : body) || attachments.length > 0) {
+                        if (confirm('Discard draft?')) {
+                          setShowComposeModal(false)
+                        }
+                      } else {
+                        setShowComposeModal(false)
+                      }
+                    }}
+                  />
+                  <div className="relative bg-white/95 w-full max-w-5xl rounded-2xl shadow-2xl border border-white/20 ring-1 ring-black/5 flex flex-col max-h-[90vh] animate-in zoom-in-95 fade-in duration-200 backdrop-blur-md">
+                    {/* Modal Header */}
+                    <div className="flex items-center justify-between px-8 py-5 border-b border-gray-100/50">
+                      <div className="flex items-center gap-4">
+                        <h2 className="text-xl font-black tracking-tight text-black">New Message</h2>
+                        {autoSaveStatus !== 'idle' && (
+                          <span className="text-xs flex items-center gap-1.5 text-gray-500 font-medium bg-gray-50 px-2 py-1 rounded-full border border-gray-100">
+                            {autoSaveStatus === 'saving' ? (
+                              <>
+                                <Clock className="w-3 h-3 animate-pulse" />
+                                Saving...
+                              </>
+                            ) : (
+                              <>
+                                <Check className="w-3 h-3 text-green-600" />
+                                Saved
+                              </>
+                            )}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
                         <button
-                          onClick={() => setUseRichText(!useRichText)}
-                          className="text-xs px-3 py-1 border border-gray-border rounded-md hover:bg-gray-50 transition-colors duration-200"
+                          onClick={() => setShowTemplates(!showTemplates)}
+                          className="text-xs font-bold px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-black text-gray-600 transition-colors"
                         >
-                          {useRichText ? 'Switch to Plain Text' : 'Switch to Rich Text'}
+                          Templates
+                        </button>
+                        <button
+                          onClick={() => setShowSignatureModal(true)}
+                          className={`text-xs font-bold px-3 py-1.5 border rounded-lg transition-colors ${useSignature ? 'border-green-200 bg-green-50 text-green-700' : 'border-gray-200 hover:bg-gray-50 text-gray-600'}`}
+                        >
+                          Signature
+                        </button>
+                        <button
+                          onClick={() => saveDraft(false)}
+                          className="text-xs font-bold px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-black text-gray-600 transition-colors"
+                        >
+                          Save Draft
+                        </button>
+                        <div className="w-px h-6 bg-gray-200 mx-2" />
+                        <button
+                          onClick={() => {
+                            if (to || subject || (useRichText ? htmlBody : body) || attachments.length > 0) {
+                              if (confirm('Discard draft?')) {
+                                setShowComposeModal(false)
+                              }
+                            } else {
+                              setShowComposeModal(false)
+                            }
+                          }}
+                          className="p-2 text-gray-400 hover:text-black hover:bg-gray-100 rounded-full transition-all duration-200"
+                        >
+                          <X className="w-5 h-5" />
                         </button>
                       </div>
-                      {useRichText ? (
-                        <RichTextEditor
-                          value={htmlBody}
-                          onChange={setHtmlBody}
-                          placeholder="Write your message..."
-                          height="350px"
-                        />
-                      ) : (
-                        <textarea
-                          value={body}
-                          onChange={(e) => setBody(e.target.value)}
-                          className="w-full px-4 py-3 border border-gray-border rounded-lg focus:outline-none focus:ring-2 focus:ring-text-black focus:border-transparent h-80 transition-all duration-200"
-                          placeholder="Write your message..."
-                        />
-                      )}
                     </div>
 
-                    <div>
-                      <label className="block font-bold text-sm tracking-wider uppercase text-gray-secondary mb-2">Attachments</label>
-                      <AttachmentUpload
-                        attachments={attachments}
-                        onChange={setAttachments}
-                      />
+                    {/* Modal Body */}
+                    <div className="p-8 overflow-y-auto flex-1 custom-scrollbar">
+                      <div className="space-y-6">
+                        <div className="grid grid-cols-[80px_1fr] gap-4 items-center">
+                          <label className="text-xs font-bold tracking-wider uppercase text-gray-400 text-right">From</label>
+                          <input type="text" value={currentAccount?.email || ''} disabled className="w-full px-0 py-2 border-b border-gray-100 bg-transparent font-medium text-gray-500" />
+                        </div>
+                        <div className="grid grid-cols-[80px_1fr] gap-4 items-center">
+                          <label className="text-xs font-bold tracking-wider uppercase text-gray-400 text-right">To</label>
+                          <input
+                            type="email"
+                            value={to}
+                            onChange={(e) => setTo(e.target.value)}
+                            className="w-full px-0 py-2 border-b border-gray-100 focus:border-black bg-transparent font-medium transition-colors placeholder-gray-300 focus:outline-none"
+                            placeholder="recipient@example.com"
+                          />
+                        </div>
+                        <div className="grid grid-cols-[80px_1fr] gap-4 items-center">
+                          <label className="text-xs font-bold tracking-wider uppercase text-gray-400 text-right">Subject</label>
+                          <input
+                            type="text"
+                            value={subject}
+                            onChange={(e) => setSubject(e.target.value)}
+                            className="w-full px-0 py-2 border-b border-gray-100 focus:border-black bg-transparent font-bold text-lg transition-colors placeholder-gray-300 focus:outline-none"
+                            placeholder="Subject line..."
+                          />
+                        </div>
+
+                        <div className="pt-4 border-t border-gray-50">
+                          <div className="flex items-center justify-between mb-4">
+                            <label className="text-xs font-bold tracking-wider uppercase text-gray-400">Message Body</label>
+                            <button
+                              onClick={() => setUseRichText(!useRichText)}
+                              className="text-xs font-bold px-3 py-1 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded transition-colors"
+                            >
+                              {useRichText ? 'Plain Text Mode' : 'Rich Text Mode'}
+                            </button>
+                          </div>
+                          <div className="bg-white rounded-xl border border-gray-100 shadow-inner overflow-hidden min-h-[300px]">
+                            {useRichText ? (
+                              <RichTextEditor
+                                value={htmlBody}
+                                onChange={setHtmlBody}
+                                placeholder="Write your message..."
+                                height="300px"
+                              />
+                            ) : (
+                              <textarea
+                                value={body}
+                                onChange={(e) => setBody(e.target.value)}
+                                className="w-full px-6 py-6 border-0 focus:ring-0 h-[300px] resize-none font-mono text-sm bg-gray-50/30"
+                                placeholder="Write your message..."
+                              />
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <AttachmentUpload
+                            attachments={attachments}
+                            onChange={setAttachments}
+                          />
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="flex gap-3">
+                    {/* Modal Footer */}
+                    <div className="p-6 border-t border-gray-100 bg-gray-50/80 backdrop-blur rounded-b-2xl flex justify-between items-center">
+                      <button
+                        onClick={() => {
+                          if (confirm('Discard draft?')) {
+                            setShowComposeModal(false)
+                          }
+                        }}
+                        className="px-6 py-3 font-bold text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                      >
+                        Discard
+                      </button>
                       <button
                         onClick={sendEmail}
                         disabled={loading}
-                        className="btn-smooth px-8 py-3 bg-[#0B0B0B] text-white font-bold tracking-wider uppercase hover:bg-[#1A1A1A] focus:ring-2 focus:ring-[#D11A2A] disabled:bg-gray-300 flex items-center gap-2 rounded-xl"
+                        className="px-8 py-3 bg-[#0B0B0B] text-white font-bold tracking-wider uppercase hover:bg-[#1A1A1A] hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:hover:scale-100 flex items-center gap-2 rounded-xl shadow-lg shadow-black/20 transition-all duration-300"
                       >
                         <Send className="w-4 h-4" />
                         {loading ? 'Sending...' : 'Send Email'}
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (to || subject || (useRichText ? htmlBody : body) || attachments.length > 0) {
-                            if (confirm('Discard draft?')) {
-                              setTo(''); setSubject(''); setBody(''); setHtmlBody('')
-                              setAttachments([])
-                              setCurrentDraftId(null)
-                              setView('inbox')
-                            }
-                          } else {
-                            setCurrentDraftId(null)
-                            setView('inbox')
-                          }
-                        }}
-                        className="btn-smooth px-8 py-3 border-2 border-[#E5E7EB] font-bold tracking-wider uppercase hover:bg-[#F5F5F5] rounded-xl"
-                      >
-                        Cancel
                       </button>
                     </div>
                   </div>
@@ -1896,8 +1925,8 @@ export default function MailSystemPage() {
           )}
 
         </div>
-      </div>
-    </AdminLayout>
+      </div >
+    </AdminLayout >
   )
 }
 
