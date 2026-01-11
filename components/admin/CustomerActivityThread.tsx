@@ -1,5 +1,5 @@
-
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -75,7 +75,13 @@ export function CustomerActivityThread({ customer }: ThreadProps) {
                         </Avatar>
                         <div>
                             <div className="flex items-center gap-2">
-                                <h4 className="text-sm font-medium leading-none">{customer.customer_name}</h4>
+                                <Link
+                                    href={`/admin/leads/${customer.customer_id}`}
+                                    className="text-sm font-medium leading-none hover:underline"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    {customer.customer_name}
+                                </Link>
                                 <Badge variant="outline" className="text-[10px] h-5 px-1.5 font-normal text-muted-foreground">
                                     {customer.activity_count} activities
                                 </Badge>
@@ -112,7 +118,7 @@ export function CustomerActivityThread({ customer }: ThreadProps) {
                                         {activity.content}
                                     </p>
                                 </div>
-                                <span className="text-[10px] text-muted-foreground whitespace-nowrap tabular-nums opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="text-[10px] text-muted-foreground whitespace-nowrap tabular-nums opacity-70">
                                     {new Date(activity.created_at).toLocaleString(undefined, {
                                         month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                                     })}
