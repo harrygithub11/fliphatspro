@@ -1017,8 +1017,7 @@ export default function MailSystemPage() {
               ].map((stat, idx) => (
                 <div
                   key={stat.label}
-                  className="bg-white border border-gray-200 p-6 rounded-xl hover:shadow-lg transition-all duration-300 hover-lift"
-                  style={{ animation: `slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) ${idx * 100}ms both` }}
+                  className="bg-white border border-gray-200 p-6 rounded-xl hover:shadow-lg transition-all duration-300"
                 >
                   <div className="flex items-center gap-3 mb-3">
                     <stat.icon className="w-5 h-5 text-gray-600" />
@@ -1338,7 +1337,7 @@ export default function MailSystemPage() {
                     <div className="overflow-y-auto">
                       {filteredEmails.length === 0 ? (
                         <div className="flex items-center justify-center h-full text-gray-secondary">
-                          <div className="text-center" style={{ animation: 'fadeIn 0.5s' }}>
+                          <div className="text-center">
                             {hasActiveFilters ? (
                               <>
                                 <Search className="w-16 h-16 mx-auto mb-4 text-gray-300" />
@@ -1362,9 +1361,8 @@ export default function MailSystemPage() {
                             <div
                               key={`${email.uid}-${email.folder}`}
                               onClick={() => !bulkMode && handleEmailClick(email)}
-                              className={`email-item p-4 border-b border-gray-border cursor-pointer relative ${selectedEmail?.uid === email.uid && selectedEmail?.folder === email.folder ? 'bg-gray-light' : 'hover:bg-gray-light'
+                              className={`p-4 border-b border-gray-border cursor-pointer relative transition-all duration-200 hover:translate-x-1 ${selectedEmail?.uid === email.uid && selectedEmail?.folder === email.folder ? 'bg-gray-light' : 'hover:bg-gray-light'
                                 } ${unread ? 'bg-gray-50' : ''}`}
-                              style={{ animation: `slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) ${idx * 30}ms both` }}
                             >
                               {unread && <div className="absolute left-0 top-0 bottom-0 w-1 bg-text-black"></div>}
                               <div className="flex items-start justify-between gap-2">
@@ -1409,7 +1407,7 @@ export default function MailSystemPage() {
 
                     <div className="flex flex-col h-full overflow-y-auto">
                       {selectedEmail ? (
-                        <div style={{ animation: 'fadeIn 0.3s' }} className="flex flex-col h-full">
+                        <div className="flex flex-col h-full animate-in fade-in duration-300">
                           <div className="border-b border-gray-border p-4 flex gap-2 flex-shrink-0">
                             <button
                               onClick={handleReply}
@@ -1442,12 +1440,8 @@ export default function MailSystemPage() {
                             </div>
                             {selectedEmail.htmlContent ? (
                               <div
-                                className="email-html-content"
+                                className="email-html-content break-words"
                                 dangerouslySetInnerHTML={{ __html: selectedEmail.htmlContent }}
-                                style={{
-                                  wordWrap: 'break-word',
-                                  overflowWrap: 'break-word',
-                                }}
                               />
                             ) : (
                               <div className="whitespace-pre-wrap">{selectedEmail.text}</div>
@@ -1456,7 +1450,7 @@ export default function MailSystemPage() {
                         </div>
                       ) : (
                         <div className="flex items-center justify-center h-full text-gray-secondary">
-                          <div className="text-center" style={{ animation: 'fadeIn 0.5s' }}>
+                          <div className="text-center">
                             <Mail className="w-16 h-16 mx-auto mb-4 text-gray-300" />
                             <p>Select an email to view</p>
                           </div>
@@ -1468,7 +1462,7 @@ export default function MailSystemPage() {
               )}
 
               {view === 'compose' && (
-                <div className="p-6" style={{ animation: 'fadeIn 0.3s' }}>
+                <div className="p-6 animate-in fade-in duration-300">
                   <div className="max-w-3xl space-y-4">
                     <div>
                       <label className="block font-bold text-sm tracking-wider uppercase text-gray-secondary mb-2">From</label>
@@ -1565,14 +1559,14 @@ export default function MailSystemPage() {
 
           {showSuccess && (
             <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
-              <div className="success-check bg-green-500 text-white p-8 rounded-full shadow-2xl" style={{ animation: 'scaleIn 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+              <div className="bg-green-500 text-white p-8 rounded-full shadow-2xl animate-in zoom-in duration-500">
                 <Check className="w-16 h-16" />
               </div>
             </div>
           )}
 
           {showAddModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ animation: 'fadeIn 0.2s' }}>
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-in fade-in duration-200">
               <div className="modal-animate bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto shadow-2xl">
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-2xl font-black">Add New Email Account</h2>
