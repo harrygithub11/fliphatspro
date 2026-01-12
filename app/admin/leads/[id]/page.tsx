@@ -1026,7 +1026,7 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
 
                         <TabsContent value="timeline" className="flex-1 flex flex-col overflow-hidden mt-0">
                             {/* Timeline Filters */}
-                            <div className="px-4 py-2 border-b bg-zinc-50/50 flex gap-2">
+                            <div className="px-4 py-2 border-b bg-zinc-50/50 flex gap-2 shrink-0">
                                 <Button
                                     variant={timelineFilter === 'all' ? 'default' : 'outline'}
                                     size="sm"
@@ -1053,13 +1053,13 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
                                 </Button>
                             </div>
 
-                            {/* Feed */}
+                            {/* Feed - Scrollable */}
                             <div className="flex-1 overflow-y-auto p-4 space-y-6">
                                 {filteredTimeline.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No activity found.</p>}
-                                {filteredTimeline.map((item, i) => (
+                                {[...filteredTimeline].reverse().map((item, i) => (
                                     <div key={item.id} className="flex gap-4 relative">
                                         {/* Line connector */}
-                                        {i !== timeline.length - 1 && (
+                                        {i !== filteredTimeline.length - 1 && (
                                             <div className="absolute left-4 top-8 bottom-[-24px] w-px bg-zinc-200 dark:bg-zinc-800"></div>
                                         )}
 
@@ -1095,7 +1095,7 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
                                 ))}
                             </div>
 
-                            {/* Input Area */}
+                            {/* Input Area - Fixed at Bottom */}
                             <div className="p-4 bg-zinc-50 dark:bg-zinc-900 border-t shrink-0">
                                 <Textarea
                                     placeholder="Type a note, or log a call..."
@@ -1109,9 +1109,9 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
                                             <Send className="w-3 h-3" /> {submitting ? 'Saving...' : 'Log Activity'}
                                         </Button>
                                     </div>
-                                </div >
+                                </div>
                             </div>
-                        </TabsContent >
+                        </TabsContent>
 
                         <TabsContent value="files" className="p-4">
                             <div className="flex justify-between items-center mb-4">

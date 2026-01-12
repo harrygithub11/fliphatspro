@@ -230,15 +230,38 @@ export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, stag
                     <ScrollArea className="flex-1 bg-zinc-50/50 dark:bg-zinc-900/50">
                         <div className="p-6">
                             {activeTab === 'timeline' && (
-                                <div className="space-y-6">
+                                <div className="flex flex-col h-full">
                                     {loading ? (
                                         <div className="flex items-center justify-center py-10 text-muted-foreground">
                                             <Clock className="w-4 h-4 animate-spin mr-2" /> Loading timeline...
                                         </div>
                                     ) : (
                                         <>
-                                            {/* Quick Note Input */}
-                                            <div className="flex gap-3 mb-6">
+                                            {/* Timeline Items - Scrollable */}
+                                            <div className="flex-1 overflow-y-auto mb-4">
+                                                <div className="relative pl-4 border-l border-border/60 space-y-8">
+                                                    {timeline.length === 0 ? (
+                                                        <div className="text-sm text-muted-foreground pl-4 italic">No activity yet.</div>
+                                                    ) : (
+                                                        [...timeline].reverse().map((item: any) => (
+                                                            <div key={item.id} className="relative pl-6 group">
+                                                                <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-zinc-200 border-2 border-white dark:border-zinc-950 dark:bg-zinc-700 group-hover:bg-primary transition-colors"></div>
+                                                                <div className="flex flex-col gap-1">
+                                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                                        <span className="font-medium text-foreground">{item.created_by_name || 'System'}</span>
+                                                                        <span>•</span>
+                                                                        <span>{new Date(item.created_at).toLocaleString()}</span>
+                                                                    </div>
+                                                                    <p className="text-sm text-foreground/90 whitespace-pre-wrap">{item.content}</p>
+                                                                </div>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Quick Note Input - Fixed at Bottom */}
+                                            <div className="flex gap-3 border-t pt-4 bg-white dark:bg-zinc-950">
                                                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary">
                                                     <MessageSquare className="w-4 h-4" />
                                                 </div>
@@ -255,27 +278,6 @@ export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, stag
                                                         </Button>
                                                     </div>
                                                 </div>
-                                            </div>
-
-                                            {/* Timeline Items */}
-                                            <div className="relative pl-4 border-l border-border/60 space-y-8">
-                                                {timeline.length === 0 ? (
-                                                    <div className="text-sm text-muted-foreground pl-4 italic">No activity yet.</div>
-                                                ) : (
-                                                    timeline.map((item: any) => (
-                                                        <div key={item.id} className="relative pl-6 group">
-                                                            <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-zinc-200 border-2 border-white dark:border-zinc-950 dark:bg-zinc-700 group-hover:bg-primary transition-colors"></div>
-                                                            <div className="flex flex-col gap-1">
-                                                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                                    <span className="font-medium text-foreground">{item.created_by_name || 'System'}</span>
-                                                                    <span>•</span>
-                                                                    <span>{new Date(item.created_at).toLocaleString()}</span>
-                                                                </div>
-                                                                <p className="text-sm text-foreground/90 whitespace-pre-wrap">{item.content}</p>
-                                                            </div>
-                                                        </div>
-                                                    ))
-                                                )}
                                             </div>
                                         </>
                                     )}
