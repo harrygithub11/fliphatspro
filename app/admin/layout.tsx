@@ -165,7 +165,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <div className="h-16 flex items-center px-4 border-b border-zinc-200 dark:border-zinc-800 shrink-0 relative z-10 justify-between">
                         {!sidebarCollapsed && (
                             <span className="font-bold text-xl tracking-tight text-primary animate-in fade-in duration-300">
-                                Fliphat<span className="text-foreground">CRM</span>
+                                Fliphats<span className="text-foreground">CRM</span>
                             </span>
                         )}
                         {sidebarCollapsed && (
@@ -179,7 +179,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         <Button
                             variant="ghost"
                             size="icon"
-                            className={cn("h-8 w-8 text-zinc-400 hover:text-foreground", sidebarCollapsed && "mx-auto absolute -right-3 top-2 bg-white dark:bg-zinc-800 border shadow-sm rounded-full h-6 w-6 z-50")}
+                            className={cn("h-8 w-8 text-zinc-400 hover:text-foreground", sidebarCollapsed && "mx-auto absolute -right-3 top-2 bg-white dark:bg-zinc-800 border shadow-sm rounded-full h-6 w-6 z-[9999]")}
                             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
                         >
                             {sidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <PanelLeft className="w-4 h-4" />}
