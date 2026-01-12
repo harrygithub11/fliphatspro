@@ -3,14 +3,16 @@ import { useState, useEffect, useCallback } from 'react';
 export interface FlashMessage {
     id: string;
     senderId: number;
-    receiverId: number;
+    receiverId?: number | null; // Made optional/nullable
     message: string;
     isRead: boolean;
     sentAt: string;
     readAt?: string | null;
+    deliveredAt?: string | null;
+    type?: string; // 'flash', 'chat', 'group_chat'
     attachmentUrl?: string | null;
     attachmentType?: string | null;
-    sender: {
+    sender?: { // Made optional as sometimes we just get ID
         id: number;
         name: string;
         avatar_url: string | null;

@@ -4,6 +4,7 @@ import { MessageSquare, X, Send, User, MoreVertical, Minimize2, Paperclip, Image
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { io, Socket } from "socket.io-client";
 
 interface ChatUser {
     id: number;
@@ -15,7 +16,7 @@ interface ChatUser {
 }
 
 export function TeamChatWidget() {
-    const { sendMessage, fetchMessages, unreadChatMessages, markAsRead } = useFlashMessages();
+    const { fetchMessages, unreadChatMessages, markAsRead: markAsReadApi } = useFlashMessages();
     const [isOpen, setIsOpen] = useState(false);
     const [activeUser, setActiveUser] = useState<ChatUser | null>(null);
     const [users, setUsers] = useState<ChatUser[]>([]);
@@ -27,105 +28,212 @@ export function TeamChatWidget() {
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // Socket State
+    const [socket, setSocket] = useState<Socket | null>(null);
+    const [self, setSelf] = useState<{ id: number; name: string } | null>(null);
+
+    // 1. Fetch Self & Connect Socket
+    useEffect(() => {
+        // Fetch current user
+        fetch('/api/admin/me')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.admin) {
+                    setSelf(data.admin);
+                }
+            })
+            .catch(err => console.error("Failed to fetch me", err));
+    }, []);
+
+    useEffect(() => {
+        if (!self) return;
+
+        // Initialize Socket
+        // In Prod: window.location.origin handles it (if same domain/port or proxied)
+        // If port 3056 is exposed separately, might need explicit URL. 
+        // Assuming Next.js runs the custom server on the same port/domain.
+        const socketUrl = window.location.origin;
+        const newSocket = io(socketUrl);
+
+        newSocket.on('connect', () => {
+            console.log("Connected to Realtime Chat");
+            newSocket.emit('identify', self.id);
+        });
+
+        newSocket.on('message_received', (msg: FlashMessage) => {
+            // Add to messages if talking to this user OR if it's group chat
+            setMessages(prev => {
+                // Check if msg belongs to current conversation
+                // If activeUser is Group (-1) -> accept type='group_chat'
+                // If activeUser is Person (senderId) -> accept msg.senderId === activeUser.id (Incoming)
+                // If activeUser is Person (receiverId) -> accept msg.receiverId === activeUser.id (Outgoing - usually local optimistic, but good to sync)
+
+                // However, we rely on 'activeUser' state. 
+                // Since this is defined in closure, we might need a ref or functional update logic.
+                // Actually this closure captures initial state? No, 'setMessages' inner function is safe.
+                // BUT 'activeUser' needs to be checked.
+                // Best way: Don't gate here. Append ALL messages? No, that messes up the view.
+                // We should only append if it matches the current view. 
+
+                // We can't easily access 'activeUser' inside this stale closure if we don't depend on it.
+                // Solution: Use a Ref for activeUser.
+                return prev; // We handle this in a separate useEffect with Ref or fully depend on it.
+            });
+            // See 'Event Listener' effect below.
+        });
+
+        // We'll separate logic to avoid dependency cycles.
+        setSocket(newSocket);
+
+        // Heartbeat
+        const beatInterval = setInterval(() => {
+            newSocket.emit('heartbeat', self.id);
+        }, 20000);
+
+        return () => {
+            clearInterval(beatInterval);
+            newSocket.disconnect();
+        };
+    }, [self]);
+
+    // Ref for Active User to use in Socket listeners
+    const activeUserRef = useRef(activeUser);
+    useEffect(() => { activeUserRef.current = activeUser; }, [activeUser]);
+
+    // Socket Event Listeners for Data
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleMessage = (msg: FlashMessage) => {
+            const current = activeUserRef.current;
+            if (!current) return;
+
+            const isGroup = current.id === -1 && msg.type === 'group_chat';
+            const isDirect = current.id !== -1 && (msg.senderId === current.id || msg.receiverId === current.id);
+
+            if (isGroup || isDirect) {
+                setMessages(prev => {
+                    if (prev.find(m => m.id === msg.id)) return prev; // Dedup
+                    return [...prev, msg];
+                });
+
+                // Mark read if unrelated to validity
+                if (msg.senderId !== self?.id) {
+                    socket.emit('mark_read', { messageId: msg.id, userId: self?.id });
+                }
+            }
+        };
+
+        const handleStatusUpdate = (update: { id: string, status: 'delivered' | 'read', deliveredAt?: string, readAt?: string }) => {
+            setMessages(prev => prev.map(m => {
+                if (m.id === update.id) {
+                    return {
+                        ...m,
+                        deliveredAt: update.status === 'delivered' ? (update.deliveredAt || m.deliveredAt) : m.deliveredAt, // Type mismatch fix might be needed
+                        readAt: update.status === 'read' ? (update.readAt || m.readAt) : m.readAt,
+                        isRead: update.status === 'read' ? true : m.isRead
+                    } as FlashMessage; // Casting if API types differ slightly
+                }
+                return m;
+            }));
+        };
+
+        const handlePresence = (data: { userId: number, status: string, lastSeenAt: string }) => {
+            setUsers(prev => prev.map(u => {
+                if (u.id === data.userId) {
+                    return {
+                        ...u,
+                        isOnline: data.status === 'ONLINE',
+                        lastSeen: data.lastSeenAt
+                    };
+                }
+                return u;
+            }));
+        };
+
+        socket.on('message_received', handleMessage);
+        socket.on('message_sent_ack', handleMessage); // Same logic, append
+        socket.on('message_status_update', handleStatusUpdate);
+        socket.on('presence_update', handlePresence);
+
+        return () => {
+            socket.off('message_received', handleMessage);
+            socket.off('message_sent_ack', handleMessage);
+            socket.off('message_status_update', handleStatusUpdate);
+            socket.off('presence_update', handlePresence);
+        };
+    }, [socket, self]); // self needed for 'mark_read' check
+
+
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
             setAttachment(file);
-
-            // Create preview if image
             if (file.type.startsWith('image/')) {
-                const url = URL.createObjectURL(file);
-                setPreviewUrl(url);
+                setPreviewUrl(URL.createObjectURL(file));
             } else {
                 setPreviewUrl(null);
             }
         }
     };
 
-    const hasUnread = unreadChatMessages.length > 0;
-
-    // Heartbeat to keep online status
-    useEffect(() => {
-        const beat = () => {
-            fetch('/api/admin/heartbeat', { method: 'POST' }).catch(() => { });
-        };
-        beat(); // Initial
-        const interval = setInterval(beat, 60000); // Every 1 min
-        return () => clearInterval(interval);
-    }, []);
-
-    // Fetch team members on mount
+    // Load Users
     useEffect(() => {
         if (isOpen) {
             fetch('/api/admin/team')
                 .then(res => res.json())
                 .then(data => {
-                    let teamMembers = [];
-                    if (Array.isArray(data)) {
-                        teamMembers = data;
-                    } else if (data.members && Array.isArray(data.members)) {
-                        teamMembers = data.members;
-                    }
+                    let teamMembers: ChatUser[] = [];
+                    if (Array.isArray(data)) teamMembers = data;
+                    else if (data.members && Array.isArray(data.members)) teamMembers = data.members;
 
-                    // Add Static Group Chat Option
                     const groupOption: ChatUser = {
-                        id: -1, // Special ID for group
-                        name: "Team Group",
-                        email: "Everyone",
-                        avatar_url: "/group-icon-placeholder.png", // We can use icon fallback
-                        isOnline: true // Always online
+                        id: -1, name: "Team Group", email: "Everyone",
+                        avatar_url: "/group-icon-placeholder.png", isOnline: true
                     };
-
-                    // Logic to set isOnline based on lastSeen if API provides it
-                    // Assuming API /api/admin/team returns isOnline/lastSeen now
                     setUsers([groupOption, ...teamMembers]);
-                })
-                .catch(() => { });
+                }).catch(() => { });
         }
     }, [isOpen]);
 
-    // Poll messages when chat is active with a user
+    // Initial Message Load (History)
     useEffect(() => {
-        let interval: NodeJS.Timeout;
         if (isOpen && activeUser) {
-            const load = async () => {
-                const type = activeUser.id === -1 ? 'group_chat' : 'chat';
-                const userId = activeUser.id === -1 ? undefined : activeUser.id;
+            setMessages([]); // Clear previous
+            const type = activeUser.id === -1 ? 'group_chat' : 'chat';
+            const userId = activeUser.id === -1 ? undefined : activeUser.id;
 
-                const msgs = await fetchMessages(type, userId);
+            fetchMessages(type, userId).then(msgs => {
                 setMessages(msgs);
-
-                // Auto-mark incoming unread messages as read (Only for direct chats)
-                if (type === 'chat') {
-                    const unreadIncoming = msgs.filter((m: FlashMessage) => m.senderId === activeUser.id && !m.isRead);
-                    if (unreadIncoming.length > 0) {
-                        unreadIncoming.forEach((m: FlashMessage) => markAsRead(m.id));
+                // Mark all visible as read
+                msgs.forEach(m => {
+                    if (m.senderId === activeUser.id && !m.isRead && socket && self) {
+                        socket.emit('mark_read', { messageId: m.id, userId: self.id });
                     }
-                }
-            };
-            load();
-            interval = setInterval(load, 3000); // Poll every 3s
+                });
+            });
         }
-        return () => clearInterval(interval);
-    }, [isOpen, activeUser, fetchMessages, markAsRead]);
+    }, [isOpen, activeUser, fetchMessages, socket, self]);
+
+    const hasUnread = unreadChatMessages.length > 0;
 
     // Smart Auto-scroll
     useEffect(() => {
         const scrollContainer = scrollRef.current;
         if (!scrollContainer) return;
 
-        // If messages just loaded (or first load), force scroll
-        // Or if user was already near bottom (within 100px), keep them at bottom
-        // This prevents snapping back if they are reading old messages
         const isNearBottom = scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < 200;
 
-        if (isNearBottom) {
+        // Always scroll on first load (messages length change from 0) 
+        // But here we rely on isNearBottom. 
+        // To force scroll on NEW message if near bottom:
+        if (isNearBottom || messages.length < 5) { // Simple heuristic
             scrollContainer.scrollTop = scrollContainer.scrollHeight;
         }
     }, [messages]);
 
     const handleSend = async () => {
-        if ((!inputText.trim() && !attachment) || !activeUser) return;
+        if ((!inputText.trim() && !attachment) || !activeUser || !socket || !self) return;
         setLoading(true);
         try {
             let uploadedUrl = undefined;
@@ -133,12 +241,8 @@ export function TeamChatWidget() {
 
             if (attachment) {
                 const formData = new FormData();
-                formData.append('file', attachment);
-
-                const res = await fetch('/api/upload', {
-                    method: 'POST',
-                    body: formData
-                });
+                formData.append('file', attachment); // Keep existing upload API
+                const res = await fetch('/api/upload', { method: 'POST', body: formData });
                 const data = await res.json();
                 if (data.success) {
                     uploadedUrl = data.url;
@@ -147,24 +251,23 @@ export function TeamChatWidget() {
             }
 
             const type = activeUser.id === -1 ? 'group_chat' : 'chat';
-            const finalMessage = inputText.trim() || (attachment ? 'Sent an attachment' : '');
+            const text = inputText.trim() || (attachment ? 'Sent an attachment' : '');
 
-            // Send 0 for group chat receiverId (API handles it)
-            await sendMessage(activeUser.id === -1 ? 0 : activeUser.id, finalMessage, undefined, type, uploadedUrl, uploadedType);
+            // Emit via Socket
+            socket.emit('send_message', {
+                senderId: self.id,
+                receiverId: activeUser.id,
+                message: text,
+                type,
+                attachmentUrl: uploadedUrl,
+                attachmentType: uploadedType
+            });
 
             setInputText('');
             setAttachment(null);
             setPreviewUrl(null);
-            // Refresh
-            // Refresh
-            const loadType = activeUser.id === -1 ? 'group_chat' : 'chat';
-            const loadId = activeUser.id === -1 ? undefined : activeUser.id;
+            // No need to setMessages here, we listen for 'message_sent_ack'
 
-            // Wait a moment for DB propagation if needed, or just fetch
-            setTimeout(async () => {
-                const msgs = await fetchMessages(loadType, loadId);
-                setMessages(msgs);
-            }, 500); // Slight delay to ensure upload/db write completes
         } catch (error) {
             console.error(error);
         } finally {
@@ -188,7 +291,7 @@ export function TeamChatWidget() {
                         style={{ animation: hasUnread ? 'gentlePulse 3s infinite ease-in-out' : 'none' }}
                         className={cn(
                             "h-14 w-14 rounded-full shadow-2xl bg-red-600 hover:bg-red-700 text-white animate-in zoom-in duration-300 flex items-center justify-center p-0 transition-all",
-                            hasUnread && "ring-4 ring-red-300" // Removed animate-bounce, keeping ring for visibility
+                            hasUnread && "ring-4 ring-red-300"
                         )}
                     >
                         <MessageSquare className="w-7 h-7" />
@@ -205,13 +308,12 @@ export function TeamChatWidget() {
             {/* Chat Window */}
             {isOpen && (
                 <div className="fixed bottom-6 right-6 w-96 h-[600px] bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800 z-50 flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
-
                     {/* Header */}
                     <div className="p-4 bg-red-600 text-white flex items-center justify-between shrink-0 shadow-sm z-10">
                         {activeUser ? (
                             <div className="flex items-center gap-3">
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20 -ml-2 rounded-full" onClick={() => setActiveUser(null)}>
-                                    <X className="w-5 h-5 rotate-45" /> {/* Use X as back icon rough approx or arrow */}
+                                    <X className="w-5 h-5 rotate-45" />
                                 </Button>
                                 <div className="flex items-center gap-2">
                                     <div className="relative">
@@ -219,7 +321,10 @@ export function TeamChatWidget() {
                                             <AvatarImage src={activeUser.avatar_url} />
                                             <AvatarFallback className="bg-red-800 text-xs">{activeUser.name[0]}</AvatarFallback>
                                         </Avatar>
-                                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 border-2 border-red-600 rounded-full"></span>
+                                        <span className={cn(
+                                            "absolute bottom-0 right-0 w-2.5 h-2.5 border-2 border-red-600 rounded-full",
+                                            activeUser.isOnline ? "bg-green-400" : "bg-zinc-400"
+                                        )}></span>
                                     </div>
                                     <div>
                                         <h3 className="font-bold text-sm leading-tight">{activeUser.name}</h3>
@@ -259,18 +364,8 @@ export function TeamChatWidget() {
                                         </div>
                                     ) : (
                                         messages.map((msg) => {
-                                            const isMe = msg.senderId !== activeUser.id; // Rough check, ideal is comparing session ID but let's assume if sender != partner it is me.
-                                            // Wait, if I am sender, senderId is My ID. If I am receiver, senderId is Partner ID.
-                                            // Ideally I need my own ID. 
-                                            // Quick fix: Check if senderId === activeUser.id (Incoming)
-                                            const isIncoming = msg.senderId === activeUser.id;
-
-                                            // Auto-mark as read if incoming and unread
-                                            if (isIncoming && !msg.isRead) {
-                                                // We wrap this in a timeout or check to avoid spamming api on every render
-                                                // Better: use a ref to track what we've trying to mark read, or just let effects handle it?
-                                                // Actually, simpler to do it in the useEffect that loads messages.
-                                            }
+                                            const isMe = msg.senderId === self?.id;
+                                            const isIncoming = !isMe;
 
                                             return (
                                                 <div key={msg.id} className={cn("flex flex-col gap-1", isIncoming ? "items-start" : "items-end")}>
@@ -280,17 +375,16 @@ export function TeamChatWidget() {
                                                             ? "bg-white dark:bg-zinc-800 text-foreground rounded-tl-none border border-zinc-200 dark:border-zinc-700"
                                                             : "bg-red-600 text-white rounded-tr-none"
                                                     )}>
-                                                        {/* Attachment Render */}
                                                         {msg.attachmentUrl && (
                                                             <div className="mb-2 rounded-lg overflow-hidden border border-black/10">
                                                                 {msg.attachmentType === 'image' ? (
                                                                     <img
                                                                         src={msg.attachmentUrl}
                                                                         alt="attachment"
-                                                                        className="max-w-full h-auto max-h-48 object-cover block" // Added block to ensure spacing
+                                                                        className="max-w-full h-auto max-h-48 object-cover block"
                                                                         onError={(e) => {
-                                                                            (e.target as HTMLImageElement).src = '/file-fallback.png'; // Fallback if broken
-                                                                            (e.target as HTMLImageElement).style.display = 'none'; // Or hide
+                                                                            (e.target as HTMLImageElement).src = '/file-fallback.png';
+                                                                            (e.target as HTMLImageElement).style.display = 'none';
                                                                         }}
                                                                     />
                                                                 ) : (
@@ -307,13 +401,13 @@ export function TeamChatWidget() {
                                                                 {new Date(msg.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                             </span>
                                                             {!isIncoming && (
-                                                                <span title={msg.readAt ? `Seen ${new Date(msg.readAt).toLocaleTimeString()}` : "Sent"}>
-                                                                    {msg.isRead ? (
-                                                                        // Double Tick (Seen)
-                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 7 17l-5-5" /><path d="m22 10-7.5 7.5L13 16" /></svg>
-                                                                    ) : (
-                                                                        // Single Tick (Sent)
-                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                                                                <span title={msg.readAt ? `Seen ${new Date(msg.readAt).toLocaleTimeString()}` : (msg.deliveredAt ? "Delivered" : "Sent")}>
+                                                                    {msg.isRead ? ( // Blue Ticks (simulated)
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-200"><path d="M18 6 7 17l-5-5" /><path d="m22 10-7.5 7.5L13 16" /></svg>
+                                                                    ) : msg.deliveredAt ? ( // Double Gray Ticks
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 7 17l-5-5" /><path d="m22 10-7.5 7.5L13 16" /></svg>
+                                                                    ) : ( // Single Tick
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
                                                                     )}
                                                                 </span>
                                                             )}
@@ -325,7 +419,6 @@ export function TeamChatWidget() {
                                     )}
                                 </div>
                                 <div className="p-3 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 shrink-0">
-                                    {/* Preview Area */}
                                     {attachment && (
                                         <div className="mb-2 flex items-center gap-2 p-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg">
                                             {previewUrl ? (
@@ -383,7 +476,6 @@ export function TeamChatWidget() {
                                 </div>
                             </div>
                         ) : (
-                            // User List View
                             <div className="absolute inset-0 overflow-y-auto p-2">
                                 <div className="space-y-1">
                                     {users.map(u => (
@@ -400,7 +492,7 @@ export function TeamChatWidget() {
                                                 <h4 className="font-semibold text-sm truncate">{u.name}</h4>
                                                 <p className="text-xs text-muted-foreground truncate">{u.email}</p>
                                             </div>
-                                            <div className="w-2 h-2 rounded-full bg-zinc-300 dark:bg-zinc-600"></div> {/* Status indicator placeholder */}
+                                            <div className={cn("w-2 h-2 rounded-full", u.isOnline ? "bg-green-500" : "bg-zinc-300 dark:bg-zinc-600")}></div>
                                         </button>
                                     ))}
                                 </div>
