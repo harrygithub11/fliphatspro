@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
+import { SearchableCustomerSelect } from '@/components/admin/SearchableCustomerSelect';
 
 interface Task {
     id: number;
@@ -365,20 +366,12 @@ export default function TaskDrawer({
                                 <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
                                     <User className="w-3.5 h-3.5" /> Customer
                                 </label>
-                                <Select
-                                    value={activeTask.customer_id?.toString() || 'none'}
-                                    onValueChange={(val) => handleFieldChange('customer_id', val === 'none' ? null : parseInt(val))}
-                                >
-                                    <SelectTrigger className="h-9 w-full bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
-                                        <SelectValue placeholder="No Customer" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="none">No Customer</SelectItem>
-                                        {customers.map(c => (
-                                            <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <SearchableCustomerSelect
+                                    customers={customers}
+                                    value={activeTask.customer_id || null}
+                                    onChange={(customerId) => handleFieldChange('customer_id', customerId)}
+                                    placeholder="No Customer"
+                                />
                             </div>
 
                             <div className="space-y-1.5">

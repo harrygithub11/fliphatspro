@@ -24,6 +24,7 @@ import TaskListView from '@/components/admin/TaskListView';
 import TaskDrawer from '@/components/admin/TaskDrawer';
 import { CustomerActivityThread } from '@/components/admin/CustomerActivityThread';
 import { usePersistentState } from '@/hooks/use-persistent-state';
+import { SearchableCustomerSelect } from '@/components/admin/SearchableCustomerSelect';
 
 interface Task {
     id: number;
@@ -424,15 +425,12 @@ export default function WorkspacePage() {
                                 </div>
                                 <div className="grid gap-2">
                                     <Label>Related Customer</Label>
-                                    <Select value={newTask.customer_id || 'none'} onValueChange={v => setNewTask({ ...newTask, customer_id: v === 'none' ? '' : v })}>
-                                        <SelectTrigger><SelectValue placeholder="Select Customer (Optional)" /></SelectTrigger>
-                                        <SelectContent style={{ zIndex: 9999, maxHeight: '200px' }}>
-                                            <SelectItem value="none">No Customer Linked</SelectItem>
-                                            {leads.map(lead => (
-                                                <SelectItem key={lead.id} value={String(lead.id)}>{lead.name} ({lead.email})</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    <SearchableCustomerSelect
+                                        customers={leads}
+                                        value={newTask.customer_id ? parseInt(newTask.customer_id) : null}
+                                        onChange={(customerId) => setNewTask({ ...newTask, customer_id: customerId ? String(customerId) : '' })}
+                                        placeholder="No Customer Linked"
+                                    />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="grid gap-2">
