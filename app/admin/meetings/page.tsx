@@ -11,12 +11,18 @@ import { Video, Plus, Calendar, Clock, ArrowRight, VideoOff, History, LucideIcon
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+import { toast } from '@/hooks/use-toast';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
 export default function MeetingsDashboard() {
     const [meetings, setMeetings] = useState<any[]>([]);
+    const [admins, setAdmins] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [createOpen, setCreateOpen] = useState(false);
     const [newTitle, setNewTitle] = useState('');
     const [newDesc, setNewDesc] = useState('');
+    const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
     const [creating, setCreating] = useState(false);
     const router = useRouter();
 
@@ -34,25 +40,74 @@ export default function MeetingsDashboard() {
         }
     };
 
+    const fetchAdmins = async () => {
+        try {
+            const res = await fetch('/api/admin/team');
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                setAdmins(data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch admins:', error);
+        }
+    };
+
     useEffect(() => {
         fetchMeetings();
+        fetchAdmins();
     }, []);
 
+    const toggleUser = (userId: string) => {
+        setSelectedUsers(prev =>
+            prev.includes(userId)
+                ? prev.filter(id => id !== userId)
+                : [...prev, userId]
+        );
+    };
+
     const handleCreateMeeting = async () => {
-        if (!newTitle) return;
+        if (!newTitle) {
+            toast({
+                title: "Missing Information",
+                description: "Please enter a meeting title.",
+                variant: "destructive"
+            });
+            return;
+        }
+
         setCreating(true);
         try {
             const res = await fetch('/api/admin/meetings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title: newTitle, description: newDesc })
+                body: JSON.stringify({
+                    title: newTitle,
+                    description: newDesc,
+                    inviteeIds: selectedUsers
+                })
             });
             const data = await res.json();
+
             if (data.success) {
+                toast({
+                    title: "Room Created",
+                    description: "Redirecting you to the meeting live room...",
+                });
                 router.push(`/admin/meetings/${data.meeting.id}`);
+            } else {
+                toast({
+                    title: "Creation Failed",
+                    description: data.error || data.message || "Something went wrong.",
+                    variant: "destructive"
+                });
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Failed to create meeting:', error);
+            toast({
+                title: "Network Error",
+                description: "Failed to connect to the meeting server.",
+                variant: "destructive"
+            });
         } finally {
             setCreating(false);
         }
@@ -78,26 +133,56 @@ export default function MeetingsDashboard() {
                         <DialogHeader>
                             <DialogTitle>Start New Meeting</DialogTitle>
                         </DialogHeader>
-                        <div className="space-y-4 py-4">
+                        <div className="space-y-6 py-4">
                             <div className="grid gap-2">
-                                <Label>Meeting Title</Label>
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Meeting Title</Label>
                                 <Input
                                     placeholder="e.g., Client Strategy Session"
                                     value={newTitle}
                                     onChange={e => setNewTitle(e.target.value)}
+                                    className="h-12 bg-zinc-50 border-zinc-200"
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label>Description (Optional)</Label>
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Description (Optional)</Label>
                                 <Input
                                     placeholder="Discussion about project scope..."
                                     value={newDesc}
                                     onChange={e => setNewDesc(e.target.value)}
+                                    className="h-12 bg-zinc-50 border-zinc-200"
                                 />
                             </div>
+
+                            <div className="space-y-3">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Select Invitees</Label>
+                                <ScrollArea className="h-40 border border-zinc-100 rounded-xl p-3 bg-zinc-50">
+                                    <div className="space-y-2">
+                                        {admins.length === 0 ? (
+                                            <p className="text-[10px] text-muted-foreground italic">No other team members found.</p>
+                                        ) : (
+                                            admins.map(admin => (
+                                                <div key={admin.id} className="flex items-center space-x-2">
+                                                    <Checkbox
+                                                        id={`admin-${admin.id}`}
+                                                        checked={selectedUsers.includes(admin.id.toString())}
+                                                        onCheckedChange={() => toggleUser(admin.id.toString())}
+                                                    />
+                                                    <label
+                                                        htmlFor={`admin-${admin.id}`}
+                                                        className="text-xs font-bold uppercase tracking-tight cursor-pointer"
+                                                    >
+                                                        {admin.name} <span className="text-muted-foreground font-mono font-normal ml-1">({admin.role})</span>
+                                                    </label>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </ScrollArea>
+                            </div>
+
                             <Button
                                 onClick={handleCreateMeeting}
-                                className="w-full h-12 rounded-xl bg-primary text-white"
+                                className="w-full h-14 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest text-xs shadow-lg shadow-red-900/20"
                                 disabled={creating || !newTitle}
                             >
                                 {creating ? 'Launching Room...' : 'Go Live Now'}

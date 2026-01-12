@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { title, description } = await request.json();
+        const { title, description, inviteeIds } = await request.json();
 
         if (!title) {
             return NextResponse.json({ error: 'Title is required' }, { status: 400 });
@@ -60,9 +60,33 @@ export async function POST(request: NextRequest) {
             }
         });
 
+        // Send Invitations via Flash Messages
+        if (inviteeIds && Array.isArray(inviteeIds) && inviteeIds.length > 0) {
+            const invitationData = {
+                type: 'meeting_invitation',
+                meetingId: meeting.id,
+                title: meeting.title,
+                roomName: meeting.roomName,
+                hostName: session.name || 'Admin'
+            };
+
+            for (const receiverId of inviteeIds) {
+                if (parseInt(receiverId) === session.id) continue;
+
+                await p.flashMessage.create({
+                    data: {
+                        senderId: session.id,
+                        receiverId: parseInt(receiverId),
+                        message: JSON.stringify(invitationData),
+                        type: 'meeting_invitation'
+                    }
+                });
+            }
+        }
+
         return NextResponse.json({ success: true, meeting });
     } catch (error: any) {
         console.error('[MEETING_CREATE_ERROR]', error);
-        return NextResponse.json({ error: 'Failed to create meeting' }, { status: 500 });
+        return NextResponse.json({ success: false, error: 'Failed to create meeting', message: error.message }, { status: 500 });
     }
 }
