@@ -1053,24 +1053,7 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
                                 </Button>
                             </div>
 
-                            {/* Input Area - Fixed at Top */}
-                            <div className="p-4 bg-zinc-50 dark:bg-zinc-900 border-b shrink-0">
-                                <Textarea
-                                    placeholder="Type a note, or log a call..."
-                                    className="min-h-[80px] mb-2 bg-white dark:bg-black"
-                                    value={noteContent}
-                                    onChange={(e) => setNoteContent(e.target.value)}
-                                />
-                                <div className="flex justify-between items-center">
-                                    <div className="flex gap-2">
-                                        <Button size="sm" className="gap-2" onClick={() => handleLogActivity()} disabled={submitting}>
-                                            <Send className="w-3 h-3" /> {submitting ? 'Saving...' : 'Log Activity'}
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Feed - Scrollable Below */}
+                            {/* Feed - Scrollable Messages */}
                             <div className="flex-1 overflow-y-auto p-4 space-y-6">
                                 {filteredTimeline.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No activity found.</p>}
                                 {filteredTimeline.map((item, i) => (
@@ -1110,6 +1093,23 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
                                         </div>
                                     </div>
                                 ))}
+                            </div>
+
+                            {/* Input Area - Fixed at Bottom */}
+                            <div className="lead-profile-timeline-input p-4 bg-zinc-50 dark:bg-zinc-900 border-t shrink-0">
+                                <Textarea
+                                    placeholder="Type a note, or log a call..."
+                                    className="min-h-[80px] mb-2 bg-white dark:bg-black"
+                                    value={noteContent}
+                                    onChange={(e) => setNoteContent(e.target.value)}
+                                />
+                                <div className="flex justify-between items-center">
+                                    <div className="flex gap-2">
+                                        <Button size="sm" className="gap-2" onClick={() => handleLogActivity()} disabled={submitting}>
+                                            <Send className="w-3 h-3" /> {submitting ? 'Saving...' : 'Log Activity'}
+                                        </Button>
+                                    </div>
+                                </div>
                             </div>
                         </TabsContent>
 
