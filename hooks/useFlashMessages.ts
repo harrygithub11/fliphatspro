@@ -7,6 +7,7 @@ export interface FlashMessage {
     message: string;
     isRead: boolean;
     sentAt: string;
+    readAt?: string | null;
     sender: {
         id: number;
         name: string;

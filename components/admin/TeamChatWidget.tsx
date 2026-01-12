@@ -13,7 +13,7 @@ interface ChatUser {
 }
 
 export function TeamChatWidget() {
-    const { sendMessage, fetchMessages, unreadChatMessages } = useFlashMessages();
+    const { sendMessage, fetchMessages, unreadChatMessages, markAsRead } = useFlashMessages();
     const [isOpen, setIsOpen] = useState(false);
     const [activeUser, setActiveUser] = useState<ChatUser | null>(null);
     const [users, setUsers] = useState<ChatUser[]>([]);
@@ -47,12 +47,28 @@ export function TeamChatWidget() {
             const load = async () => {
                 const msgs = await fetchMessages('chat', activeUser.id);
                 setMessages(msgs);
+
+                // Auto-mark incoming unread messages as read
+                const unreadIncoming = msgs.filter((m: FlashMessage) => m.senderId === activeUser.id && !m.isRead);
+                if (unreadIncoming.length > 0) {
+                    // We mark them read one by one or we could add a bulk endpoint.
+                    // For now, let's just mark the last one read? No, all of them.
+                    // To avoid spamming, let's just use the `markAsRead` which takes an ID.
+                    // Ideally API should support bulk or we just loop. Loop is fine for small numbers.
+                    unreadIncoming.forEach((m: FlashMessage) => {
+                        // markAsRead (from hook) calls API and updates local state.
+                        // But we just updated local state with `setMessages(msgs)`.
+                        // We can just call API directly here to avoid re-rendering loop issues?
+                        // Or use the markAsRead from hook which is safe.
+                        markAsRead(m.id);
+                    });
+                }
             };
             load();
             interval = setInterval(load, 3000); // Poll every 3s for chat
         }
         return () => clearInterval(interval);
-    }, [isOpen, activeUser, fetchMessages]);
+    }, [isOpen, activeUser, fetchMessages, markAsRead]);
 
     // Auto-scroll to bottom of chat
     useEffect(() => {
@@ -157,18 +173,39 @@ export function TeamChatWidget() {
                                             // Ideally I need my own ID. 
                                             // Quick fix: Check if senderId === activeUser.id (Incoming)
                                             const isIncoming = msg.senderId === activeUser.id;
+
+                                            // Auto-mark as read if incoming and unread
+                                            if (isIncoming && !msg.isRead) {
+                                                // We wrap this in a timeout or check to avoid spamming api on every render
+                                                // Better: use a ref to track what we've trying to mark read, or just let effects handle it?
+                                                // Actually, simpler to do it in the useEffect that loads messages.
+                                            }
+
                                             return (
-                                                <div key={msg.id} className={cn("flex", isIncoming ? "justify-start" : "justify-end")}>
+                                                <div key={msg.id} className={cn("flex flex-col gap-1", isIncoming ? "items-start" : "items-end")}>
                                                     <div className={cn(
-                                                        "max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow-sm",
+                                                        "max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow-sm relative group",
                                                         isIncoming
                                                             ? "bg-white dark:bg-zinc-800 text-foreground rounded-tl-none border border-zinc-200 dark:border-zinc-700"
                                                             : "bg-red-600 text-white rounded-tr-none"
                                                     )}>
                                                         {msg.message}
-                                                        <span className={cn("text-[10px] block mt-1 text-right opacity-70", isIncoming ? "text-muted-foreground" : "text-red-100")}>
-                                                            {new Date(msg.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                        </span>
+                                                        <div className={cn("flex items-center gap-1 justify-end mt-1 opacity-70", isIncoming ? "text-muted-foreground" : "text-red-100")}>
+                                                            <span className="text-[10px]">
+                                                                {new Date(msg.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            </span>
+                                                            {!isIncoming && (
+                                                                <span title={msg.readAt ? `Seen ${new Date(msg.readAt).toLocaleTimeString()}` : "Sent"}>
+                                                                    {msg.isRead ? (
+                                                                        // Double Tick (Seen)
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 7 17l-5-5" /><path d="m22 10-7.5 7.5L13 16" /></svg>
+                                                                    ) : (
+                                                                        // Single Tick (Sent)
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                                                                    )}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             );
