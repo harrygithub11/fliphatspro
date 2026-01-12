@@ -235,7 +235,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 {/* Main Content */}
                 <main className="flex-1 flex flex-col h-full overflow-hidden">
                     {/* Top Bar - Greeting & Performance */}
-                    <header className="h-20 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-6 shrink-0 z-40">
+                    <header className="h-20 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-6 shrink-0 z-30">
                         {/* Left: Greeting */}
                         <div className="flex items-center gap-4">
                             <Link href="/admin/profile" className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground flex items-center justify-center font-bold text-lg hover:ring-4 ring-primary/20 transition-all shadow-lg overflow-hidden">
