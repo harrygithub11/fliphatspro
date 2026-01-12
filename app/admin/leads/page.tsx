@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,6 +64,8 @@ export default function LeadsPage() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [sourceFilter, setSourceFilter] = useState('all');
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const searchWrapperRef = useRef<HTMLDivElement>(null);
 
     // New Lead State
     const [newLeadName, setNewLeadName] = useState('');
@@ -95,6 +97,17 @@ export default function LeadsPage() {
 
     // Dynamic scores
     const [scores, setScores] = useState<{ id: number, value: string, label: string, color: string, emoji: string }[]>([]);
+
+    // Handle Click Outside for Suggestions
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (searchWrapperRef.current && !searchWrapperRef.current.contains(event.target as Node)) {
+                setShowSuggestions(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [searchWrapperRef]);
 
     useEffect(() => {
         async function fetchLeads() {
@@ -412,14 +425,49 @@ export default function LeadsPage() {
                             >
                                 {showMyLeadsOnly ? "Showing My Leads" : "Show My Leads"}
                             </Button>
-                            <div className="relative w-72">
-                                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <div className="relative w-72" ref={searchWrapperRef}>
+                                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground z-10" />
                                 <Input
                                     placeholder="Search via Name, Email, Phone, Location..."
                                     className="pl-8"
                                     value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onChange={(e) => {
+                                        setSearchTerm(e.target.value);
+                                        setShowSuggestions(true);
+                                    }}
+                                    onFocus={() => setShowSuggestions(true)}
                                 />
+                                {showSuggestions && searchTerm && filtered.length > 0 && (
+                                    <div className="absolute top-full left-0 w-full mt-1 bg-white border border-zinc-200 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 max-h-[400px] overflow-y-auto">
+                                        {filtered.slice(0, 5).map(lead => (
+                                            <div
+                                                key={lead.id}
+                                                className="px-4 py-3 hover:bg-zinc-50 cursor-pointer flex items-center gap-3 transition-colors border-b last:border-b-0"
+                                                onClick={() => {
+                                                    window.location.href = `/admin/leads/${lead.id}`;
+                                                    setShowSuggestions(false);
+                                                }}
+                                            >
+                                                <Avatar className="h-10 w-10 shrink-0">
+                                                    <AvatarImage src={''} />
+                                                    <AvatarFallback className="text-xs font-bold bg-primary/10 text-primary">
+                                                        {lead.name.substring(0, 2).toUpperCase()}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <div className="flex flex-col flex-1 min-w-0">
+                                                    <span className="font-bold text-sm text-black truncate">{lead.name}</span>
+                                                    <span className="text-xs text-zinc-400 truncate">{lead.email}</span>
+                                                    {lead.phone && <span className="text-xs text-zinc-400 truncate">{lead.phone}</span>}
+                                                </div>
+                                                {lead.score && (
+                                                    <div className="shrink-0">
+                                                        {getScoreBadge(lead.score)}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                             <Select value={sourceFilter} onValueChange={setSourceFilter}>
                                 <SelectTrigger className="w-[140px]">
