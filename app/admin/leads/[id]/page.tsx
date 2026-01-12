@@ -1024,7 +1024,7 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
                             </TabsList>
                         </div>
 
-                        <TabsContent value="timeline" className="flex-1 flex flex-col overflow-hidden mt-0 h-full">
+                        <TabsContent value="timeline" className="flex flex-col overflow-hidden mt-0 h-[calc(100%-3.5rem)]">
                             {/* Timeline Filters */}
                             <div className="px-4 py-2 border-b bg-zinc-50/50 flex gap-2 shrink-0">
                                 <Button
