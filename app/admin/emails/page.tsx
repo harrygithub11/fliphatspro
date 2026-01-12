@@ -6,8 +6,6 @@ import { useComposeEmail } from '@/context/ComposeEmailContext'
 import { Mail, Send, RefreshCw, Inbox, Edit, Trash2, Reply, Plus, X, Check, Paperclip, FileText, Save, Clock, PenTool, Search, Filter, XCircle, CheckSquare, Square, MailOpen, MailX, Settings } from 'lucide-react'
 import AdminLayout from '@/components/admin/AdminLayout'
 import { toast } from '@/components/toast'
-import RichTextEditor from '@/components/admin/RichTextEditor'
-import AttachmentUpload, { Attachment } from '@/components/admin/AttachmentUpload'
 
 interface EmailAccount {
   id: string
@@ -30,7 +28,7 @@ interface Email {
 
 export default function MailSystemPage() {
   const router = useRouter()
-  const { openCompose, isOpen: showComposeModal, closeCompose } = useComposeEmail()
+  const { openCompose } = useComposeEmail()
   const [accounts, setAccounts] = useState<EmailAccount[]>([])
   const [selectedAccount, setSelectedAccount] = useState<string>('')
   const [emails, setEmails] = useState<Email[]>([])
@@ -43,25 +41,14 @@ export default function MailSystemPage() {
   const [showSuccess, setShowSuccess] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
-  const [to, setTo] = useState('')
-  const [subject, setSubject] = useState('')
-  const [body, setBody] = useState('')
-  const [htmlBody, setHtmlBody] = useState('')
-  const [attachments, setAttachments] = useState<Attachment[]>([])
-  const [useRichText, setUseRichText] = useState(true)
+
 
   // Draft management
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(null)
   const [drafts, setDrafts] = useState<any[]>([])
   const [showDrafts, setShowDrafts] = useState(false)
-  const [autoSaveStatus, setAutoSaveStatus] = useState<'saved' | 'saving' | 'idle'>('idle')
 
-  // Signature management
-  const [showSignatureModal, setShowSignatureModal] = useState(false)
-  const [signatureText, setSignatureText] = useState('')
-  const [signatureHtml, setSignatureHtml] = useState('')
-  const [useSignature, setUseSignature] = useState(false)
-  const [signatureRichText, setSignatureRichText] = useState(false)
+
 
   // Search and filter
   const [searchQuery, setSearchQuery] = useState('')
@@ -77,18 +64,11 @@ export default function MailSystemPage() {
   const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set())
 
 
-  // Templates
-  const [templates, setTemplates] = useState<any[]>([])
-  const [showTemplates, setShowTemplates] = useState(false)
-  const [showTemplateManager, setShowTemplateManager] = useState(false)
-  const [newTemplateName, setNewTemplateName] = useState('')
-  const [newTemplateCategory, setNewTemplateCategory] = useState('')
 
 
 
-  // Rules & Analytics
-  const [showRulesManager, setShowRulesManager] = useState(false)
-  const [rules, setRules] = useState<any[]>([])
+
+
 
   const [newAccount, setNewAccount] = useState({
     name: '',
@@ -122,9 +102,7 @@ export default function MailSystemPage() {
 
     loadInbox()
     fetchDrafts()
-    loadAccountSignature(selectedAccount)
     loadReadStatus(selectedAccount)
-    fetchTemplates()
     const interval = setInterval(() => {
       syncEmails(false)
     }, 10000)
@@ -132,32 +110,6 @@ export default function MailSystemPage() {
     return () => clearInterval(interval)
   }, [selectedAccount])
 
-  // Auto-save draft every 30 seconds when composing
-  useEffect(() => {
-    if (showComposeModal !== true || !selectedAccount) return
-
-    const autoSaveInterval = setInterval(() => {
-      saveDraft(true) // silent save
-    }, 30000) // 30 seconds
-
-    return () => clearInterval(autoSaveInterval)
-  }, [showComposeModal, selectedAccount, to, subject, body, htmlBody, attachments])
-
-  // Save draft on tab close / page unload
-  useEffect(() => {
-    if (showComposeModal !== true) return
-
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (to || subject || body || htmlBody) {
-        saveDraft(true)
-        e.preventDefault()
-        e.returnValue = ''
-      }
-    }
-
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [showComposeModal, to, subject, body, htmlBody])
 
   const loadReadStatus = async (accountId: string) => {
     try {
@@ -415,13 +367,11 @@ export default function MailSystemPage() {
 
   const handleReply = () => {
     if (!selectedEmail) return
-    setTo(selectedEmail.from.match(/<(.+)>/)?.[1] || selectedEmail.from)
-    setSubject('Re: ' + selectedEmail.subject)
-    const replyText = `\n\nOn ${new Date(selectedEmail.date).toLocaleString()}, ${selectedEmail.from} wrote:\n> ${selectedEmail.text.split('\n').join('\n> ')}`
-    setBody(replyText)
-    setHtmlBody(`<br><br><p>On ${new Date(selectedEmail.date).toLocaleString()}, <strong>${selectedEmail.from}</strong> wrote:</p><blockquote style="border-left: 3px solid #ccc; padding-left: 10px; margin-left: 0;">${selectedEmail.htmlContent || selectedEmail.text.replace(/\n/g, '<br>')}</blockquote>`)
-    setAttachments([])
-    openCompose()
+    openCompose({
+      to: selectedEmail.from.match(/<(.+)>/)?.[1] || selectedEmail.from,
+      subject: 'Re: ' + selectedEmail.subject,
+      body: selectedEmail.text ? `\n\nOn ${new Date(selectedEmail.date).toLocaleString()}, ${selectedEmail.from} wrote:\n> ${selectedEmail.text.split('\n').join('\n> ')}` : ''
+    })
   }
 
   const handleDelete = async () => {
@@ -432,63 +382,7 @@ export default function MailSystemPage() {
     setSelectedEmail(null)
   }
 
-  const sendEmail = async () => {
-    if (!to || !subject) {
-      toast.error('Please fill To and Subject')
-      return
-    }
-    setLoading(true)
-    try {
-      // Append signature if enabled
-      const finalHtmlBody = useRichText ? appendSignature(htmlBody, true) : appendSignature(`<p>${body.replace(/\n/g, '<br>')}</p>`, true)
-      const finalTextBody = useRichText ? finalHtmlBody.replace(/<[^>]*>/g, '') : appendSignature(body, false)
 
-      const res = await fetch('/api/email-system/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer YWRtaW4='
-        },
-        body: JSON.stringify({
-          accountId: selectedAccount,
-          to,
-          subject,
-          text: finalTextBody,
-          html: finalHtmlBody,
-          attachments: attachments.length > 0 ? attachments : undefined
-        })
-      })
-      const data = await res.json()
-      if (data.success) {
-        // Delete draft after successful send
-        if (currentDraftId) {
-          await deleteDraft(currentDraftId)
-        }
-
-        setShowSuccess(true)
-        setTimeout(() => setShowSuccess(false), 2000)
-        toast.success('Email sent successfully')
-        setTimeout(() => {
-          setAttachments([])
-          setCurrentDraftId(null)
-          closeCompose() // Modal closed via global context now
-          loadInbox()
-          fetchDrafts()
-        }, 800)
-      } else {
-        // Display actual error details
-        const errorMsg = data.details || data.error || 'Failed to send email'
-        console.error('[SEND_ERROR]', data)
-        toast.error(errorMsg)
-      }
-    } catch (error: any) {
-      const errorMsg = error?.message || 'Failed to send email'
-      console.error('[SEND_EXCEPTION]', error)
-      toast.error(errorMsg)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const fetchDrafts = async () => {
     if (!selectedAccount) return
@@ -505,57 +399,15 @@ export default function MailSystemPage() {
     }
   }
 
-  const saveDraft = async (silent = false) => {
-    if (!selectedAccount) return
 
-    // Don't save if completely empty
-    const isEmpty = !to && !subject && !body && !htmlBody
-    if (isEmpty) {
-      setAutoSaveStatus('idle')
-      return
-    }
-
-    try {
-      if (!silent) setAutoSaveStatus('saving')
-
-      const res = await fetch('/api/email-system/drafts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer YWRtaW4='
-        },
-        body: JSON.stringify({
-          id: currentDraftId,
-          accountId: selectedAccount,
-          to,
-          subject,
-          body,
-          htmlBody,
-          hasAttachments: attachments.length > 0,
-        })
-      })
-      const data = await res.json()
-
-      if (data.success && data.draft) {
-        setCurrentDraftId(data.draft.id)
-        setAutoSaveStatus('saved')
-        if (!silent) toast.success('Draft saved')
-        setTimeout(() => setAutoSaveStatus('idle'), 2000)
-      }
-    } catch (error) {
-      setAutoSaveStatus('idle')
-      if (!silent) toast.error('Failed to save draft')
-    }
-  }
 
   const loadDraft = (draft: any) => {
-    setTo(draft.to || '')
-    setSubject(draft.subject || '')
-    setBody(draft.body || '')
-    setHtmlBody(draft.htmlBody || '')
-    setCurrentDraftId(draft.id)
+    openCompose({
+      to: draft.to || '',
+      subject: draft.subject || '',
+      body: draft.body || draft.htmlBody?.replace(/<[^>]*>/g, '') || ''
+    })
     setShowDrafts(false)
-    openCompose()
     toast.success('Draft loaded')
   }
 
@@ -576,64 +428,6 @@ export default function MailSystemPage() {
     } catch (error) {
       toast.error('Failed to delete draft')
     }
-  }
-
-  const loadAccountSignature = async (accountId: string) => {
-    try {
-      const res = await fetch(`/api/email-system/accounts/${accountId}`, {
-        headers: { 'Authorization': 'Bearer YWRtaW4=' }
-      })
-      const data = await res.json()
-      if (data.success && data.account) {
-        setSignatureText(data.account.signature || '')
-        setSignatureHtml(data.account.signatureHtml || '')
-        setUseSignature(data.account.useSignature || false)
-      }
-    } catch (error) {
-      console.error('Failed to load signature:', error)
-    }
-  }
-
-  const saveSignature = async () => {
-    if (!selectedAccount) return
-
-    setLoading(true)
-    try {
-      const res = await fetch(`/api/email-system/accounts/${selectedAccount}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer YWRtaW4='
-        },
-        body: JSON.stringify({
-          signature: signatureText,
-          signatureHtml: signatureHtml,
-          useSignature: useSignature,
-        })
-      })
-      const data = await res.json()
-      if (data.success) {
-        toast.success('Signature saved')
-        setShowSignatureModal(false)
-      } else {
-        toast.error('Failed to save signature')
-      }
-    } catch (error) {
-      toast.error('Failed to save signature')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const appendSignature = (bodyContent: string, isHtml: boolean) => {
-    if (!useSignature) return bodyContent
-
-    if (isHtml && signatureHtml) {
-      return `${bodyContent}<br><br><div class="signature">--<br>${signatureHtml}</div>`
-    } else if (!isHtml && signatureText) {
-      return `${bodyContent}\n\n--\n${signatureText}`
-    }
-    return bodyContent
   }
 
   const handleEmailClick = (email: Email) => {
@@ -815,107 +609,7 @@ export default function MailSystemPage() {
   }
 
 
-  // Template management functions
-  const fetchTemplates = async () => {
-    if (!selectedAccount) return
-    try {
-      const res = await fetch(`/api/email-system/templates?accountId=${selectedAccount}`, {
-        headers: { 'Authorization': 'Bearer YWRtaW4=' }
-      })
-      const data = await res.json()
-      if (data.success) {
-        setTemplates(data.templates || [])
-      }
-    } catch (error) {
-      console.error('Failed to load templates:', error)
-    }
-  }
 
-  const saveAsTemplate = async () => {
-    if (!selectedAccount || !newTemplateName.trim()) {
-      toast.error('Template name required')
-      return
-    }
-
-    setLoading(true)
-    try {
-      const res = await fetch('/api/email-system/templates', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer YWRtaW4='
-        },
-        body: JSON.stringify({
-          accountId: selectedAccount,
-          name: newTemplateName.trim(),
-          subject,
-          bodyText: body,
-          htmlBody: useRichText ? htmlBody : null,
-          category: newTemplateCategory || null,
-        })
-      })
-      const data = await res.json()
-      if (data.success) {
-        toast.success('Template saved')
-        setNewTemplateName('')
-        setNewTemplateCategory('')
-        fetchTemplates()
-        setShowTemplateManager(false)
-      } else {
-        toast.error(data.error || 'Failed to save template')
-      }
-    } catch (error) {
-      toast.error('Failed to save template')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadTemplate = async (template: any) => {
-    setSubject(template.subject || '')
-    if (template.htmlBody) {
-      setUseRichText(true)
-      setHtmlBody(template.htmlBody)
-    } else {
-      setUseRichText(false)
-      setBody(template.body || '')
-    }
-    setShowTemplates(false)
-
-    // Update usage count
-    try {
-      await fetch('/api/email-system/templates', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer YWRtaW4='
-        },
-        body: JSON.stringify({ templateId: template.id })
-      })
-    } catch (error) {
-      console.error('Failed to update template usage')
-    }
-
-    toast.success('Template loaded')
-  }
-
-  const deleteTemplate = async (templateId: string) => {
-    if (!confirm('Delete this template?')) return
-
-    try {
-      const res = await fetch(`/api/email-system/templates?templateId=${templateId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': 'Bearer YWRtaW4=' }
-      })
-      const data = await res.json()
-      if (data.success) {
-        toast.success('Template deleted')
-        fetchTemplates()
-      }
-    } catch (error) {
-      toast.error('Failed to delete template')
-    }
-  }
 
 
 
@@ -1025,12 +719,12 @@ export default function MailSystemPage() {
                   <span className="hidden sm:inline">Compose</span>
                 </button>
                 <button
-                  onClick={() => setShowDrafts(!showDrafts)}
-                  className={`px-6 py-4 font-bold text-sm tracking-wider uppercase transition-all duration-300 flex items-center gap-2 relative ${showDrafts ? 'bg-gray-100 text-black border-b-2 border-[#D11A2A]' : 'text-gray-600 hover:bg-[#F5F5F5] border-b-2 border-transparent'
+                  onClick={() => { }}
+                  className={`px-6 py-4 font-bold text-sm tracking-wider uppercase transition-all duration-300 flex items-center gap-2 relative ${false ? 'bg-gray-100 text-black border-b-2 border-[#D11A2A]' : 'text-gray-600 hover:bg-[#F5F5F5] border-b-2 border-transparent'
                     }`}
                 >
                   <FileText className="w-4 h-4" />
-                  Drafts ({drafts.length})
+                  Drafts (0)
                 </button>
               </div>
 
@@ -1087,64 +781,6 @@ export default function MailSystemPage() {
               )}
 
             </div>
-
-            {showDrafts && (
-              <div className="border-b border-[#E5E7EB] bg-gray-50 p-4">
-                <div className="max-w-4xl">
-                  <h3 className="font-bold mb-3 flex items-center gap-2">
-                    <FileText className="w-4 h-4" />
-                    Saved Drafts ({drafts.length})
-                  </h3>
-                  {drafts.length === 0 ? (
-                    <p className="text-sm text-gray-500">No saved drafts</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {drafts.map((draft) => (
-                        <div
-                          key={draft.id}
-                          className="bg-white border border-[#E5E7EB] rounded-lg p-3 hover:border-black transition-all duration-200 cursor-pointer group"
-                          onClick={() => loadDraft(draft)}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                {draft.to && (
-                                  <span className="text-sm font-bold truncate">
-                                    To: {draft.to}
-                                  </span>
-                                )}
-                                {currentDraftId === draft.id && (
-                                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                                    Current
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-sm text-gray-700 truncate">
-                                {draft.subject || '(No Subject)'}
-                              </div>
-                              <div className="text-xs text-gray-secondary mt-1">
-                                Last updated: {new Date(draft.updatedAt).toLocaleString()}
-                              </div>
-                            </div>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                if (confirm('Delete this draft?')) {
-                                  deleteDraft(draft.id)
-                                }
-                              }}
-                              className="p-2 opacity-0 group-hover:opacity-100 hover:bg-red-50 hover:text-red-600 rounded-lg transition-all duration-200"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
 
             {/* Always show inbox content/filters, logic handled by state */}
             {true && (
@@ -1398,169 +1034,6 @@ export default function MailSystemPage() {
               </>
             )}
 
-            {/* Compose Modal */}
-            {showComposeModal && (
-              <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6">
-                <div
-                  className="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity"
-                  onClick={() => {
-                    if (to || subject || (useRichText ? htmlBody : body) || attachments.length > 0) {
-                      if (confirm('Discard draft?')) {
-                        closeCompose()
-                      }
-                    } else {
-                      closeCompose()
-                    }
-                  }}
-                />
-                <div className="relative bg-white/95 w-full max-w-5xl rounded-2xl shadow-2xl border border-white/20 ring-1 ring-black/5 flex flex-col max-h-[90vh] animate-in zoom-in-95 fade-in duration-200 backdrop-blur-md">
-                  {/* Modal Header */}
-                  <div className="flex items-center justify-between px-8 py-5 border-b border-gray-100/50">
-                    <div className="flex items-center gap-4">
-                      <h2 className="text-xl font-black tracking-tight text-black">New Message</h2>
-                      {autoSaveStatus !== 'idle' && (
-                        <span className="text-xs flex items-center gap-1.5 text-gray-500 font-medium bg-gray-50 px-2 py-1 rounded-full border border-gray-100">
-                          {autoSaveStatus === 'saving' ? (
-                            <>
-                              <Clock className="w-3 h-3 animate-pulse" />
-                              Saving...
-                            </>
-                          ) : (
-                            <>
-                              <Check className="w-3 h-3 text-green-600" />
-                              Saved
-                            </>
-                          )}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setShowTemplates(!showTemplates)}
-                        className="text-xs font-bold px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-black text-gray-600 transition-colors"
-                      >
-                        Templates
-                      </button>
-                      <button
-                        onClick={() => setShowSignatureModal(true)}
-                        className={`text-xs font-bold px-3 py-1.5 border rounded-lg transition-colors ${useSignature ? 'border-green-200 bg-green-50 text-green-700' : 'border-gray-200 hover:bg-gray-50 text-gray-600'}`}
-                      >
-                        Signature
-                      </button>
-                      <button
-                        onClick={() => saveDraft(false)}
-                        className="text-xs font-bold px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-black text-gray-600 transition-colors"
-                      >
-                        Save Draft
-                      </button>
-                      <div className="w-px h-6 bg-gray-200 mx-2" />
-                      <button
-                        onClick={() => {
-                          if (to || subject || (useRichText ? htmlBody : body) || attachments.length > 0) {
-                            if (confirm('Discard draft?')) {
-                              closeCompose()
-                            }
-                          } else {
-                            closeCompose()
-                          }
-                        }}
-                        className="p-2 text-gray-400 hover:text-black hover:bg-gray-100 rounded-full transition-all duration-200"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Modal Body */}
-                  <div className="p-8 overflow-y-auto flex-1 custom-scrollbar">
-                    <div className="space-y-6">
-                      <div className="grid grid-cols-[80px_1fr] gap-4 items-center">
-                        <label className="text-xs font-bold tracking-wider uppercase text-gray-400 text-right">From</label>
-                        <input type="text" value={currentAccount?.email || ''} disabled className="w-full px-0 py-2 border-b border-gray-100 bg-transparent font-medium text-gray-500" />
-                      </div>
-                      <div className="grid grid-cols-[80px_1fr] gap-4 items-center">
-                        <label className="text-xs font-bold tracking-wider uppercase text-gray-400 text-right">To</label>
-                        <input
-                          type="email"
-                          value={to}
-                          onChange={(e) => setTo(e.target.value)}
-                          className="w-full px-0 py-2 border-b border-gray-100 focus:border-black bg-transparent font-medium transition-colors placeholder-gray-300 focus:outline-none"
-                          placeholder="recipient@example.com"
-                        />
-                      </div>
-                      <div className="grid grid-cols-[80px_1fr] gap-4 items-center">
-                        <label className="text-xs font-bold tracking-wider uppercase text-gray-400 text-right">Subject</label>
-                        <input
-                          type="text"
-                          value={subject}
-                          onChange={(e) => setSubject(e.target.value)}
-                          className="w-full px-0 py-2 border-b border-gray-100 focus:border-black bg-transparent font-bold text-lg transition-colors placeholder-gray-300 focus:outline-none"
-                          placeholder="Subject line..."
-                        />
-                      </div>
-
-                      <div className="pt-4 border-t border-gray-50">
-                        <div className="flex items-center justify-between mb-4">
-                          <label className="text-xs font-bold tracking-wider uppercase text-gray-400">Message Body</label>
-                          <button
-                            onClick={() => setUseRichText(!useRichText)}
-                            className="text-xs font-bold px-3 py-1 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded transition-colors"
-                          >
-                            {useRichText ? 'Plain Text Mode' : 'Rich Text Mode'}
-                          </button>
-                        </div>
-                        <div className="bg-white rounded-xl border border-gray-100 shadow-inner overflow-hidden min-h-[300px]">
-                          {useRichText ? (
-                            <RichTextEditor
-                              value={htmlBody}
-                              onChange={setHtmlBody}
-                              placeholder="Write your message..."
-                              height="300px"
-                            />
-                          ) : (
-                            <textarea
-                              value={body}
-                              onChange={(e) => setBody(e.target.value)}
-                              className="w-full px-6 py-6 border-0 focus:ring-0 h-[300px] resize-none font-mono text-sm bg-gray-50/30"
-                              placeholder="Write your message..."
-                            />
-                          )}
-                        </div>
-                      </div>
-
-                      <div>
-                        <AttachmentUpload
-                          attachments={attachments}
-                          onChange={setAttachments}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Modal Footer */}
-                  <div className="p-6 border-t border-gray-100 bg-gray-50/80 backdrop-blur rounded-b-2xl flex justify-between items-center">
-                    <button
-                      onClick={() => {
-                        if (confirm('Discard draft?')) {
-                          closeCompose()
-                        }
-                      }}
-                      className="px-6 py-3 font-bold text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-                    >
-                      Discard
-                    </button>
-                    <button
-                      onClick={sendEmail}
-                      disabled={loading}
-                      className="px-8 py-3 bg-[#0B0B0B] text-white font-bold tracking-wider uppercase hover:bg-[#1A1A1A] hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:hover:scale-100 flex items-center gap-2 rounded-xl shadow-lg shadow-black/20 transition-all duration-300"
-                    >
-                      <Send className="w-4 h-4" />
-                      {loading ? 'Sending...' : 'Send Email'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
@@ -1687,222 +1160,7 @@ export default function MailSystemPage() {
           </div>
         )}
 
-        {showSignatureModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ animation: 'fadeIn 0.2s' }}>
-            <div className="modal-animate bg-white rounded-2xl p-8 max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto shadow-2xl">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-black">Email Signature</h2>
-                <button onClick={() => setShowSignatureModal(false)} className="text-gray-500 hover:text-black transition-all duration-200 hover:rotate-90">
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <input
-                    type="checkbox"
-                    checked={useSignature}
-                    onChange={(e) => setUseSignature(e.target.checked)}
-                    className="w-5 h-5 rounded"
-                  />
-                  <label className="font-bold text-sm">
-                    Auto-append signature to outgoing emails
-                  </label>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block font-bold text-sm">Signature</label>
-                    <button
-                      onClick={() => setSignatureRichText(!signatureRichText)}
-                      className="text-xs px-3 py-1 border border-gray-border rounded-md hover:bg-gray-50 transition-colors duration-200"
-                    >
-                      {signatureRichText ? 'Switch to Plain Text' : 'Switch to Rich Text'}
-                    </button>
-                  </div>
-
-                  {signatureRichText ? (
-                    <RichTextEditor
-                      value={signatureHtml}
-                      onChange={setSignatureHtml}
-                      placeholder="Your signature here (e.g., name, title, contact info)..."
-                      height="250px"
-                    />
-                  ) : (
-                    <textarea
-                      value={signatureText}
-                      onChange={(e) => setSignatureText(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-border rounded-lg focus:outline-none focus:ring-2 focus:ring-text-black h-48 transition-all duration-200"
-                      placeholder="Your signature here (e.g., name, title, contact info)..."
-                    />
-                  )}
-                </div>
-
-                <div className="p-4 bg-gray-50 border border-gray-border rounded-lg">
-                  <p className="text-sm font-bold mb-2">Preview:</p>
-                  <div className="text-sm text-gray-700 border-t border-gray-300 pt-2 mt-2">
-                    --
-                    {signatureRichText && signatureHtml ? (
-                      <div dangerouslySetInnerHTML={{ __html: signatureHtml }} />
-                    ) : (
-                      <div className="whitespace-pre-wrap">{signatureText || '(Empty signature)'}</div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex gap-4 pt-4">
-                  <button
-                    onClick={saveSignature}
-                    disabled={loading}
-                    className="btn-smooth flex-1 px-6 py-3 bg-[#0B0B0B] text-white font-bold rounded-xl hover:bg-[#1A1A1A] disabled:bg-gray-400"
-                  >
-                    {loading ? 'Saving...' : 'Save Signature'}
-                  </button>
-                  <button
-                    onClick={() => setShowSignatureModal(false)}
-                    className="btn-smooth px-6 py-3 border-2 border-[#E5E7EB] font-bold rounded-xl hover:bg-[#F5F5F5]"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-
-
-        {/* Template Selector Dropdown */}
-        {showTemplates && view === 'compose' && (
-          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-start justify-end z-40" onClick={() => setShowTemplates(false)}>
-            <div className="mt-20 mr-8 bg-white rounded-xl shadow-2xl border border-gray-border p-4 w-96 max-h-[70vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-black text-lg">Load Template</h3>
-                <button onClick={() => setShowTemplateManager(true)} className="text-sm text-blue-600 hover:underline">
-                  Manage
-                </button>
-              </div>
-              {templates.length === 0 ? (
-                <p className="text-sm text-gray-secondary">No templates yet.</p>
-              ) : (
-                <div className="space-y-2">
-                  {templates.map(template => (
-                    <button
-                      key={template.id}
-                      onClick={() => loadTemplate(template)}
-                      className="w-full text-left p-3 border border-gray-border rounded-lg hover:border-text-black transition-all duration-200"
-                    >
-                      <div className="font-bold">{template.name}</div>
-                      {template.subject && <div className="text-sm text-gray-600 truncate">{template.subject}</div>}
-                      <div className="text-xs text-gray-secondary mt-1 flex items-center gap-2">
-                        {template.category && <span className="px-2 py-0.5 bg-gray-100 rounded">{template.category}</span>}
-                        <span>Used {template.usageCount || 0} times</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Template Manager Modal */}
-        {showTemplateManager && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ animation: 'fadeIn 0.2s' }}>
-            <div className="modal-animate bg-white rounded-2xl p-8 max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto shadow-2xl">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-black">Manage Templates</h2>
-                <button onClick={() => setShowTemplateManager(false)} className="text-gray-500 hover:text-black transition-all duration-200 hover:rotate-90">
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              {/* Save Current as Template */}
-              {view === 'compose' && (
-                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <h3 className="font-bold mb-3">Save Current Email as Template</h3>
-                  <div className="grid grid-cols-2 gap-3 mb-3">
-                    <div>
-                      <label className="block text-xs font-bold mb-1.5 text-gray-secondary">Template Name</label>
-                      <input
-                        type="text"
-                        value={newTemplateName}
-                        onChange={(e) => setNewTemplateName(e.target.value)}
-                        placeholder="e.g., Welcome Email"
-                        className="w-full px-3 py-2 border border-gray-border rounded-lg focus:outline-none focus:ring-2 focus:ring-text-black"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold mb-1.5 text-gray-secondary">Category (Optional)</label>
-                      <input
-                        type="text"
-                        value={newTemplateCategory}
-                        onChange={(e) => setNewTemplateCategory(e.target.value)}
-                        placeholder="e.g., Support"
-                        className="w-full px-3 py-2 border border-gray-border rounded-lg focus:outline-none focus:ring-2 focus:ring-text-black"
-                      />
-                    </div>
-                  </div>
-                  <button
-                    onClick={saveAsTemplate}
-                    disabled={loading}
-                    className="w-full px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
-                  >
-                    {loading ? 'Saving...' : 'Save as Template'}
-                  </button>
-                </div>
-              )}
-
-              {/* Templates List */}
-              <div>
-                <h3 className="font-bold mb-3">Your Templates ({templates.length})</h3>
-                {templates.length === 0 ? (
-                  <p className="text-sm text-gray-secondary">No templates created yet.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {templates.map(template => (
-                      <div
-                        key={template.id}
-                        className="flex items-start justify-between p-4 border border-gray-border rounded-lg hover:border-text-black transition-all duration-200"
-                      >
-                        <div className="flex-1">
-                          <div className="font-bold">{template.name}</div>
-                          {template.subject && <div className="text-sm text-gray-600">{template.subject}</div>}
-                          <div className="flex items-center gap-2 mt-2 text-xs text-gray-secondary">
-                            {template.category && <span className="px-2 py-1 bg-gray-100 rounded">{template.category}</span>}
-                            <span>Used {template.usageCount || 0} times</span>
-                            {template.lastUsed && <span>Last: {new Date(template.lastUsed).toLocaleDateString()}</span>}
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          {view === 'compose' && (
-                            <button
-                              onClick={() => {
-                                loadTemplate(template)
-                                setShowTemplateManager(false)
-                              }}
-                              className="p-2 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-all duration-200"
-                            >
-                              <Plus className="w-4 h-4" />
-                            </button>
-                          )}
-                          <button
-                            onClick={() => deleteTemplate(template.id)}
-                            className="p-2 hover:bg-red-50 hover:text-red-600 rounded-lg transition-all duration-200"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
       </div>
-    </AdminLayout >
+    </AdminLayout>
   )
 }

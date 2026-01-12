@@ -191,7 +191,7 @@ export function ComposeModal() {
                                 value={formData.smtp_account_id}
                                 onValueChange={val => setFormData({ ...formData, smtp_account_id: val })}
                             >
-                                <SelectTrigger className="border-none shadow-none p-0 h-auto font-medium focus:ring-0">
+                                <SelectTrigger className="font-medium h-10 px-3 border border-zinc-200 bg-background hover:bg-zinc-50 transition-colors">
                                     <SelectValue placeholder="Select Account" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -215,7 +215,7 @@ export function ComposeModal() {
                                     }}
                                     onFocus={() => setShowSuggestions(true)}
                                     placeholder="recipient@example.com"
-                                    className="border-none shadow-none p-0 h-auto focus-visible:ring-0 placeholder:text-muted-foreground/50 font-medium"
+                                    className="h-10 px-3 border border-zinc-200 bg-background font-medium focus-visible:ring-2 focus-visible:ring-zinc-900 transition-all placeholder:text-muted-foreground/50"
                                 />
                                 {/* Suggestions Dropdown */}
                                 {showSuggestions && searchQuery && filteredLeads.length > 0 && (
@@ -242,7 +242,7 @@ export function ComposeModal() {
                                 value={formData.subject}
                                 onChange={e => setFormData({ ...formData, subject: e.target.value })}
                                 placeholder="Subject line..."
-                                className="border-none shadow-none p-0 h-auto focus-visible:ring-0 font-medium text-lg placeholder:font-normal"
+                                className="h-12 px-3 border border-zinc-200 bg-background font-bold text-lg focus-visible:ring-2 focus-visible:ring-zinc-900 transition-all placeholder:font-normal"
                             />
                         </div>
                     </div>
@@ -250,7 +250,7 @@ export function ComposeModal() {
                     {/* BODY */}
                     <div className="pt-2">
                         <Textarea
-                            className="min-h-[300px] border-none shadow-none resize-none p-0 focus-visible:ring-0 text-base leading-relaxed"
+                            className="min-h-[300px] border border-zinc-200 rounded-md resize-none p-4 focus-visible:ring-2 focus-visible:ring-zinc-900 bg-background text-base leading-relaxed transition-all shadow-sm"
                             placeholder="Write your message..."
                             value={formData.body}
                             onChange={e => setFormData({ ...formData, body: e.target.value })}
