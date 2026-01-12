@@ -203,10 +203,10 @@ export function TeamChatWidget() {
             const type = activeUser.id === -1 ? 'group_chat' : 'chat';
             const userId = activeUser.id === -1 ? undefined : activeUser.id;
 
-            fetchMessages(type, userId).then(msgs => {
+            fetchMessages(type, userId).then((msgs: FlashMessage[]) => {
                 setMessages(msgs);
                 // Mark all visible as read
-                msgs.forEach(m => {
+                msgs.forEach((m) => {
                     if (m.senderId === activeUser.id && !m.isRead && socket && self) {
                         socket.emit('mark_read', { messageId: m.id, userId: self.id });
                     }
