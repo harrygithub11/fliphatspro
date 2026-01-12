@@ -39,7 +39,20 @@ export async function GET(request: Request) {
             return NextResponse.json({ success: true, messages });
         }
 
-        // Case 2: Fetch Recent Chat Activity (List of conversations)
+        // Case 2: Fetch Unread Chats
+        if (type === 'unread_chats') {
+            const messages = await prisma.flashMessage.findMany({
+                where: {
+                    receiverId: session.id,
+                    isRead: false,
+                    type: 'chat'
+                },
+                select: { id: true, senderId: true }
+            });
+            return NextResponse.json({ success: true, messages });
+        }
+
+        // Case 3: Fetch Recent Chat Activity (List of conversations)
         if (type === 'conversations') {
             // This is a bit complex in pure Prisma without raw SQL for "distinct recent", 
             // so for now we just fetch recent 100 messages involving user and client-side distinct?
@@ -57,7 +70,7 @@ export async function GET(request: Request) {
             return NextResponse.json({ success: true, unreadCounts });
         }
 
-        // Case 3: History of Flash Messages (Broadcasts)
+        // Case 4: History of Flash Messages (Broadcasts)
         if (type === 'history') {
             const messages = await prisma.flashMessage.findMany({
                 where: {

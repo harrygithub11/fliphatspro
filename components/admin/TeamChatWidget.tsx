@@ -13,7 +13,7 @@ interface ChatUser {
 }
 
 export function TeamChatWidget() {
-    const { sendMessage, fetchMessages } = useFlashMessages();
+    const { sendMessage, fetchMessages, unreadChatMessages } = useFlashMessages();
     const [isOpen, setIsOpen] = useState(false);
     const [activeUser, setActiveUser] = useState<ChatUser | null>(null);
     const [users, setUsers] = useState<ChatUser[]>([]);
@@ -21,6 +21,8 @@ export function TeamChatWidget() {
     const [inputText, setInputText] = useState('');
     const [loading, setLoading] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
+
+    const hasUnread = unreadChatMessages.length > 0;
 
     // Fetch team members on mount
     useEffect(() => {
@@ -80,12 +82,23 @@ export function TeamChatWidget() {
         <>
             {/* Sticky Trigger Button */}
             {!isOpen && (
-                <Button
-                    onClick={() => setIsOpen(true)}
-                    className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-2xl bg-red-600 hover:bg-red-700 text-white z-50 animate-in zoom-in duration-300 flex items-center justify-center p-0"
-                >
-                    <MessageSquare className="w-7 h-7" />
-                </Button>
+                <div className="fixed bottom-6 right-6 z-50">
+                    <Button
+                        onClick={() => setIsOpen(true)}
+                        className={cn(
+                            "h-14 w-14 rounded-full shadow-2xl bg-red-600 hover:bg-red-700 text-white animate-in zoom-in duration-300 flex items-center justify-center p-0 transition-all",
+                            hasUnread && "animate-bounce ring-4 ring-red-300"
+                        )}
+                    >
+                        <MessageSquare className="w-7 h-7" />
+                        {hasUnread && (
+                            <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-4 w-4 bg-yellow-500"></span>
+                            </span>
+                        )}
+                    </Button>
+                </div>
             )}
 
             {/* Chat Window */}

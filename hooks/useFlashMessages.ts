@@ -19,7 +19,9 @@ export function useFlashMessages() {
     const [unreadMessages, setUnreadMessages] = useState<FlashMessage[]>([]);
     const [loading, setLoading] = useState(false);
 
-    const fetchMessages = useCallback(async (type: 'flash' | 'chat' | 'history' = 'flash', withUserId?: number) => {
+    const [unreadChatMessages, setUnreadChatMessages] = useState<FlashMessage[]>([]);
+
+    const fetchMessages = useCallback(async (type: 'flash' | 'chat' | 'history' | 'unread_chats' = 'flash', withUserId?: number) => {
         try {
             let url = `/api/admin/flash-messages?type=${type}`;
             if (withUserId) url += `&withUserId=${withUserId}`;
@@ -33,10 +35,15 @@ export function useFlashMessages() {
         }
     }, []);
 
-    // Polling only for 'flash' messages (default behavior of the hook currently used by overlay)
+    // Polling for Flash Messages & Unread Chats
     const fetchUnreadFlash = useCallback(async () => {
         const msgs = await fetchMessages('flash');
         setUnreadMessages(msgs);
+    }, [fetchMessages]);
+
+    const fetchUnreadChats = useCallback(async () => {
+        const msgs = await fetchMessages('unread_chats');
+        setUnreadChatMessages(msgs);
     }, [fetchMessages]);
 
     const sendMessage = async (receiverId: number, message: string, parentMessageId?: string, type: 'flash' | 'chat' = 'flash') => {
@@ -57,22 +64,28 @@ export function useFlashMessages() {
         const data = await res.json();
         if (data.success) {
             setUnreadMessages(prev => prev.filter(m => m.id !== id));
+            setUnreadChatMessages(prev => prev.filter(m => m.id !== id));
         }
         return data;
     };
 
-    // Poll every 5 seconds for Flash Messages
+    // Poll every 5 seconds for Flash Messages and Unread Chats
     useEffect(() => {
         fetchUnreadFlash();
-        const interval = setInterval(fetchUnreadFlash, 5000);
+        fetchUnreadChats();
+        const interval = setInterval(() => {
+            fetchUnreadFlash();
+            fetchUnreadChats();
+        }, 5000);
         return () => clearInterval(interval);
-    }, [fetchUnreadFlash]);
+    }, [fetchUnreadFlash, fetchUnreadChats]);
 
     return {
         unreadMessages,
+        unreadChatMessages,
         sendMessage,
         markAsRead,
-        refresh: fetchUnreadFlash,
+        refresh: () => { fetchUnreadFlash(); fetchUnreadChats(); },
         fetchMessages // Export for chat widget
     };
 }
