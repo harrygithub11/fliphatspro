@@ -228,7 +228,7 @@ export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, stag
                     </div>
 
                     <ScrollArea className="flex-1 bg-zinc-50/50 dark:bg-zinc-900/50">
-                        <div className="p-6">
+                        <div className="p-6 pb-20">
                             {activeTab === 'timeline' && (
                                 <div className="flex flex-col h-[500px]">
                                     {loading ? (
