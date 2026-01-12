@@ -344,7 +344,15 @@ export default function WorkspacePage() {
         completed: tasks.filter(t => t.status === 'done').length
     };
 
-    const filteredTimeline = timeline;
+    const filteredTimeline = timeline.filter((item: any) => {
+        if (!activitySearchTerm) return true;
+        const lowerSearch = activitySearchTerm.toLowerCase();
+        return (
+            item.customer_name?.toLowerCase().includes(lowerSearch) ||
+            item.admin_name?.toLowerCase().includes(lowerSearch) ||
+            item.description?.toLowerCase().includes(lowerSearch)
+        );
+    });
 
     if (loading) return (
         <div className="flex h-[80vh] items-center justify-center">
@@ -863,7 +871,7 @@ export default function WorkspacePage() {
                                                         key={lead.id}
                                                         className="px-4 py-3 hover:bg-zinc-50 cursor-pointer flex items-center gap-3 transition-colors border-b last:border-b-0"
                                                         onClick={() => {
-                                                            window.location.href = `/admin/leads/${lead.id}`;
+                                                            setActivitySearchTerm(lead.name);
                                                             setShowActivitySuggestions(false);
                                                         }}
                                                     >

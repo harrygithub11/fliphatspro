@@ -460,7 +460,7 @@ export default function LeadsPage() {
                                                 key={lead.id}
                                                 className="px-4 py-3 hover:bg-zinc-50 cursor-pointer flex items-center gap-3 transition-colors border-b last:border-b-0"
                                                 onClick={() => {
-                                                    window.location.href = `/admin/leads/${lead.id}`;
+                                                    setSearchTerm(lead.name);
                                                     setShowSuggestions(false);
                                                 }}
                                             >
