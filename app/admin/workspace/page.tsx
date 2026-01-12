@@ -74,6 +74,7 @@ export default function WorkspacePage() {
     const [activityUserFilter, setActivityUserFilter] = useState('all');
     const [activityTypeFilter, setActivityTypeFilter] = useState('all');
     const [viewMode, setViewMode] = usePersistentState<'list' | 'kanban' | 'clickup'>('workspace.viewMode', 'clickup');
+    const [activeTab, setActiveTab] = usePersistentState<string>('workspace.activeTab', 'tasks');
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [selectedTasks, setSelectedTasks] = useState<number[]>([]);
@@ -511,7 +512,11 @@ export default function WorkspacePage() {
                 LAYER 3 - CONTROL (OPERATIONS BAR)
                 Context: "How do I want to see the data?"
             */}
-            <Tabs defaultValue="tasks" className="w-full space-y-6">
+            {/* 
+                LAYER 3 - CONTROL (OPERATIONS BAR)
+                Context: "How do I want to see the data?"
+            */}
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
                 <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-0">
                     <TabsList className="bg-transparent h-12 p-0 gap-8">
                         <TabsTrigger
