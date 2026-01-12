@@ -1024,7 +1024,7 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
                             </TabsList>
                         </div>
 
-                        <TabsContent value="timeline" className="flex-1 flex flex-col overflow-hidden mt-0">
+                        <TabsContent value="timeline" className="flex-1 flex flex-col overflow-hidden mt-0 h-full">
                             {/* Timeline Filters */}
                             <div className="px-4 py-2 border-b bg-zinc-50/50 flex gap-2 shrink-0">
                                 <Button
@@ -1096,7 +1096,7 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
                             </div>
 
                             {/* Input Area - Fixed at Bottom */}
-                            <div className="lead-profile-timeline-input p-4 bg-zinc-50 dark:bg-zinc-900 border-t shrink-0">
+                            <div className="lead-profile-timeline-input p-4 bg-zinc-50 dark:bg-zinc-900 border-t shrink-0 mt-auto">
                                 <Textarea
                                     placeholder="Type a note, or log a call..."
                                     className="min-h-[80px] mb-2 bg-white dark:bg-black"
