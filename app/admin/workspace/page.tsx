@@ -16,7 +16,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import {
     CheckCircle2, Clock, Phone, MessageSquare, FileText, User, RefreshCw, Plus,
     MoreHorizontal, Pencil, Trash2, Calendar, AlertCircle, Activity, UserCheck,
-    ArrowUpRight, Settings, Circle, ChevronDown, ListTodo, Package, History, Server, Search
+    ArrowUpRight, Settings, Circle, ChevronDown, ListTodo, Package, History, Server, Search, CalendarDays
 } from 'lucide-react';
 import Link from 'next/link';
 import { KanbanBoard } from '@/components/admin/KanbanBoard';
@@ -25,6 +25,7 @@ import TaskDrawer from '@/components/admin/TaskDrawer';
 import { CustomerActivityThread } from '@/components/admin/CustomerActivityThread';
 import { usePersistentState } from '@/hooks/use-persistent-state';
 import { SearchableCustomerSelect } from '@/components/admin/SearchableCustomerSelect';
+import { TaskCalendar } from '@/components/admin/TaskCalendar';
 
 interface Task {
     id: number;
@@ -78,7 +79,7 @@ export default function WorkspacePage() {
     const [activitySearchTerm, setActivitySearchTerm] = useState('');
     const [showActivitySuggestions, setShowActivitySuggestions] = useState(false);
     const activitySearchWrapperRef = useRef<HTMLDivElement>(null);
-    const [viewMode, setViewMode] = usePersistentState<'list' | 'kanban' | 'clickup'>('workspace.viewMode', 'clickup');
+    const [viewMode, setViewMode] = usePersistentState<'list' | 'kanban' | 'clickup' | 'calendar'>('workspace.viewMode', 'clickup');
     const [activeTab, setActiveTab] = usePersistentState<string>('workspace.activeTab', 'tasks');
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [drawerOpen, setDrawerOpen] = useState(false);
@@ -633,12 +634,12 @@ export default function WorkspacePage() {
                                 <Settings className="w-3.5 h-3.5 mr-1.5" /> Board
                             </Button>
                             <Button
-                                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                                variant={viewMode === 'calendar' ? 'default' : 'ghost'}
                                 size="sm"
-                                className={`h-7 px-3 rounded-md text-xs font-medium transition-all ${viewMode === 'list' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900'}`}
-                                onClick={() => setViewMode('list')}
+                                className={`h-7 px-3 rounded-md text-xs font-medium transition-all ${viewMode === 'calendar' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900'}`}
+                                onClick={() => setViewMode('calendar')}
                             >
-                                <Activity className="w-3.5 h-3.5 mr-1.5" /> Cards
+                                <CalendarDays className="w-3.5 h-3.5 mr-1.5" /> Calendar
                             </Button>
                         </div>
                     </div>
@@ -674,6 +675,17 @@ export default function WorkspacePage() {
                             tasks={tasks as any}
                             onStatusChange={(taskId, newStatus) => updateTask(taskId, { status: newStatus } as any)}
                             onTaskClick={(task) => { setEditingTask(task); setEditTaskOpen(true); }}
+                        />
+                    ) : viewMode === 'calendar' ? (
+                        <TaskCalendar
+                            tasks={tasks as any}
+                            onDateClick={(date) => {
+                                // Pre-fill date when creating task
+                                const dateStr = date.toISOString().split('T')[0];
+                                setNewTask(prev => ({ ...prev, due_date: dateStr }));
+                                setAddTaskOpen(true);
+                            }}
+                            onTaskClick={handleTaskClick as any}
                         />
                     ) : (
                         <div className="grid gap-3">
