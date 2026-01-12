@@ -23,8 +23,11 @@ export async function POST(request: Request) {
         const sanitizedParams = file.name.replace(/[^a-zA-Z0-9.-]/g, '');
         const filename = `${Date.now()}-${sanitizedParams}`;
 
-        // Ensure upload directory exists
-        const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+        // Path Determination
+        // Local: public/uploads
+        // Prod: [UPLOAD_DIR]
+        const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'public', 'uploads');
+
         try {
             await mkdir(uploadDir, { recursive: true });
         } catch (e) {
@@ -35,7 +38,7 @@ export async function POST(request: Request) {
         const filePath = path.join(uploadDir, filename);
         await writeFile(filePath, buffer);
 
-        // Return public URL
+        // Return public URL (Served via Nginx alias in prod)
         const url = `/uploads/${filename}`;
         return NextResponse.json({ url });
 

@@ -29,13 +29,21 @@ export async function POST(req: Request) {
 
         // Generate unique filename
         const filename = `avatar_${session.id}_${Date.now()}_${file.name.replace(/\s/g, '_')}`;
-        const path = join(process.cwd(), 'public/uploads/avatars', filename);
+
+        // Path Determination
+        // Local: public/uploads/avatars
+        // Prod: [UPLOAD_DIR]/avatars
+        const baseUploadDir = process.env.UPLOAD_DIR || join(process.cwd(), 'public', 'uploads');
+        const uploadDir = join(baseUploadDir, 'avatars');
 
         // Ensure directory exists
-        await mkdir(dirname(path), { recursive: true });
+        await mkdir(uploadDir, { recursive: true });
 
-        // Save file locally (In production, use S3/Cloudinary)
+        // Save file locally (In production, served via Nginx alias)
+        const path = join(uploadDir, filename);
         await writeFile(path, buffer);
+
+        // URL Protocol: /uploads/avatars/filename
         const fileUrl = `/uploads/avatars/${filename}`;
 
         // Update Database
