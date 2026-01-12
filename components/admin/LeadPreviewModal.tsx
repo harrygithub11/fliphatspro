@@ -237,28 +237,8 @@ export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, stag
                                         </div>
                                     ) : (
                                         <>
-                                            {/* Quick Note Input - Fixed at Top */}
-                                            <div className="flex gap-3 mb-4 pb-4 border-b shrink-0">
-                                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary">
-                                                    <MessageSquare className="w-4 h-4" />
-                                                </div>
-                                                <div className="flex-1 space-y-2">
-                                                    <Textarea
-                                                        placeholder="Add a quick note or update..."
-                                                        className="min-h-[80px] text-sm resize-none bg-white font-normal"
-                                                        value={note}
-                                                        onChange={e => setNote(e.target.value)}
-                                                    />
-                                                    <div className="flex justify-end">
-                                                        <Button size="sm" onClick={handleAddNote} disabled={submittingNote}>
-                                                            {submittingNote ? 'Saving...' : 'Post Note'}
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Timeline Items - Scrollable Below */}
-                                            <div className="flex-1 overflow-y-auto">
+                                            {/* Timeline Items - Scrollable at Top */}
+                                            <div className="flex-1 overflow-y-auto mb-4">
                                                 <div className="relative pl-4 border-l border-border/60 space-y-8">
                                                     {timeline.length === 0 ? (
                                                         <div className="text-sm text-muted-foreground pl-4 italic">No activity yet.</div>
@@ -277,6 +257,26 @@ export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, stag
                                                             </div>
                                                         ))
                                                     )}
+                                                </div>
+                                            </div>
+
+                                            {/* Quick Note Input - Fixed at Bottom */}
+                                            <div className="flex gap-3 border-t pt-4 bg-white dark:bg-zinc-950 shrink-0">
+                                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                                                    <MessageSquare className="w-4 h-4" />
+                                                </div>
+                                                <div className="flex-1 space-y-2">
+                                                    <Textarea
+                                                        placeholder="Add a quick note or update..."
+                                                        className="min-h-[80px] text-sm resize-none bg-white font-normal"
+                                                        value={note}
+                                                        onChange={e => setNote(e.target.value)}
+                                                    />
+                                                    <div className="flex justify-end">
+                                                        <Button size="sm" onClick={handleAddNote} disabled={submittingNote}>
+                                                            {submittingNote ? 'Saving...' : 'Post Note'}
+                                                        </Button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </>
