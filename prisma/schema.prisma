@@ -34,7 +34,9 @@ model FlashMessage {
   senderId    Int
   receiverId  Int?
   message     String    @db.Text
-  type        String    @default("flash") // "flash" or "chat"
+  attachmentUrl String?
+  attachmentType String? // "image", "video", "file"
+  type        String    @default("flash") // "flash", "chat", "group_chat"
   isRead      Boolean   @default(false)
   readAt      DateTime?
   sentAt      DateTime  @default(now())

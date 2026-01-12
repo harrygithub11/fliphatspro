@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useFlashMessages, FlashMessage } from '@/hooks/useFlashMessages';
-import { MessageSquare, X, Send, User, MoreVertical, Minimize2 } from 'lucide-react';
+import { MessageSquare, X, Send, User, MoreVertical, Minimize2, Paperclip, Image as ImageIcon, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -21,6 +21,24 @@ export function TeamChatWidget() {
     const [inputText, setInputText] = useState('');
     const [loading, setLoading] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const [attachment, setAttachment] = useState<File | null>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            setAttachment(file);
+
+            // Create preview if image
+            if (file.type.startsWith('image/')) {
+                const url = URL.createObjectURL(file);
+                setPreviewUrl(url);
+            } else {
+                setPreviewUrl(null);
+            }
+        }
+    };
 
     const hasUnread = unreadChatMessages.length > 0;
 
@@ -84,14 +102,36 @@ export function TeamChatWidget() {
     }, [messages]);
 
     const handleSend = async () => {
-        if (!inputText.trim() || !activeUser) return;
+        if ((!inputText.trim() && !attachment) || !activeUser) return;
         setLoading(true);
         try {
+            let uploadedUrl = undefined;
+            let uploadedType = undefined;
+
+            if (attachment) {
+                const formData = new FormData();
+                formData.append('file', attachment);
+
+                const res = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (data.success) {
+                    uploadedUrl = data.url;
+                    uploadedType = data.type;
+                }
+            }
+
             const type = activeUser.id === -1 ? 'group_chat' : 'chat';
+            const finalMessage = inputText.trim() || (attachment ? 'Sent an attachment' : '');
+
             // Send 0 for group chat receiverId (API handles it)
-            await sendMessage(activeUser.id === -1 ? 0 : activeUser.id, inputText, undefined, type);
+            await sendMessage(activeUser.id === -1 ? 0 : activeUser.id, finalMessage, undefined, type, uploadedUrl, uploadedType);
 
             setInputText('');
+            setAttachment(null);
+            setPreviewUrl(null);
             // Refresh
             const loadType = activeUser.id === -1 ? 'group_chat' : 'chat';
             const loadId = activeUser.id === -1 ? undefined : activeUser.id;
@@ -199,6 +239,19 @@ export function TeamChatWidget() {
                                                             ? "bg-white dark:bg-zinc-800 text-foreground rounded-tl-none border border-zinc-200 dark:border-zinc-700"
                                                             : "bg-red-600 text-white rounded-tr-none"
                                                     )}>
+                                                        {/* Attachment Render */}
+                                                        {msg.attachmentUrl && (
+                                                            <div className="mb-2 rounded-lg overflow-hidden border border-black/10">
+                                                                {msg.attachmentType === 'image' ? (
+                                                                    <img src={msg.attachmentUrl} alt="attachment" className="max-w-full h-auto max-h-48 object-cover" />
+                                                                ) : (
+                                                                    <a href={msg.attachmentUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-2 bg-black/5 hover:bg-black/10 transition-colors">
+                                                                        <FileText className="w-4 h-4" />
+                                                                        <span className="underline text-xs">Download File</span>
+                                                                    </a>
+                                                                )}
+                                                            </div>
+                                                        )}
                                                         {msg.message}
                                                         <div className={cn("flex items-center gap-1 justify-end mt-1 opacity-70", isIncoming ? "text-muted-foreground" : "text-red-100")}>
                                                             <span className="text-[10px]">
@@ -223,20 +276,56 @@ export function TeamChatWidget() {
                                     )}
                                 </div>
                                 <div className="p-3 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 shrink-0">
+                                    {/* Preview Area */}
+                                    {attachment && (
+                                        <div className="mb-2 flex items-center gap-2 p-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg">
+                                            {previewUrl ? (
+                                                <img src={previewUrl} className="h-10 w-10 object-cover rounded" />
+                                            ) : (
+                                                <div className="h-10 w-10 bg-zinc-200 rounded flex items-center justify-center">
+                                                    <FileText className="w-5 h-5 text-gray-400" />
+                                                </div>
+                                            )}
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs truncate font-medium">{attachment.name}</p>
+                                                <p className="text-[10px] text-muted-foreground">{(attachment.size / 1024).toFixed(1)} KB</p>
+                                            </div>
+                                            <Button size="icon" variant="ghost" className="h-6 w-6 rounded-full" onClick={() => { setAttachment(null); setPreviewUrl(null); }}>
+                                                <X className="w-3 h-3" />
+                                            </Button>
+                                        </div>
+                                    )}
+
                                     <form
                                         onSubmit={(e) => { e.preventDefault(); handleSend(); }}
                                         className="flex gap-2 items-center"
                                     >
                                         <input
+                                            type="file"
+                                            ref={fileInputRef}
+                                            className="hidden"
+                                            onChange={handleFileSelect}
+                                        />
+                                        <Button
+                                            type="button"
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-10 w-10 rounded-full text-zinc-500 hover:bg-zinc-100"
+                                            onClick={() => fileInputRef.current?.click()}
+                                        >
+                                            <Paperclip className="w-5 h-5" />
+                                        </Button>
+
+                                        <input
                                             value={inputText}
                                             onChange={(e) => setInputText(e.target.value)}
-                                            placeholder="Type a message..."
+                                            placeholder={attachment ? "Add a caption..." : "Type a message..."}
                                             className="flex-1 bg-zinc-100 dark:bg-zinc-800 rounded-full px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all"
                                         />
                                         <Button
                                             type="submit"
                                             size="icon"
-                                            disabled={!inputText.trim() || loading}
+                                            disabled={(!inputText.trim() && !attachment) || loading}
                                             className="h-10 w-10 rounded-full bg-red-600 hover:bg-red-700 shrink-0"
                                         >
                                             <Send className="w-4 h-4 text-white" />

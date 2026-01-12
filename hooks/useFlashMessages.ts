@@ -8,6 +8,8 @@ export interface FlashMessage {
     isRead: boolean;
     sentAt: string;
     readAt?: string | null;
+    attachmentUrl?: string | null;
+    attachmentType?: string | null;
     sender: {
         id: number;
         name: string;
@@ -47,10 +49,10 @@ export function useFlashMessages() {
         setUnreadChatMessages(msgs);
     }, [fetchMessages]);
 
-    const sendMessage = async (receiverId: number, message: string, parentMessageId?: string, type: 'flash' | 'chat' | 'group_chat' = 'flash') => {
+    const sendMessage = async (receiverId: number, message: string, parentMessageId?: string, type: 'flash' | 'chat' | 'group_chat' = 'flash', attachmentUrl?: string, attachmentType?: string) => {
         const res = await fetch('/api/admin/flash-messages', {
             method: 'POST',
-            body: JSON.stringify({ receiverId, message, parentMessageId, type }),
+            body: JSON.stringify({ receiverId, message, parentMessageId, type, attachmentUrl, attachmentType }),
             headers: { 'Content-Type': 'application/json' }
         });
         return await res.json();

@@ -137,7 +137,7 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json();
-        const { receiverId, message, parentMessageId, type = 'flash' } = body;
+        const { receiverId, message, parentMessageId, type = 'flash', attachmentUrl, attachmentType } = body;
 
         // Validation: receiverId is required unless it's a group chat
         if ((!receiverId && type !== 'group_chat') || !message) {
@@ -149,6 +149,8 @@ export async function POST(request: Request) {
                 senderId: session.id,
                 receiverId: receiverId ? parseInt(receiverId) : null,
                 message,
+                attachmentUrl,
+                attachmentType,
                 parentMessageId,
                 type, // 'flash' or 'chat' or 'group_chat'
                 isRead: false
