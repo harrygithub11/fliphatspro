@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Users, ShoppingCart, ListTodo, Settings, LogOut, UserCog, FileText, Briefcase, Sparkles, TrendingUp, Target, Mail } from 'lucide-react';
+import { LayoutDashboard, Users, ShoppingCart, ListTodo, Settings, LogOut, UserCog, FileText, Briefcase, Sparkles, TrendingUp, Target, Mail, PanelLeft, ChevronLeft, ChevronRight, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import NotificationBell from '@/components/admin/NotificationBell';
 import { useState, useEffect } from 'react';
@@ -10,6 +10,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { FlashMessageOverlay } from '@/components/admin/FlashMessageOverlay';
 import { FlashMessageComposer } from '@/components/admin/FlashMessageComposer';
 import { TeamChatWidget } from '@/components/admin/TeamChatWidget';
+import { usePersistentState } from '@/hooks/use-persistent-state';
+import { cn } from '@/lib/utils';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -19,6 +21,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [stats, setStats] = useState({ leadsToday: 0, tasksOpen: 0, dealsWon: 0 });
     const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+    // Sidebar Persistence
+    const [sidebarCollapsed, setSidebarCollapsed] = usePersistentState('sidebar.collapsed', false);
 
     const isLoginPage = pathname === '/admin/login';
 
@@ -148,51 +153,74 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return (
         <div className="h-screen bg-zinc-50 dark:bg-zinc-950 flex overflow-hidden">
             {/* Sidebar */}
-            <aside className="w-64 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 hidden md:flex flex-col h-full shrink-0 relative overflow-hidden">
-                <div className="h-16 flex items-center px-6 border-b border-zinc-200 dark:border-zinc-800 shrink-0 relative z-10">
-                    <span className="font-bold text-xl tracking-tight text-primary">FliphatMedia<span className="text-foreground">CRM</span></span>
+            <aside
+                className={cn(
+                    "bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 hidden md:flex flex-col h-full shrink-0 relative transition-all duration-300 ease-in-out",
+                    sidebarCollapsed ? "w-20" : "w-64"
+                )}
+            >
+                <div className="h-16 flex items-center px-4 border-b border-zinc-200 dark:border-zinc-800 shrink-0 relative z-10 justify-between">
+                    {!sidebarCollapsed && (
+                        <span className="font-bold text-xl tracking-tight text-primary animate-in fade-in duration-300">
+                            Fliphat<span className="text-foreground">CRM</span>
+                        </span>
+                    )}
+                    {sidebarCollapsed && (
+                        <span className="font-bold text-xl tracking-tight text-primary mx-auto">F<span className="text-foreground">C</span></span>
+                    )}
+
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn("h-8 w-8 text-zinc-400 hover:text-foreground", sidebarCollapsed && "mx-auto mt-2 absolute -right-3 top-6 bg-white dark:bg-zinc-800 border shadow-sm rounded-full h-6 w-6 z-50")}
+                        onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                    >
+                        {sidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <PanelLeft className="w-4 h-4" />}
+                    </Button>
                 </div>
 
-                <nav className="flex-1 p-4 space-y-6 overflow-y-auto relative z-10">
+                <nav className="flex-1 p-3 space-y-6 overflow-y-auto overflow-x-hidden relative z-10">
                     {/* Main */}
                     <div className="space-y-1">
-                        <NavItem href="/admin/dashboard" icon={<LayoutDashboard className="w-5 h-5" />} label="Command Center" active={isActive('/admin/dashboard')} />
+                        <NavItem href="/admin/dashboard" icon={<LayoutDashboard className="w-5 h-5" />} label="Command Center" active={isActive('/admin/dashboard')} collapsed={sidebarCollapsed} />
                     </div>
 
                     {/* Workspace */}
                     <div className="space-y-1">
-                        <h4 className="px-3 text-xs font-semibold text-muted-foreground/50 tracking-wider mb-2 mt-4 uppercase font-mono">Workspace</h4>
-                        <NavItem href="/admin/emails" icon={<Mail className="w-5 h-5" />} label="Email Center" active={isActive('/admin/emails')} />
-                        <NavItem href="/admin/workspace" icon={<Briefcase className="w-5 h-5" />} label="Workspace" active={pathname.startsWith('/admin/workspace')} />
-                        <NavItem href="/admin/kanban" icon={<ListTodo className="w-5 h-5" />} label="Project Board" active={isActive('/admin/kanban')} />
-                        <NavItem href="/admin/pages" icon={<FileText className="w-5 h-5" />} label="Landing Pages" active={isActive('/admin/pages') || pathname.startsWith('/admin/pages/')} />
-                        <NavItem href="/admin/orders" icon={<ShoppingCart className="w-5 h-5" />} label="Orders & Payments" active={isActive('/admin/orders') || pathname.startsWith('/admin/orders/')} />
-                        <NavItem href="/admin/leads" icon={<Users className="w-5 h-5" />} label="Leads & Customers" active={isActive('/admin/leads')} />
+                        {!sidebarCollapsed && <h4 className="px-3 text-xs font-semibold text-muted-foreground/50 tracking-wider mb-2 mt-4 uppercase font-mono animate-in fade-in">Workspace</h4>}
+                        {sidebarCollapsed && <div className="h-px bg-zinc-200 dark:bg-zinc-800 my-4 mx-2" />}
+
+                        <NavItem href="/admin/emails" icon={<Mail className="w-5 h-5" />} label="Email Center" active={isActive('/admin/emails')} collapsed={sidebarCollapsed} />
+                        <NavItem href="/admin/workspace" icon={<Briefcase className="w-5 h-5" />} label="Workspace" active={pathname.startsWith('/admin/workspace')} collapsed={sidebarCollapsed} />
+                        <NavItem href="/admin/kanban" icon={<ListTodo className="w-5 h-5" />} label="Project Board" active={isActive('/admin/kanban')} collapsed={sidebarCollapsed} />
+                        <NavItem href="/admin/pages" icon={<FileText className="w-5 h-5" />} label="Landing Pages" active={isActive('/admin/pages') || pathname.startsWith('/admin/pages/')} collapsed={sidebarCollapsed} />
+                        <NavItem href="/admin/orders" icon={<ShoppingCart className="w-5 h-5" />} label="Orders & Payments" active={isActive('/admin/orders') || pathname.startsWith('/admin/orders/')} collapsed={sidebarCollapsed} />
+                        <NavItem href="/admin/leads" icon={<Users className="w-5 h-5" />} label="Leads & Customers" active={isActive('/admin/leads')} collapsed={sidebarCollapsed} />
                     </div>
 
                     {/* System */}
                     <div className="space-y-1">
-                        <h4 className="px-3 text-xs font-semibold text-muted-foreground/50 tracking-wider mb-2 mt-4 uppercase font-mono">System</h4>
-                        <NavItem href="/admin/team" icon={<UserCog className="w-5 h-5" />} label="Team Management" active={isActive('/admin/team')} />
-                        <NavItem href="/admin/settings" icon={<Settings className="w-5 h-5" />} label="Configuration" active={isActive('/admin/settings')} />
+                        {!sidebarCollapsed && <h4 className="px-3 text-xs font-semibold text-muted-foreground/50 tracking-wider mb-2 mt-4 uppercase font-mono animate-in fade-in">System</h4>}
+                        {sidebarCollapsed && <div className="h-px bg-zinc-200 dark:bg-zinc-800 my-4 mx-2" />}
+
+                        <NavItem href="/admin/team" icon={<UserCog className="w-5 h-5" />} label="Team Management" active={isActive('/admin/team')} collapsed={sidebarCollapsed} />
+                        <NavItem href="/admin/settings" icon={<Settings className="w-5 h-5" />} label="Configuration" active={isActive('/admin/settings')} collapsed={sidebarCollapsed} />
                     </div>
                 </nav>
 
                 <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 shrink-0 relative z-10">
-                    <Button variant="ghost" className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50" asChild>
+                    <Button variant="ghost" className={cn("w-full text-red-500 hover:text-red-600 hover:bg-red-50", sidebarCollapsed ? "justify-center px-0" : "justify-start")} asChild>
                         <Link href="/admin/login">
                             <LogOut className="w-5 h-5 mr-2" />
-                            Sign Out
+                            {!sidebarCollapsed && <span>Sign Out</span>}
                         </Link>
                     </Button>
                 </div>
 
                 {/* Decorative Overlay Shapes */}
                 <div className="absolute bottom-0 left-0 pointer-events-none z-0">
-                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/5 rounded-tr-[100%] translate-y-1/2 -translate-x-1/2"></div>
-                    <div className="absolute bottom-0 left-0 w-48 h-48 bg-primary/10 rounded-tr-[100%] translate-y-1/3 -translate-x-1/3"></div>
-                    <div className="absolute bottom-8 left-8 w-4 h-4 rounded-full bg-primary/20"></div>
-                    <div className="absolute bottom-16 left-4 w-2 h-2 rounded-full bg-primary/20"></div>
+                    <div className={cn("absolute bottom-0 left-0 bg-primary/5 rounded-tr-[100%] translate-y-1/2 -translate-x-1/2", sidebarCollapsed ? "w-20 h-20" : "w-64 h-64")}></div>
+                    <div className={cn("absolute bottom-0 left-0 bg-primary/10 rounded-tr-[100%] translate-y-1/3 -translate-x-1/3", sidebarCollapsed ? "w-16 h-16" : "w-48 h-48")}></div>
                 </div>
             </aside>
 
@@ -254,7 +282,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
 }
 
-function NavItem({ href, icon, label, active }: { href: string; icon: React.ReactNode; label: string; active?: boolean }) {
+function NavItem({ href, icon, label, active, collapsed }: { href: string; icon: React.ReactNode; label: string; active?: boolean; collapsed?: boolean }) {
+    if (collapsed) {
+        return (
+            <Link
+                href={href}
+                title={label}
+                className={`flex items-center justify-center w-10 h-10 mx-auto rounded-lg transition-all duration-200 ${active ? 'bg-primary text-primary-foreground shadow-md' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-foreground'}`}
+            >
+                {icon}
+            </Link>
+        );
+    }
+
     return (
         <Link
             href={href}

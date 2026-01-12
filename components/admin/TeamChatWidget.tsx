@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useFlashMessages, FlashMessage } from '@/hooks/useFlashMessages';
+import { usePersistentState } from '@/hooks/use-persistent-state';
 import { MessageSquare, X, Send, User, MoreVertical, Minimize2, Paperclip, Image as ImageIcon, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -17,7 +18,7 @@ interface ChatUser {
 
 export function TeamChatWidget() {
     const { fetchMessages, unreadChatMessages, markAsRead: markAsReadApi } = useFlashMessages();
-    const [isOpen, setIsOpen] = useState(false);
+    const [isOpen, setIsOpen] = usePersistentState('chat.isOpen', false);
     const [activeUser, setActiveUser] = useState<ChatUser | null>(null);
     const [users, setUsers] = useState<ChatUser[]>([]);
     const [messages, setMessages] = useState<FlashMessage[]>([]);

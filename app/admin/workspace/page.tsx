@@ -22,6 +22,7 @@ import { KanbanBoard } from '@/components/admin/KanbanBoard';
 import TaskListView from '@/components/admin/TaskListView';
 import TaskDrawer from '@/components/admin/TaskDrawer';
 import { CustomerActivityThread } from '@/components/admin/CustomerActivityThread';
+import { usePersistentState } from '@/hooks/use-persistent-state';
 
 interface Task {
     id: number;
@@ -72,7 +73,7 @@ export default function WorkspacePage() {
     const [userFilter, setUserFilter] = useState('all');
     const [activityUserFilter, setActivityUserFilter] = useState('all');
     const [activityTypeFilter, setActivityTypeFilter] = useState('all');
-    const [viewMode, setViewMode] = useState<'list' | 'kanban' | 'clickup'>('clickup');
+    const [viewMode, setViewMode] = usePersistentState<'list' | 'kanban' | 'clickup'>('workspace.viewMode', 'clickup');
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [selectedTasks, setSelectedTasks] = useState<number[]>([]);
