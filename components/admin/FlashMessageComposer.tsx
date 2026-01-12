@@ -27,6 +27,7 @@ export function FlashMessageComposer() {
             // Let's assume /api/admin/users exists or I'll use a placeholder.
             // Wait, I didn't create that endpoint.
             // I'll try /api/admin/team if it exists? 
+            // I'll try /api/admin/team if it existed? 
             // The layout is using /api/admin/me.
             // Let's try fetching from /api/admin/team/members if it existed.
             // For now, I'll stub it with a fetch to /api/admin/users/list or similar.
@@ -36,7 +37,9 @@ export function FlashMessageComposer() {
             fetch('/api/admin/team')
                 .then(res => res.json())
                 .then(data => {
-                    if (data.success && data.members) {
+                    if (Array.isArray(data)) {
+                        setUsers(data);
+                    } else if (data.members) {
                         setUsers(data.members);
                     }
                 })

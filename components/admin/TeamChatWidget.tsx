@@ -28,7 +28,9 @@ export function TeamChatWidget() {
             fetch('/api/admin/team')
                 .then(res => res.json())
                 .then(data => {
-                    if (data.success && data.members) {
+                    if (Array.isArray(data)) {
+                        setUsers(data);
+                    } else if (data.members && Array.isArray(data.members)) {
                         setUsers(data.members);
                     }
                 })
