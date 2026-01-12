@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Search, Mail, Reply, Trash2, RefreshCw, Inbox, Send, Archive, FileText, User, ChevronLeft, Loader2, Paperclip } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { formatDistanceToNow } from 'date-fns';
-import { ComposeModal } from './ComposeModal';
+import { useComposeEmail } from '@/context/ComposeEmailContext';
 import { cn } from '@/lib/utils';
 
 interface Email {
@@ -55,7 +55,9 @@ export function InboxView() {
     const [threadLoading, setThreadLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [search, setSearch] = useState('');
-    const [replyOpen, setReplyOpen] = useState(false);
+
+    // Global Compose
+    const { openCompose } = useComposeEmail();
 
     const { toast } = useToast();
 
@@ -124,7 +126,7 @@ export function InboxView() {
             {/* 1. Sidebar */}
             <div className="w-[200px] border-r bg-muted/10 flex flex-col hidden md:flex">
                 <div className="p-4">
-                    <Button onClick={() => setReplyOpen(true)} className="w-full gap-2 shadow-sm" size="sm">
+                    <Button onClick={() => openCompose()} className="w-full gap-2 shadow-sm" size="sm">
                         <Send className="h-4 w-4" /> Compose
                     </Button>
                 </div>
@@ -227,7 +229,10 @@ export function InboxView() {
                                     </div>
                                 </div>
                             </div>
-                            <Button variant="outline" size="sm" onClick={() => setReplyOpen(true)}>
+                            <Button variant="outline" size="sm" onClick={() => openCompose({
+                                to: selectedEmail.from_address,
+                                subject: `Re: ${selectedEmail.subject.startsWith('Re:') ? selectedEmail.subject.substring(3).trim() : selectedEmail.subject}`
+                            })}>
                                 <Reply className="h-4 w-4 mr-2" /> Reply
                             </Button>
                         </div>
@@ -251,12 +256,7 @@ export function InboxView() {
                                 ))}
                             </div>
                         </ScrollArea>
-                        <ComposeModal
-                            open={replyOpen}
-                            onOpenChange={setReplyOpen}
-                            defaultTo={selectedEmail.from_address}
-                            defaultSubject={`Re: ${selectedEmail.subject.startsWith('Re:') ? selectedEmail.subject.substring(3).trim() : selectedEmail.subject}`}
-                        />
+                        {/* ComposeModal Removed - Used globally via Context */}
                     </>
                 ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-8">
