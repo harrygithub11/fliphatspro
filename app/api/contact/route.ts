@@ -27,16 +27,24 @@ export async function POST(request: Request) {
         const connection = await pool.getConnection();
         try {
             // Format Notes
+            // Format Notes - CLEANER now, only key info not in other fields
             const serviceTags = Array.isArray(services) ? services.join(', ') : services;
-            const fullNote = `
-                **Web Inquiry**
-                **Company:** ${company || 'N/A'}
-                **Budget:** ${budget || 'N/A'}
-                **Services:** ${serviceTags}
-                
-                **Message:**
-                ${description || 'No description provided'}
-            `.trim();
+            // Only put things in notes that don't have their own columns if needed, or keep it clean
+            // For now, we can keep a summarized note or just empty if we want admin to write notes.
+            // But let's keep a system note for "inquiry received" context if needed, 
+            // OR just rely on the columns. The user wanted to "separate" them.
+            // Let's make notes purely for admin usage and maybe just a header "Web Inquiry".
+
+            // Actually, if we want to preserve the "full email text" feel in notes, we can keep it,
+            // BUT we MUST ALSO populate the specific columns.
+            // The user request was "separate detailed project info ... from the notes field".
+            // So we should NOT put them in notes anymore to avoid duplication/clutter.
+
+            // However, we need to handle the case where we might overwrite existing user notes.
+            // The API appends. 
+
+            // Let's set a simple notification in notes if anything
+            const inquiryNote = `Inquiry from Website - See Project Tab for details.`;
 
             const budgetVal = parseFloat(budget?.replace(/[^0-9.]/g, '') || '0');
             const tagsVal = JSON.stringify(services);
@@ -54,25 +62,32 @@ export async function POST(request: Request) {
                 leadId = rows[0].id;
                 await connection.execute(
                     `UPDATE customers 
-                     SET notes = CONCAT(COALESCE(notes, ''), '\n\n-- New Inquiry --\n', ?),
+                     SET company = ?,
+                         project_desc = ?,
+                         budget = ?,
+                         tags = ?,
                          updated_at = NOW(),
                          score = 'warm',
                          stage = IF(stage = 'new', 'contacted', stage) 
                      WHERE id = ?`,
-                    [fullNote, leadId]
+                    [company || '', description || '', budgetVal, tagsVal, leadId]
                 );
+                // We deliberately DO NOT append to notes here to keep it clean, 
+                // unless we want to log the "event" which we do in interactions table.
             } else {
                 // 3. Create new customer
                 const [result]: any = await connection.execute(
                     `INSERT INTO customers 
-                    (name, email, phone, source, notes, stage, score, budget, tags, created_at, updated_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+                    (name, email, phone, source, notes, company, project_desc, stage, score, budget, tags, created_at, updated_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
                     [
                         name,
                         email,
                         phone || '',
                         'Website',
-                        fullNote,
+                        inquiryNote, // Simple note
+                        company || '',
+                        description || '',
                         'new',
                         'warm',
                         budgetVal,
@@ -89,7 +104,7 @@ export async function POST(request: Request) {
                     [
                         leadId,
                         'system_event',
-                        `New Website Inquiry from ${name}. Services: ${serviceTags}`
+                        `New Website Inquiry. Services: ${serviceTags}`
                     ]
                 );
             }
