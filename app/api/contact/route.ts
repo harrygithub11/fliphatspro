@@ -88,7 +88,7 @@ export async function POST(request: Request) {
                     'INSERT INTO interactions (customer_id, type, content, created_at) VALUES (?, ?, ?, NOW())',
                     [
                         leadId,
-                        'lead_created',
+                        'system_event',
                         `New Website Inquiry from ${name}. Services: ${serviceTags}`
                     ]
                 );
