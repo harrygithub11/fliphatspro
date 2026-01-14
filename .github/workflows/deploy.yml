@@ -22,24 +22,23 @@ jobs:
             cd /home/fliphats/htdocs/fliphats.com
 
             # Pull the latest code
+            cd /home/fliphats/htdocs/fliphats.com
+            
+            # Ensure git trusts this directory (prevents dubious ownership error)
+            git config --global --add safe.directory /home/fliphats/htdocs/fliphats.com || true
+            
             git pull origin main
-
-            # Install dependencies and Build
             npm install
             npx prisma generate
+            
+            # Clean previous build to prevent ENOTEMPTY error
+            rm -rf .next
             npm run build
 
-            # Cleanup old/conflicting processes
-            pm2 delete fliphats-web || true
-            pm2 delete newyearlp-web || true
-            pm2 delete newyearlp-worker || true
-            pm2 delete newyearlp-imap || true
-
-            # Restart PM2 Services
-            # We restart specific IDs or names to ensure stability
+            # Restart ONLY our specific application processes
             pm2 restart fliphatspro-web --update-env || pm2 start ecosystem.config.js
             pm2 restart fliphatspro-worker --update-env || echo "Worker already running or handled by ecosystem"
             pm2 restart fliphatspro-imap --update-env || echo "IMAP already running or handled by ecosystem"
             
-            # Save PM2 process list
+            # Save PM2 process list so it survives reboot
             pm2 save
