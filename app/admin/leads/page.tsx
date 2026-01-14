@@ -253,7 +253,6 @@ export default function LeadsPage() {
                     phone: newLeadPhone,
                     source: newLeadSource,
                     location: newLeadLocation,
-                    location: newLeadLocation,
                     budget: newLeadBudget,
                     company: newLeadCompany,
                     project_desc: newLeadProjectDesc,
