@@ -104,7 +104,7 @@ export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, stag
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="w-[700px] h-[85vh] max-w-[95vw] grid grid-rows-[auto_auto_1fr_auto] p-0 gap-0 overflow-hidden overflow-x-hidden">
+            <DialogContent className="w-[700px] h-[85vh] max-w-[95vw] grid grid-rows-[auto_auto_1fr_auto] grid-cols-[100%] p-0 gap-0 overflow-hidden overflow-x-hidden">
                 {/* Header Profile Section */}
                 <div className="bg-muted/30 p-6 border-b shrink-0">
                     <div className="flex justify-between items-start mb-4">
