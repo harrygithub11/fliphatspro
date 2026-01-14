@@ -30,6 +30,7 @@ jobs:
             git pull origin main
             npm install
             npx prisma generate
+            npx prisma db push
             
             # Clean previous build to prevent ENOTEMPTY error
             rm -rf .next
