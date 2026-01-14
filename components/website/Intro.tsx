@@ -36,7 +36,7 @@ const Intro = () => {
                         initial={{ opacity: 0, scale: 1.05 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
-                        transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+                        transition={{ duration: 1.2, ease: "easeOut" }}
                         className="absolute inset-0"
                     >
                         <div
@@ -71,7 +71,7 @@ const Intro = () => {
                 ref={ref}
                 initial={{ opacity: 0, y: 40 }}
                 animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }}
-                transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
                 className="container-custom relative z-10"
             >
                 <div className="max-w-5xl mx-auto">
