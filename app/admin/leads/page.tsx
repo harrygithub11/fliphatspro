@@ -8,13 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Mail, Phone, MoreHorizontal, Plus, Upload, Trash2, MapPin, Users, Activity } from 'lucide-react';
-import { CSVImportModal } from '@/components/admin/CSVImportModal';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { toast } from '@/hooks/use-toast';
-import { toast } from '@/hooks/use-toast';
-import { LeadPreviewModal } from '@/components/admin/LeadPreviewModal';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar as CalendarIcon, Filter as FilterIcon, X } from 'lucide-react';
+import { Calendar as CalendarIcon, Filter as FilterIcon, X, Target, Pencil, Check } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
@@ -114,6 +109,13 @@ export default function LeadsPage() {
     const [bulkTagOpen, setBulkTagOpen] = useState(false);
     const [bulkTagValue, setBulkTagValue] = useState('');
 
+    const [bulkTagValue, setBulkTagValue] = useState('');
+
+    // Goal State
+    const [dailyGoal, setDailyGoal] = useState(50);
+    const [isEditingGoal, setIsEditingGoal] = useState(false);
+    const [tempGoal, setTempGoal] = useState('50');
+
     // Advanced Filters State
     const [filterStage, setFilterStage] = useState('all');
     const [filterScore, setFilterScore] = useState('all');
@@ -202,7 +204,25 @@ export default function LeadsPage() {
         fetchCurrentUser();
         fetchStages();
         fetchScores();
+        fetchStages();
+        fetchScores();
+
+        // Load Goal from local storage
+        const savedGoal = localStorage.getItem('leads_daily_goal');
+        if (savedGoal) {
+            setDailyGoal(parseInt(savedGoal));
+            setTempGoal(savedGoal);
+        }
     }, []);
+
+    const saveGoal = () => {
+        const val = parseInt(tempGoal);
+        if (!isNaN(val) && val > 0) {
+            setDailyGoal(val);
+            localStorage.setItem('leads_daily_goal', val.toString());
+        }
+        setIsEditingGoal(false);
+    }
 
     const getScoreBadge = (score: string) => {
         const scoreConfig = scores.find(s => s.value === score);
