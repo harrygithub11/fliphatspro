@@ -46,7 +46,8 @@ export async function POST(request: Request) {
             // Let's set a simple notification in notes if anything
             const inquiryNote = `Inquiry from Website - See Project Tab for details.`;
 
-            const budgetVal = parseFloat(budget?.replace(/[^0-9.]/g, '') || '0');
+            // Budget is now a string to support ranges (e.g. "$1k - $5k")
+            const budgetVal = budget || null;
             const tagsVal = JSON.stringify(services);
 
             // 1. Check if customer exists

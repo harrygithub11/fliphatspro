@@ -299,7 +299,7 @@ export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, stag
                                     <div className="space-y-1.5">
                                         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Budget</span>
                                         <div className="flex items-center gap-2 p-2 bg-background border rounded-md">
-                                            <span className="font-mono text-sm">{lead?.budget ? `$${lead.budget}` : 'Not specified'}</span>
+                                            <span className="font-mono text-sm">{lead?.budget || 'Not specified'}</span>
                                         </div>
                                     </div>
                                 </div>

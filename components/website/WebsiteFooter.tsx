@@ -129,14 +129,24 @@ const WebsiteFooter = () => {
                         <h4 className="text-body font-display font-bold mb-4">Get in Touch</h4>
                         <div className="space-y-3">
                             <a
-                                href="mailto:hello@fliphats.com"
+                                href="mailto:contact@fliphats.com"
                                 className="flex items-start space-x-2 text-body-sm text-paper/70 hover:text-accent transition-colors duration-300 group"
                             >
                                 <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className="mt-0.5 flex-shrink-0">
                                     <path d="M3 4H17C17.55 4 18 4.45 18 5V15C18 15.55 17.55 16 17 16H3C2.45 16 2 15.55 2 15V5C2 4.45 2.45 4 3 4Z" stroke="currentColor" strokeWidth="1.5" />
                                     <path d="M18 5L10 11L2 5" stroke="currentColor" strokeWidth="1.5" />
                                 </svg>
-                                <span className="group-hover:underline">hello@fliphats.com</span>
+                                <span className="group-hover:underline">contact@fliphats.com</span>
+                            </a>
+
+                            <a
+                                href="tel:+919602003790"
+                                className="flex items-start space-x-2 text-body-sm text-paper/70 hover:text-accent transition-colors duration-300 group"
+                            >
+                                <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className="mt-0.5 flex-shrink-0">
+                                    <path d="M18 14.5V17C18 17.55 17.55 18 17 18C8.16 18 1 10.84 1 2C1 1.45 1.45 1 2 1H4.5C5.05 1 5.5 1.45 5.5 2C5.5 3.25 5.7 4.45 6.07 5.57C6.18 5.92 6.1 6.31 5.82 6.59L4.62 7.79C5.87 10.62 8.38 13.13 11.21 14.38L12.41 13.18C12.69 12.9 13.08 12.82 13.43 12.93C14.55 13.3 15.75 13.5 17 13.5C17.55 13.5 18 13.95 18 14.5Z" stroke="currentColor" strokeWidth="1.5" />
+                                </svg>
+                                <span className="group-hover:underline">+91 9602003790</span>
                             </a>
 
                             <a

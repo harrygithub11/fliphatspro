@@ -32,7 +32,7 @@ interface Customer {
     avatar_url?: string;
     created_at: string;
     location?: string;
-    budget?: number;
+    budget?: string;
     ltv?: number;
     notes?: string;
     company?: string;
@@ -1134,7 +1134,7 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
                                             <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Budget</span>
                                         </div>
                                         <div className="p-3 bg-white dark:bg-zinc-900 border rounded-lg shadow-sm flex items-center gap-2">
-                                            <span className="font-mono text-base font-medium">{lead?.budget ? `$${lead.budget}` : 'Not specified'}</span>
+                                            <span className="font-mono text-base font-medium">{lead?.budget || 'Not specified'}</span>
                                             {lead?.budget && <Badge variant="secondary" className="text-[10px]">Estimated</Badge>}
                                         </div>
                                     </div>
@@ -1300,7 +1300,15 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
                                         </div>
                                         <div className="space-y-2">
                                             <Label>Budget</Label>
-                                            <Input type="number" value={lead.budget || ''} onChange={(e) => updateLead('budget', e.target.value)} />
+                                            <Input type="text" value={lead.budget || ''} onChange={(e) => updateLead('budget', e.target.value)} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Company</Label>
+                                            <Input value={lead.company || ''} onChange={(e) => updateLead('company', e.target.value)} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Project Desc</Label>
+                                            <Textarea value={lead.project_desc || ''} onChange={(e) => updateLead('project_desc', e.target.value)} className="min-h-[60px]" />
                                         </div>
                                         <div className="space-y-2">
                                             <Label>LTV (Lifetime Value)</Label>

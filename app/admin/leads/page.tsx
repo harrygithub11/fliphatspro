@@ -45,7 +45,7 @@ interface Customer {
     total_activities?: number;
     new_activity_count?: number;
     location?: string;
-    budget?: number;
+    budget?: string;
     ltv?: number;
     notes?: string;
     tags?: string | any;
@@ -79,6 +79,8 @@ export default function LeadsPage() {
     const [newLeadPhone, setNewLeadPhone] = useState('');
     const [newLeadLocation, setNewLeadLocation] = useState('');
     const [newLeadBudget, setNewLeadBudget] = useState('');
+    const [newLeadCompany, setNewLeadCompany] = useState('');
+    const [newLeadProjectDesc, setNewLeadProjectDesc] = useState('');
     const [newLeadNotes, setNewLeadNotes] = useState('');
     const [newLeadSource, setNewLeadSource] = useState('manual');
 
@@ -251,7 +253,10 @@ export default function LeadsPage() {
                     phone: newLeadPhone,
                     source: newLeadSource,
                     location: newLeadLocation,
+                    location: newLeadLocation,
                     budget: newLeadBudget,
+                    company: newLeadCompany,
+                    project_desc: newLeadProjectDesc,
                     notes: newLeadNotes,
                     // Ad Data
                     platform: newLeadPlatform,
@@ -272,7 +277,10 @@ export default function LeadsPage() {
                 setNewLeadEmail('');
                 setNewLeadPhone('');
                 setNewLeadLocation('');
+                setNewLeadLocation('');
                 setNewLeadBudget('');
+                setNewLeadCompany('');
+                setNewLeadProjectDesc('');
                 setNewLeadNotes('');
                 setNewLeadSource('manual');
                 setNewLeadPlatform('');
@@ -584,7 +592,15 @@ export default function LeadsPage() {
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
                                     <Label className="text-right">Budget</Label>
-                                    <Input id="budget" type="number" className="col-span-3" placeholder="0.00" value={newLeadBudget} onChange={e => setNewLeadBudget(e.target.value)} />
+                                    <Input id="budget" type="text" className="col-span-3" placeholder="e.g. $1k - $5k" value={newLeadBudget} onChange={e => setNewLeadBudget(e.target.value)} />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label className="text-right">Company</Label>
+                                    <Input id="company" className="col-span-3" placeholder="Company Name" value={newLeadCompany} onChange={e => setNewLeadCompany(e.target.value)} />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label className="text-right">Proj. Desc</Label>
+                                    <Input id="project_desc" className="col-span-3" placeholder="Brief project details..." value={newLeadProjectDesc} onChange={e => setNewLeadProjectDesc(e.target.value)} />
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
                                     <Label className="text-right">Source</Label>

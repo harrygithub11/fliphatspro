@@ -37,7 +37,7 @@ export async function GET() {
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { name, email, phone, source, location, budget, notes, platform, campaign_name, ad_name } = body;
+        const { name, email, phone, source, location, budget, notes, platform, campaign_name, ad_name, company, project_desc } = body;
 
         if (!name || !email) {
             return NextResponse.json({ success: false, message: 'Name and Email are required' }, { status: 400 });
@@ -46,8 +46,8 @@ export async function POST(request: Request) {
         const connection = await pool.getConnection();
         try {
             const [result]: any = await connection.execute(
-                'INSERT INTO customers (name, email, phone, source, location, budget, notes, platform, campaign_name, ad_name, stage, score) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                [name, email, phone || '', source || 'Manual', location || '', budget || 0, notes || '', platform || '', campaign_name || '', ad_name || '', 'new', 'cold']
+                'INSERT INTO customers (name, email, phone, source, location, budget, notes, platform, campaign_name, ad_name, company, project_desc, stage, score) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [name, email, phone || '', source || 'Manual', location || '', budget || null, notes || '', platform || '', campaign_name || '', ad_name || '', company || '', project_desc || '', 'new', 'cold']
             );
             const leadId = result.insertId;
 
