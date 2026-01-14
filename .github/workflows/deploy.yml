@@ -1,0 +1,38 @@
+name: Deploy to Fliphats.com VPS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: 22
+          script: |
+            # Navigate to the project directory
+            cd /home/fliphats/htdocs/fliphats.com
+
+            # Pull the latest code
+            git pull origin main
+
+            # Install dependencies and Build
+            npm install
+            npm run build
+
+            # Prune old dependencies found in node_modules to save space
+            npm prune --production
+
+            # Restart PM2 Services
+            # We restart specific IDs or names to ensure stability
+            pm2 restart fliphats-web --update-env
+            pm2 restart fliphats-worker --update-env
+            pm2 restart fliphats-imap --update-env

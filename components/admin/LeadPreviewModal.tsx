@@ -106,8 +106,8 @@ export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, stag
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="w-[700px] h-[85vh] max-w-[95vw] grid grid-rows-[auto_auto_1fr_auto] grid-cols-[100%] p-0 gap-0 overflow-hidden overflow-x-hidden">
                 {/* Header Profile Section */}
-                <div className="bg-muted/30 p-6 border-b shrink-0">
-                    <div className="flex justify-between items-start mb-4">
+                <div className="bg-muted/30 p-6 pr-10 border-b shrink-0">
+                    <div className="flex justify-between items-start gap-4">
                         <div className="flex gap-4">
                             <Avatar className="h-16 w-16 border-2 border-background shadow-sm">
                                 <AvatarImage src={lead.avatar_url} />
@@ -139,15 +139,11 @@ export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, stag
                                 </div>
                             </div>
                         </div>
-                        <div className="flex flex-col gap-2 items-end">
-                            <Select value={lead.status} onValueChange={(v) => handleUpdate('status', v)}> {/* Assuming 'status' or 'order_status'? No, leads usually have 'stage' or 'order_status' */}
-                                {/* Wait, lead table uses 'stage' and 'order_status'. Let's check stages prop. */}
-                            </Select>
-
-                            {/* QUICK CONTROLS */}
-                            <div className="flex gap-2">
+                        <div className="flex flex-col gap-3 items-end shrink-0">
+                            {/* Status & Score Row */}
+                            <div className="flex items-center gap-2">
                                 <Select value={lead?.stage} onValueChange={(v) => handleUpdate('stage', v)}>
-                                    <SelectTrigger className="h-8 w-[140px] text-xs">
+                                    <SelectTrigger className="h-8 w-[140px] text-xs bg-background">
                                         <SelectValue placeholder="Stage" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -155,7 +151,7 @@ export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, stag
                                     </SelectContent>
                                 </Select>
                                 <Select value={lead?.score} onValueChange={(v) => handleUpdate('score', v)}>
-                                    <SelectTrigger className="h-8 w-[100px] text-xs">
+                                    <SelectTrigger className="h-8 w-[100px] text-xs bg-background">
                                         <SelectValue placeholder="Score" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -164,10 +160,11 @@ export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, stag
                                 </Select>
                             </div>
 
-                            <div className="flex items-center gap-2 mt-1">
-                                <span className="text-xs text-muted-foreground hidden sm:inline-block">Owner:</span>
+                            {/* Owner Row */}
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Owner</span>
                                 <Select value={lead?.owner} onValueChange={(v) => handleUpdate('owner', v)}>
-                                    <SelectTrigger className="h-8 text-xs border-none bg-transparent hover:bg-muted/50 p-1 px-2 rounded-full shadow-none w-fit min-w-[fit-content] justify-end gap-2 ring-0 focus:ring-0">
+                                    <SelectTrigger className="h-7 text-xs border-none bg-transparent hover:bg-black/5 dark:hover:bg-white/5 p-1 px-2 rounded-md shadow-none w-fit min-w-[fit-content] justify-end gap-2 ring-0 focus:ring-0">
                                         <SelectValue placeholder="Unassigned">
                                             {lead?.owner && lead.owner !== 'unassigned' ? (
                                                 <div className="flex items-center gap-2">
@@ -175,13 +172,13 @@ export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, stag
                                                         const admin = admins.find(a => a.name === lead.owner);
                                                         return (
                                                             <>
-                                                                <Avatar className="h-5 w-5">
+                                                                <Avatar className="h-4 w-4">
                                                                     <AvatarImage src={admin?.avatar_url} />
-                                                                    <AvatarFallback className="text-[9px] bg-primary/10 text-primary">
+                                                                    <AvatarFallback className="text-[8px] bg-primary/10 text-primary">
                                                                         {lead.owner.substring(0, 2).toUpperCase()}
                                                                     </AvatarFallback>
                                                                 </Avatar>
-                                                                <span className="font-medium">{lead.owner}</span>
+                                                                <span className="font-medium truncate max-w-[100px]">{lead.owner}</span>
                                                             </>
                                                         );
                                                     })()}
@@ -191,7 +188,7 @@ export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, stag
                                             )}
                                         </SelectValue>
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent align="end">
                                         <SelectItem value="unassigned">Unassigned</SelectItem>
                                         {admins.map(a => (
                                             <SelectItem key={a.id} value={a.name}>
