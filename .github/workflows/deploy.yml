@@ -31,6 +31,6 @@ jobs:
 
             # Restart PM2 Services
             # We restart specific IDs or names to ensure stability
-            pm2 restart fliphats-web --update-env
-            pm2 restart fliphats-worker --update-env
-            pm2 restart fliphats-imap --update-env
+            pm2 restart fliphatspro-web --update-env || pm2 start ecosystem.config.js
+            pm2 restart fliphatspro-worker --update-env || echo "Worker not running"
+            pm2 restart fliphatspro-imap --update-env || echo "IMAP not running"
