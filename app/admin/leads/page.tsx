@@ -746,6 +746,54 @@ export default function LeadsPage() {
                             </DropdownMenuContent>
                         </DropdownMenu>
 
+                        {/* Set Stage */}
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="text-white hover:text-white hover:bg-zinc-800 gap-2 h-8">
+                                    <Target className="w-4 h-4" /> Set Stage
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="p-1 w-56 bg-zinc-900 border-zinc-800 text-white">
+                                <DropdownMenuLabel>Change Stage To...</DropdownMenuLabel>
+                                {stages.map(stage => (
+                                    <DropdownMenuItem
+                                        key={stage.id}
+                                        onClick={() => handleBulkAction('update_status', { stage: stage.value })}
+                                        className="hover:bg-zinc-800 cursor-pointer focus:bg-zinc-800 focus:text-white"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: stage.color }}></div>
+                                            {stage.label}
+                                        </div>
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        {/* Set Score */}
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="text-white hover:text-white hover:bg-zinc-800 gap-2 h-8">
+                                    <Activity className="w-4 h-4" /> Set Score
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="p-1 w-56 bg-zinc-900 border-zinc-800 text-white">
+                                <DropdownMenuLabel>Change Score To...</DropdownMenuLabel>
+                                {scores.map(score => (
+                                    <DropdownMenuItem
+                                        key={score.id}
+                                        onClick={() => handleBulkAction('update_score', { score: score.value })}
+                                        className="hover:bg-zinc-800 cursor-pointer focus:bg-zinc-800 focus:text-white"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <span>{score.emoji}</span>
+                                            {score.label}
+                                        </div>
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="sm" className="text-white hover:text-white hover:bg-zinc-800 gap-2 h-8">
