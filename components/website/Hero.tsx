@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, Variants } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
 
 const Hero = () => {
@@ -26,7 +26,7 @@ const Hero = () => {
         return () => clearInterval(interval)
     }, [])
 
-    const containerVariants = {
+    const containerVariants: Variants = {
         hidden: { opacity: 0 },
         visible: {
             opacity: 1,
@@ -37,7 +37,7 @@ const Hero = () => {
         }
     }
 
-    const itemVariants = {
+    const itemVariants: Variants = {
         hidden: { opacity: 0, y: 30 },
         visible: {
             opacity: 1,
@@ -49,7 +49,7 @@ const Hero = () => {
         }
     }
 
-    const flipVariants = {
+    const flipVariants: Variants = {
         hidden: {
             opacity: 0,
             rotateY: -15,
