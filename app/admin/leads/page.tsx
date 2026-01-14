@@ -26,6 +26,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tag, UserPlus, FileEdit } from 'lucide-react';
+import { CSVImportModal } from '@/components/admin/CSVImportModal';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { toast } from '@/hooks/use-toast';
+import { LeadPreviewModal } from '@/components/admin/LeadPreviewModal';
 
 interface Customer {
     id: number;
@@ -106,9 +110,6 @@ export default function LeadsPage() {
     const [selectedLeads, setSelectedLeads] = useState<number[]>([]);
     const [isBulkActionLoading, setIsBulkActionLoading] = useState(false);
     const [bulkTagOpen, setBulkTagOpen] = useState(false);
-    const [bulkTagOpen, setBulkTagOpen] = useState(false);
-    const [bulkTagValue, setBulkTagValue] = useState('');
-
     const [bulkTagValue, setBulkTagValue] = useState('');
 
     // Goal State
@@ -202,8 +203,6 @@ export default function LeadsPage() {
         fetchLeads();
         fetchAdmins();
         fetchCurrentUser();
-        fetchStages();
-        fetchScores();
         fetchStages();
         fetchScores();
 
