@@ -970,7 +970,7 @@ export default function LeadsPage() {
                 admins={admins}
                 onUpdate={() => {
                     // Refresh listing silently
-                    fetch('/api/admin/leads')
+                    fetch(`/api/admin/leads?t=${new Date().getTime()}`)
                         .then(res => res.json())
                         .then(data => {
                             if (Array.isArray(data)) setLeads(data);
