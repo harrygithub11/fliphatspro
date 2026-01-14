@@ -26,10 +26,8 @@ jobs:
 
             # Install dependencies and Build
             npm install
+            npx prisma generate
             npm run build
-
-            # Prune old dependencies found in node_modules to save space
-            npm prune --production
 
             # Restart PM2 Services
             # We restart specific IDs or names to ensure stability
