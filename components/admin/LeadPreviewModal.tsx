@@ -227,8 +227,8 @@ export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, stag
                         </TabsList>
                     </div>
 
-                    {/* Content Area - Flex Container */}
-                    <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-zinc-50/50 dark:bg-zinc-900/50 relative">
+                    {/* Content Area - Constrained Height */}
+                    <div className="flex-1 flex flex-col min-h-0 max-h-[calc(90vh-280px)] overflow-hidden bg-zinc-50/50 dark:bg-zinc-900/50">
                         {activeTab === 'timeline' && (
                             <div className="flex flex-col h-full">
                                 {loading ? (
@@ -357,7 +357,7 @@ export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, stag
                         )}
                     </div>
 
-                    <div className="p-4 border-t bg-background shrink-0 flex justify-between items-center">
+                    <div className="p-4 border-t bg-background shrink-0 flex justify-between items-center z-20 relative shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                         <span className="text-xs text-muted-foreground">
                             Last updated: {details?.profile ? new Date(details.profile.created_at).toLocaleDateString() : 'Just now'}
                         </span>
