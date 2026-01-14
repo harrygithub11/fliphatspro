@@ -73,6 +73,8 @@ model Customer {
   tags         Json?
   owner        String?       @default("unassigned")
   location     String?       @db.VarChar(255)
+  company      String?       @db.VarChar(255)
+  project_desc String?       @db.Text
   
   // Facebook Lead Gen fields
   ad_id           String? @db.VarChar(191)

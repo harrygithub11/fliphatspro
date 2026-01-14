@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import {
     Phone, Mail, Globe, Calendar, Clock,
     MessageSquare, PhoneCall, FileText, CheckCircle2,
-    Plus, Send, Paperclip, Rocket, MapPin, StickyNote, Pencil, X
+    Plus, Send, Paperclip, Rocket, MapPin, StickyNote, Pencil, X, Briefcase
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -35,6 +35,8 @@ interface Customer {
     budget?: number;
     ltv?: number;
     notes?: string;
+    company?: string;
+    project_desc?: string;
     // FB / Ad Data
     fb_lead_id?: string;
     fb_created_time?: string;
@@ -1017,8 +1019,9 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
                 <Card className="h-full flex flex-col shadow-none border-l-0 rounded-l-none bg-transparent p-0">
                     <Tabs defaultValue="timeline" className="flex-1 flex flex-col h-full overflow-hidden">
                         <div className="px-4 pt-4 shrink-0">
-                            <TabsList className="w-full grid grid-cols-3">
+                            <TabsList className="w-full grid grid-cols-4">
                                 <TabsTrigger value="timeline">Timeline</TabsTrigger>
+                                <TabsTrigger value="project">Project Details</TabsTrigger>
                                 <TabsTrigger value="files">Files</TabsTrigger>
                                 <TabsTrigger value="emails">Emails</TabsTrigger>
                             </TabsList>
@@ -1108,6 +1111,68 @@ export default function LeadProfilePage({ params }: { params: { id: string } }) 
                                         <Button size="sm" className="gap-2" onClick={() => handleLogActivity()} disabled={submitting}>
                                             <Send className="w-3 h-3" /> {submitting ? 'Saving...' : 'Log Activity'}
                                         </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="project" className="p-6 h-[calc(100%-3.5rem)] overflow-y-auto">
+                            <div className="space-y-6 max-w-3xl">
+                                {/* Company & Budget */}
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <Briefcase className="w-4 h-4 text-primary" />
+                                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Company / Org</span>
+                                        </div>
+                                        <div className="p-3 bg-white dark:bg-zinc-900 border rounded-lg shadow-sm">
+                                            <span className="font-semibold text-base">{lead?.company || 'N/A'}</span>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Budget</span>
+                                        </div>
+                                        <div className="p-3 bg-white dark:bg-zinc-900 border rounded-lg shadow-sm flex items-center gap-2">
+                                            <span className="font-mono text-base font-medium">{lead?.budget ? `$${lead.budget}` : 'Not specified'}</span>
+                                            {lead?.budget && <Badge variant="secondary" className="text-[10px]">Estimated</Badge>}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <Separator />
+
+                                {/* Services */}
+                                <div className="space-y-3">
+                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Services Requested</span>
+                                    <div className="flex flex-wrap gap-2">
+                                        {(() => {
+                                            try {
+                                                const tags = typeof lead?.tags === 'string' ? JSON.parse(lead.tags) : lead?.tags;
+                                                if (Array.isArray(tags) && tags.length > 0) {
+                                                    return tags.map((tag: string, i: number) => (
+                                                        <Badge key={i} variant="secondary" className="px-3 py-1.5 text-sm font-normal">
+                                                            {tag}
+                                                        </Badge>
+                                                    ));
+                                                }
+                                                return <span className="text-sm text-muted-foreground italic">No services selected</span>;
+                                            } catch (e) {
+                                                return <span className="text-sm text-muted-foreground italic">Error parsing services</span>;
+                                            }
+                                        })()}
+                                    </div>
+                                </div>
+
+                                <Separator />
+
+                                {/* Project Description */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Project Description</span>
+                                    </div>
+                                    <div className="p-6 bg-white dark:bg-zinc-900 border rounded-xl shadow-sm text-sm leading-7 whitespace-pre-wrap text-foreground/90">
+                                        {lead?.project_desc || <span className="text-muted-foreground italic">No description provided.</span>}
                                     </div>
                                 </div>
                             </div>

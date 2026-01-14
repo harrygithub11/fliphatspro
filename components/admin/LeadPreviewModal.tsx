@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Phone, Mail, MapPin, Calendar, ExternalLink, MessageSquare, StickyNote, Plus, Clock, Activity } from 'lucide-react';
+import { Phone, Mail, MapPin, Calendar, ExternalLink, MessageSquare, StickyNote, Plus, Clock, Activity, Briefcase } from 'lucide-react';
 import Link from 'next/link';
 import { useComposeEmail } from '@/context/ComposeEmailContext';
 
@@ -215,6 +215,9 @@ export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, stag
                             <TabsTrigger value="timeline" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none px-4 h-10 bg-transparent">
                                 <Activity className="w-4 h-4 mr-2" /> Activity
                             </TabsTrigger>
+                            <TabsTrigger value="project" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none px-4 h-10 bg-transparent">
+                                <Briefcase className="w-4 h-4 mr-2" /> Project
+                            </TabsTrigger>
                             <TabsTrigger value="notes" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none px-4 h-10 bg-transparent">
                                 <StickyNote className="w-4 h-4 mr-2" /> Notes
                             </TabsTrigger>
@@ -279,6 +282,57 @@ export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, stag
                                         </div>
                                     </>
                                 )}
+                            </div>
+                        )}
+
+                        {activeTab === 'project' && (
+                            <div className="p-6 space-y-6">
+                                {/* Company & Budget */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Company</span>
+                                        <div className="flex items-center gap-2 p-2 bg-background border rounded-md">
+                                            <Briefcase className="w-4 h-4 text-muted-foreground" />
+                                            <span className="font-medium text-sm">{lead?.company || 'N/A'}</span>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Budget</span>
+                                        <div className="flex items-center gap-2 p-2 bg-background border rounded-md">
+                                            <span className="font-mono text-sm">{lead?.budget ? `$${lead.budget}` : 'Not specified'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Services */}
+                                <div className="space-y-2">
+                                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Services Requested</span>
+                                    <div className="flex flex-wrap gap-2">
+                                        {(() => {
+                                            try {
+                                                const tags = typeof lead?.tags === 'string' ? JSON.parse(lead.tags) : lead?.tags;
+                                                if (Array.isArray(tags) && tags.length > 0) {
+                                                    return tags.map((tag: string, i: number) => (
+                                                        <Badge key={i} variant="outline" className="px-3 py-1 bg-primary/5 border-primary/20 text-primary">
+                                                            {tag}
+                                                        </Badge>
+                                                    ));
+                                                }
+                                                return <span className="text-sm text-muted-foreground italic">No services selected</span>;
+                                            } catch (e) {
+                                                return <span className="text-sm text-muted-foreground italic">Error parsing services</span>;
+                                            }
+                                        })()}
+                                    </div>
+                                </div>
+
+                                {/* Project Description */}
+                                <div className="space-y-2">
+                                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Project Description</span>
+                                    <div className="p-4 bg-background border rounded-md text-sm leading-relaxed whitespace-pre-wrap">
+                                        {lead?.project_desc || <span className="text-muted-foreground italic">No description provided.</span>}
+                                    </div>
+                                </div>
                             </div>
                         )}
 
