@@ -38,38 +38,52 @@ export async function POST(request: Request) {
                 ${description || 'No description provided'}
             `.trim();
 
-            const [result]: any = await connection.execute(
-                `INSERT INTO customers 
-                (name, email, phone, source, notes, stage, score, budget, tags, created_at, updated_at) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-                ON DUPLICATE KEY UPDATE 
-                    notes = CONCAT(COALESCE(notes, ''), '\n\n-- New Inquiry --\n', VALUES(notes)),
-                    updated_at = NOW()`,
-                [
-                    name,
-                    email,
-                    phone || '',
-                    'Website',
-                    fullNote,
-                    'new',
-                    'warm', // Serious inquiry
-                    parseFloat(budget?.replace(/[^0-9.]/g, '') || '0'), // Attempt to parse clean number
-                    JSON.stringify(services) // Store tags as JSON
-                ]
+            const budgetVal = parseFloat(budget?.replace(/[^0-9.]/g, '') || '0');
+            const tagsVal = JSON.stringify(services);
+
+            // 1. Check if customer exists
+            const [rows]: any = await connection.execute(
+                'SELECT id FROM customers WHERE email = ?',
+                [email]
             );
 
-            let leadId = result.insertId;
+            let leadId = null;
 
-            // If updated (duplicate), insertId might be 0. Fetch the ID.
-            if (!leadId) {
-                const [rows]: any = await connection.execute('SELECT id FROM customers WHERE email = ?', [email]);
-                if (rows.length > 0) {
-                    leadId = rows[0].id;
-                }
+            if (rows.length > 0) {
+                // 2. Update existing customer
+                leadId = rows[0].id;
+                await connection.execute(
+                    `UPDATE customers 
+                     SET notes = CONCAT(COALESCE(notes, ''), '\n\n-- New Inquiry --\n', ?),
+                         updated_at = NOW(),
+                         score = 'warm',
+                         stage = IF(stage = 'new', 'contacted', stage) 
+                     WHERE id = ?`,
+                    [fullNote, leadId]
+                );
+            } else {
+                // 3. Create new customer
+                const [result]: any = await connection.execute(
+                    `INSERT INTO customers 
+                    (name, email, phone, source, notes, stage, score, budget, tags, created_at, updated_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+                    [
+                        name,
+                        email,
+                        phone || '',
+                        'Website',
+                        fullNote,
+                        'new',
+                        'warm',
+                        budgetVal,
+                        tagsVal
+                    ]
+                );
+                leadId = result.insertId;
             }
 
+            // 4. Log Interaction
             if (leadId) {
-                // Log Interaction
                 await connection.execute(
                     'INSERT INTO interactions (customer_id, type, content, created_at) VALUES (?, ?, ?, NOW())',
                     [
@@ -89,7 +103,7 @@ export async function POST(request: Request) {
     } catch (error: any) {
         console.error("Contact API Error:", error);
         return NextResponse.json(
-            { success: false, message: 'Internal Server Error', error: error.message },
+            { success: false, message: 'Internal Server Error', error: error.message || String(error) },
             { status: 500 }
         );
     }

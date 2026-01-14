@@ -78,7 +78,8 @@ const FinalCTA = () => {
             if (res.ok) {
                 setIsSuccess(true)
             } else {
-                alert("Something went wrong. Please try again.")
+                const data = await res.json().catch(() => ({}));
+                alert(`Error: ${data.message || data.error || "Something went wrong. Please try again."}`)
             }
         } catch (error) {
             console.error(error)
@@ -263,8 +264,8 @@ const FinalCTA = () => {
                                                                     key={s} type="button"
                                                                     onClick={() => toggleService(s)}
                                                                     className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all ${formData.services.includes(s)
-                                                                            ? 'bg-accent text-ink border-accent'
-                                                                            : 'bg-transparent text-ink/60 border-neutral-200 hover:border-accent/50'
+                                                                        ? 'bg-accent text-ink border-accent'
+                                                                        : 'bg-transparent text-ink/60 border-neutral-200 hover:border-accent/50'
                                                                         }`}
                                                                 >
                                                                     {s}
