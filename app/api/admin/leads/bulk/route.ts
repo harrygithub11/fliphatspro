@@ -87,6 +87,14 @@ export async function POST(req: Request) {
             return NextResponse.json({ success: true, message: `Assigned ${leadIds.length} leads to ${data.owner}` });
         }
 
+        if (action === 'update_score') {
+            await prisma.customer.updateMany({
+                where: { id: { in: leadIds } },
+                data: { score: data.score }
+            });
+            return NextResponse.json({ success: true, message: `Updated score for ${leadIds.length} leads` });
+        }
+
         return NextResponse.json({ success: false, message: 'Invalid action' }, { status: 400 });
     } catch (error) {
         console.error('Bulk action error:', error);
