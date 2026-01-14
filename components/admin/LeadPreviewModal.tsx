@@ -228,7 +228,7 @@ export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, stag
                     </div>
 
                     {/* Content Area - Scrollable */}
-                    <div className="overflow-y-auto overflow-x-hidden bg-zinc-50/50 dark:bg-zinc-900/50">
+                    <div className="overflow-y-auto overflow-x-hidden bg-zinc-50/50 dark:bg-zinc-900/50 w-full min-w-0">
                         {activeTab === 'timeline' && (
                             <div className="flex flex-col">
                                 {loading ? (
@@ -239,11 +239,11 @@ export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, stag
                                     <>
                                         {/* Quick Note Input - Fixed at Top */}
                                         <div className="p-4 border-b bg-white dark:bg-zinc-900 shrink-0 z-10 shadow-sm">
-                                            <div className="flex gap-3">
+                                            <div className="flex gap-3 min-w-0">
                                                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary">
                                                     <MessageSquare className="w-4 h-4" />
                                                 </div>
-                                                <div className="flex-1 space-y-2">
+                                                <div className="flex-1 min-w-0 space-y-2">
                                                     <Textarea
                                                         placeholder="Add a quick note or update..."
                                                         className="min-h-[80px] text-sm resize-none bg-background font-normal focus-visible:ring-1"
@@ -259,22 +259,21 @@ export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, stag
                                             </div>
                                         </div>
 
-                                        {/* Timeline Items */}
-                                        <div className="p-6 pb-8">
-                                            <div className="relative pl-4 border-l border-border/60 space-y-8">
+                                        <div className="p-6 pb-8 min-w-0 w-full">
+                                            <div className="relative pl-4 border-l border-border/60 space-y-8 min-w-0">
                                                 {timeline.length === 0 ? (
                                                     <div className="text-sm text-muted-foreground pl-4 italic">No activity yet.</div>
                                                 ) : (
                                                     timeline.map((item: any) => (
                                                         <div key={item.id} className="relative pl-6 group">
                                                             <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-zinc-200 border-2 border-white dark:border-zinc-950 dark:bg-zinc-700 group-hover:bg-primary transition-colors"></div>
-                                                            <div className="flex flex-col gap-1">
+                                                            <div className="flex flex-col gap-1 min-w-0">
                                                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                                                     <span className="font-medium text-foreground">{item.created_by_name || 'System'}</span>
                                                                     <span>•</span>
                                                                     <span>{new Date(item.created_at).toLocaleString()}</span>
                                                                 </div>
-                                                                <p className="text-sm text-foreground/90 whitespace-pre-wrap break-words">{item.content}</p>
+                                                                <p className="text-sm text-foreground/90 whitespace-pre-wrap break-words overflow-hidden">{item.content}</p>
                                                             </div>
                                                         </div>
                                                     ))
