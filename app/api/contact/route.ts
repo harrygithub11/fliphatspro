@@ -26,11 +26,6 @@ export async function POST(request: Request) {
 
         const connection = await pool.getConnection();
         try {
-            // Check if customer exists by email to avoid duplicates (optional, but good practice)
-            // For now, we'll let the UNIQUE constraint on email handle it or insert ignore/update
-            // But Prisma/SQL allows handling this. We'll try to Insert, if fails, we might update or just error.
-            // Simplified: Just Insert.
-
             // Format Notes
             const serviceTags = Array.isArray(services) ? services.join(', ') : services;
             const fullNote = `
@@ -48,7 +43,7 @@ export async function POST(request: Request) {
                 (name, email, phone, source, notes, stage, score, budget, tags, created_at, updated_at) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
                 ON DUPLICATE KEY UPDATE 
-                    notes = CONCAT(notes, '\n\n-- New Inquiry --\n', VALUES(notes)),
+                    notes = CONCAT(COALESCE(notes, ''), '\n\n-- New Inquiry --\n', VALUES(notes)),
                     updated_at = NOW()`,
                 [
                     name,
@@ -63,18 +58,27 @@ export async function POST(request: Request) {
                 ]
             );
 
-            const leadId = result.insertId || result.insertId; // If update, insertId might be 0 or same. 
-            // Note: mysql2/mysql insertId behavior on update varies, reliable way is select if 0.
+            let leadId = result.insertId;
 
-            // Log Interaction
-            await connection.execute(
-                'INSERT INTO interactions (customer_id, type, content, created_at) VALUES (?, ?, ?, NOW())',
-                [
-                    leadId,
-                    'lead_created',
-                    `New Website Inquiry from ${name}. Services: ${serviceTags}`
-                ]
-            );
+            // If updated (duplicate), insertId might be 0. Fetch the ID.
+            if (!leadId) {
+                const [rows]: any = await connection.execute('SELECT id FROM customers WHERE email = ?', [email]);
+                if (rows.length > 0) {
+                    leadId = rows[0].id;
+                }
+            }
+
+            if (leadId) {
+                // Log Interaction
+                await connection.execute(
+                    'INSERT INTO interactions (customer_id, type, content, created_at) VALUES (?, ?, ?, NOW())',
+                    [
+                        leadId,
+                        'lead_created',
+                        `New Website Inquiry from ${name}. Services: ${serviceTags}`
+                    ]
+                );
+            }
 
             return NextResponse.json({ success: true, message: 'Inquiry received' });
 
@@ -82,10 +86,10 @@ export async function POST(request: Request) {
             connection.release();
         }
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Contact API Error:", error);
         return NextResponse.json(
-            { success: false, message: 'Internal Server Error' },
+            { success: false, message: 'Internal Server Error', error: error.message },
             { status: 500 }
         );
     }
