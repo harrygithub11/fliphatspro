@@ -501,142 +501,61 @@ export default function LeadsPage() {
 
     return (
         <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {/* Total Leads */}
-                <Card className="shadow-none border-none bg-zinc-50 dark:bg-zinc-900/50">
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{filtered.length !== leads.length ? 'Filtered Leads' : 'Total Leads'}</p>
-                            <h3 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">{filtered.length}</h3>
-                            {filtered.length !== leads.length && <span className="text-xs text-muted-foreground">of {leads.length} total</span>}
-                        </div>
-                        <div className="h-10 w-10 rounded-full bg-white dark:bg-zinc-800 flex items-center justify-center text-zinc-400">
-                            <Users className="w-5 h-5" />
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* New Today */}
-                <Card className="shadow-none border-none bg-zinc-50 dark:bg-zinc-900/50">
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">New Today</p>
-                            <div className="flex items-center gap-2">
-                                <h3 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">{newLeadsToday}</h3>
-                                {newLeadsToday > 0 && <span className="text-xs font-bold text-green-600 bg-green-100 px-1.5 py-0.5 rounded-full">+{(newLeadsToday / totalLeads * 100).toFixed(1)}%</span>}
-                            </div>
-                        </div>
-                        <div className="h-10 w-10 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-500">
-                            <Activity className="w-5 h-5" />
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Growth Goal */}
-                <Card className="shadow-none border-none bg-zinc-50 dark:bg-zinc-900/50 md:col-span-2">
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-2">
-                            <div>
-                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Daily Growth Goal</p>
-                                <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">{newLeadsToday} <span className="text-muted-foreground text-sm font-normal">/ {dailyGoal} leads</span></h3>
-                            </div>
-                            <div className="text-xs font-bold text-zinc-500">{goalProgress.toFixed(0)}%</div>
-                        </div>
-                        <div className="h-2 w-full bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
-                            <div className="h-full bg-primary transition-all duration-500" style={{ width: `${goalProgress}%` }}></div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Filter Bar */}
-            <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 flex flex-wrap gap-4 items-center animate-in slide-in-from-top-4">
-                <div className="flex items-center gap-2 mr-2">
-                    <FilterIcon className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm font-bold uppercase tracking-wide">Filters:</span>
-                </div>
-
-                {/* Stage Filter */}
-                <Select value={filterStage} onValueChange={setFilterStage}>
-                    <SelectTrigger className="w-[140px] h-9 text-xs">
-                        <SelectValue placeholder="Stage" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Stages</SelectItem>
-                        {stages.map(stage => (
-                            <SelectItem key={stage.id} value={stage.value}>{stage.label}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-
-                {/* Score Filter */}
-                <Select value={filterScore} onValueChange={setFilterScore}>
-                    <SelectTrigger className="w-[130px] h-9 text-xs">
-                        <SelectValue placeholder="Score" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Scores</SelectItem>
-                        {scores.map(score => (
-                            <SelectItem key={score.id} value={score.value}>{score.label} {score.emoji}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-
-                {/* Tag Filter */}
-                <Select value={filterTag} onValueChange={setFilterTag}>
-                    <SelectTrigger className="w-[140px] h-9 text-xs">
-                        <SelectValue placeholder="Tag" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Tags</SelectItem>
-                        {allTags.map(tag => (
-                            <SelectItem key={tag} value={tag as string}>{tag}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-
-                {/* Campaign Input */}
-                <div className="relative">
-                    <Input
-                        placeholder="Campaign..."
-                        value={filterCampaign}
-                        onChange={e => setFilterCampaign(e.target.value)}
-                        className="h-9 w-[140px] text-xs"
-                    />
-                </div>
-
-                {/* Date Range Picker (Native) */}
-                <div className="flex items-center gap-2 bg-white dark:bg-zinc-800 rounded-md border border-zinc-200 dark:border-zinc-700 p-1">
-                    <Input
-                        type="date"
-                        value={dateRange.from ? format(dateRange.from, 'yyyy-MM-dd') : ''}
-                        onChange={e => setDateRange(prev => ({ ...prev, from: e.target.value ? new Date(e.target.value) : undefined }))}
-                        className="h-7 w-[120px] text-xs border-none shadow-none focus-visible:ring-0 p-1 bg-transparent"
-                    />
-                    <span className="text-zinc-400 text-xs">-</span>
-                    <Input
-                        type="date"
-                        value={dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : ''}
-                        onChange={e => setDateRange(prev => ({ ...prev, to: e.target.value ? new Date(e.target.value) : undefined }))}
-                        className="h-7 w-[120px] text-xs border-none shadow-none focus-visible:ring-0 p-1 bg-transparent"
-                    />
-                </div>
-
-                {/* Clear Filters */}
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={clearFilters}
-                    className="h-9 text-xs text-muted-foreground hover:text-black"
-                >
-                    <X className="w-3.5 h-3.5 mr-1" /> Clear
-                </Button>
-            </div>
-
-            <div className="flex items-center justify-between">
+            {/* Header of Info */}
+            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Lead Inbox</h1>
                     <p className="text-muted-foreground">The Control Room: Manage and track every potential deal.</p>
+                </div>
+
+                <div className="flex items-center gap-8 divide-x divide-zinc-200 dark:divide-zinc-800">
+                    {/* Stat: Total Leads */}
+                    <div className="px-4 first:pl-0 flex flex-col items-center">
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Leads</span>
+                        <div className="flex items-baseline gap-1">
+                            <span className="text-2xl font-bold">{filtered.length}</span>
+                            {filtered.length !== leads.length && <span className="text-[10px] text-muted-foreground">/ {leads.length}</span>}
+                        </div>
+                    </div>
+
+                    {/* Stat: New Today */}
+                    <div className="px-4 flex flex-col items-center">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">New This Week</span>
+                            {newLeadsToday > 0 && <span className="text-[10px] font-bold text-green-600 bg-green-100 px-1.5 rounded-full">+{newLeadsToday}</span>}
+                        </div>
+                        <span className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">{newLeadsToday}</span>
+                    </div>
+
+                    {/* Stat: Daily Goal */}
+                    <div className="px-4 flex flex-col items-center min-w-[140px]">
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Daily Goal</span>
+                            {isEditingGoal ? (
+                                <Input
+                                    className="h-5 w-12 text-[10px] px-1 py-0"
+                                    value={tempGoal}
+                                    onChange={e => setTempGoal(e.target.value)}
+                                    autoFocus
+                                    onKeyDown={e => e.key === 'Enter' && saveGoal()}
+                                    onBlur={saveGoal}
+                                />
+                            ) : (
+                                <button onClick={() => setIsEditingGoal(true)} className="text-muted-foreground hover:text-foreground">
+                                    <Pencil className="w-3 h-3" />
+                                </button>
+                            )}
+                        </div>
+                        <div className="w-full">
+                            <div className="flex justify-between text-[10px] mb-1 font-medium">
+                                <span>{newLeadsToday} / {dailyGoal}</span>
+                                <span>{goalProgress.toFixed(0)}%</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                                <div className="h-full bg-primary transition-all duration-500" style={{ width: `${goalProgress}%` }}></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="flex gap-2">
@@ -711,6 +630,8 @@ export default function LeadsPage() {
                     }}
                 />
             </div>
+
+            {/* Filter Bar */}
 
             {/* Bulk Action Bar */}
             {selectedLeads.length > 0 && (
