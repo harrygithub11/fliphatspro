@@ -104,7 +104,7 @@ export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, stag
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="w-[700px] h-[85vh] max-w-[95vw] grid grid-rows-[auto_auto_1fr_auto] p-0 gap-0 overflow-hidden">
+            <DialogContent className="w-[700px] h-[85vh] max-w-[95vw] grid grid-rows-[auto_auto_1fr_auto] p-0 gap-0 overflow-hidden overflow-x-hidden">
                 {/* Header Profile Section */}
                 <div className="bg-muted/30 p-6 border-b shrink-0">
                     <div className="flex justify-between items-start mb-4">
@@ -228,7 +228,7 @@ export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, stag
                     </div>
 
                     {/* Content Area - Scrollable */}
-                    <div className="overflow-y-auto bg-zinc-50/50 dark:bg-zinc-900/50">
+                    <div className="overflow-y-auto overflow-x-hidden bg-zinc-50/50 dark:bg-zinc-900/50">
                         {activeTab === 'timeline' && (
                             <div className="flex flex-col">
                                 {loading ? (
@@ -274,7 +274,7 @@ export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, stag
                                                                     <span>•</span>
                                                                     <span>{new Date(item.created_at).toLocaleString()}</span>
                                                                 </div>
-                                                                <p className="text-sm text-foreground/90 whitespace-pre-wrap">{item.content}</p>
+                                                                <p className="text-sm text-foreground/90 whitespace-pre-wrap break-words">{item.content}</p>
                                                             </div>
                                                         </div>
                                                     ))
