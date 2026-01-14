@@ -29,8 +29,17 @@ jobs:
             npx prisma generate
             npm run build
 
+            # Cleanup old/conflicting processes
+            pm2 delete fliphats-web || true
+            pm2 delete newyearlp-web || true
+            pm2 delete newyearlp-worker || true
+            pm2 delete newyearlp-imap || true
+
             # Restart PM2 Services
             # We restart specific IDs or names to ensure stability
             pm2 restart fliphatspro-web --update-env || pm2 start ecosystem.config.js
-            pm2 restart fliphatspro-worker --update-env || echo "Worker not running"
-            pm2 restart fliphatspro-imap --update-env || echo "IMAP not running"
+            pm2 restart fliphatspro-worker --update-env || echo "Worker already running or handled by ecosystem"
+            pm2 restart fliphatspro-imap --update-env || echo "IMAP already running or handled by ecosystem"
+            
+            # Save PM2 process list
+            pm2 save
