@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Calendar, Clock, Hourglass, Languages, Play } from 'lucide-react';
 import React from 'react';
 import { VideoDialog } from '@/components/landing/VideoDialog';
+import { type ABTestEventType } from '@/lib/ab-testing';
 
 interface NewYearHeroProps {
     videoThumbnail?: string;
@@ -13,7 +14,7 @@ interface NewYearHeroProps {
     announcementBadge?: string;
     ctaText?: string;
     offerEndRequest?: string | null;
-    onTrack?: (actionType?: string) => void;
+    onTrack?: (actionType?: ABTestEventType) => void;
 }
 
 export function NewYearHero({

@@ -19,7 +19,7 @@ import { Zap } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import Script from 'next/script';
 import { DEFAULT_PAGE_CONTENT } from '@/lib/constants';
-import { ABTestManager } from '@/lib/ab-testing';
+import { ABTestManager, type ABTestEventType } from '@/lib/ab-testing';
 import { deepMerge } from '@/lib/utils';
 
 // Helper to dynamic icon
@@ -71,7 +71,7 @@ export function DynamicPageContent({ content: rawContent, slug, pageId, abTests 
         cta_configuration = {}
     } = content;
 
-    const handleTrackAction = (actionType: string = 'click') => {
+    const handleTrackAction = (actionType: ABTestEventType = 'click') => {
         if (pageId && trackingInfo) {
             ABTestManager.trackEvent(pageId, trackingInfo.testId, trackingInfo.variantId, actionType);
         }

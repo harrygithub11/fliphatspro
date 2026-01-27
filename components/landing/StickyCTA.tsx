@@ -5,6 +5,7 @@ import { BookingModal } from '@/components/landing/BookingModal';
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Play } from 'lucide-react';
+import { type ABTestEventType } from '@/lib/ab-testing';
 
 interface StickyCTAProps {
     price: number;
@@ -13,7 +14,7 @@ interface StickyCTAProps {
     ctaConfig?: any; // { primary_mode, modes }
     paymentLink?: string; // Fallback
     offerEndDate?: string | null;
-    onTrack?: (actionType?: string) => void;
+    onTrack?: (actionType?: ABTestEventType) => void;
 }
 
 export function StickyCTA({ price, originalPrice = 12000, source, ctaConfig, paymentLink, offerEndDate, onTrack }: StickyCTAProps) {

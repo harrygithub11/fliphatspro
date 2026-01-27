@@ -5,6 +5,8 @@ interface Variant {
     [key: string]: any;
 }
 
+export type ABTestEventType = 'impression' | 'click' | 'conversion';
+
 export class ABTestManager {
     private static STORAGE_KEY = 'fliphats_ab_test_assignments';
 
@@ -37,7 +39,7 @@ export class ABTestManager {
         pageId: string,
         testId: string,
         variantId: string,
-        eventType: 'impression' | 'click' | 'conversion'
+        eventType: ABTestEventType
     ) {
         // Basic deduplication for impressions
         if (eventType === 'impression') {

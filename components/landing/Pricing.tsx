@@ -11,6 +11,7 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { BookingModal } from './BookingModal';
+import { type ABTestEventType } from '@/lib/ab-testing';
 
 interface PricingProps {
     price?: number;
@@ -22,7 +23,7 @@ interface PricingProps {
     source?: string;
     paymentLink?: string;
     ctaConfig?: any;
-    onTrack?: (actionType?: string) => void;
+    onTrack?: (actionType?: ABTestEventType) => void;
 }
 
 const defaultFeatures = [
