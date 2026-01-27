@@ -52,27 +52,28 @@ export async function middleware(request: NextRequest) {
     const url = nextUrl.clone();
     const hostname = request.headers.get('host') || '';
 
-    // Remove port for localhost handles
-    const cleanHostname = hostname.split(':')[0];
-
     // Determine Subdomain
     let subdomain = '';
-    // Check if localhost (including subdomains like crm.localhost)
-    const isLocal = cleanHostname.includes('localhost');
+
+    // Improved Host Parsing
+    // 1. Remove port
+    const cleanHostname = hostname.split(':')[0];
+
+    // 2. Check for Localhost (IPv4, IPv6, or exact "localhost")
+    const isLocal = cleanHostname === 'localhost' || cleanHostname === '127.0.0.1' || cleanHostname === '::1';
 
     if (isLocal) {
-        // Localhost logic
+        // Localhost logic: subdomain.localhost
         const parts = cleanHostname.split('.');
-        // e.g. localhost -> parts=[localhost] -> no subdomain
-        // e.g. crm.localhost -> parts=[crm, localhost] -> subdomain=crm
-
         if (parts.length > 1) {
             subdomain = parts[0];
         }
     } else {
-        // Production / Staging
+        // Production / Staging: subdomain.domain.com
         const parts = cleanHostname.split('.');
-        // account.fliphats.com -> subdomain = account
+        // account.fliphats.com -> 3 parts -> subdomain = account
+        // crm.fliphats.com -> 3 parts -> subdomain = crm
+        // fliphats.com -> 2 parts -> no subdomain
         if (parts.length > 2) {
             subdomain = parts[0];
         }
