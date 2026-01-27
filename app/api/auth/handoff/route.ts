@@ -13,7 +13,19 @@ export async function GET(request: Request) {
     }
 
     // Prepare response with redirect
-    const response = NextResponse.redirect(new URL(redirect, request.url));
+    // Use headers to determine true host, avoiding localhost inheritance from request.url
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'fliphats.com';
+    const proto = request.headers.get('x-forwarded-proto') || 'https';
+
+    // Ensure we don't carry over port 3057 if it's there
+    const cleanHost = host.split(':')[0];
+    const baseUrl = `${proto}://${cleanHost}`;
+
+    // Construct robust full URL
+    // If redirect path starts with /, append to base. Otherwise leave it (if it's already absolute)
+    const finalUrl = redirect.startsWith('/') ? `${baseUrl}${redirect}` : redirect;
+
+    const response = NextResponse.redirect(finalUrl);
 
     // Set cookie on the current host (e.g. crm.localhost)
     // We intentionally leave 'domain' undefined so it is HostOnly, avoiding localhost sharing issues.
