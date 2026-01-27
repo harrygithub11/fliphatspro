@@ -321,7 +321,7 @@ model FlashMessage {
 
 model Customer {
   id           Int           @id @default(autoincrement())
-  tenantId     String        @map("tenant_id") // STRICT: NOT NULL
+  tenantId     String?       @map("tenant_id") // TEMPORARY: Optional for migration
   name         String?
   email        String? // Removed unique, scoped by tenant? Or global unique? User said "No data overlap". Usually email is unique per tenant.
   phone        String?
@@ -336,7 +336,7 @@ model Customer {
   location     String?       @db.VarChar(255)
   company      String?       @db.VarChar(255)
   project_desc String?       @db.Text
-
+  
   // Facebook Lead Gen fields
   ad_id           String? @db.VarChar(191)
   ad_name         String? @db.VarChar(191)
@@ -353,7 +353,7 @@ model Customer {
   platform        String? @db.VarChar(191)
   budget          String? @db.VarChar(50)
 
-  created_by Int       @map("created_by") // STRICT: NOT NULL
+  created_by Int?      @map("created_by") // TEMPORARY: Optional for migration
   created_at DateTime? @default(now()) @db.Timestamp(0)
   updated_at DateTime? @default(now()) @updatedAt @db.Timestamp(0)
 
@@ -373,7 +373,7 @@ model Customer {
 
 model Order {
   id                  Int              @id @default(autoincrement())
-  tenantId            String           @map("tenant_id") // STRICT NOT NULL
+  tenantId            String?          @map("tenant_id") // TEMPORARY: Optional for migration
   customer_id         Int?
   razorpay_order_id   String?
   razorpay_payment_id String?
@@ -387,7 +387,7 @@ model Order {
   onboarding_status   OnboardingStatus @default(pending)
   due_date            DateTime?        @db.DateTime(0)
 
-  created_by Int       @map("created_by") // STRICT NOT NULL
+  created_by Int?      @map("created_by") // TEMPORARY: Optional for migration
   created_at DateTime? @default(now()) @db.Timestamp(0)
   updated_at DateTime? @default(now()) @updatedAt @db.Timestamp(0)
 
@@ -442,7 +442,7 @@ model Interaction {
 
 model Task {
   id               Int          @id @default(autoincrement())
-  tenantId         String       @map("tenant_id") // STRICT NOT NULL
+  tenantId         String?      @map("tenant_id") // TEMPORARY: Optional for migration
   customer_id      Int?
   related_order_id Int?
   assigned_to      Int?
@@ -452,7 +452,7 @@ model Task {
   status           TaskStatus   @default(open)
   priority         TaskPriority @default(medium)
 
-  created_by        Int       @map("created_by") // STRICT: NOT NULL
+  created_by        Int?      @map("created_by") // TEMPORARY: Optional for migration
   status_changed_at DateTime? @db.Timestamp(0)
   status_changed_by Int?
   updated_at        DateTime? @default(now()) @updatedAt @db.Timestamp(0)
@@ -468,9 +468,9 @@ model Task {
 
 model File {
   id          Int       @id @default(autoincrement())
-  tenantId    String    @map("tenant_id") // STRICT NOT NULL
+  tenantId    String?   @map("tenant_id") // TEMPORARY: Optional for migration
   customer_id Int?
-  uploaded_by Int       @map("uploaded_by") // STRICT NOT NULL
+  uploaded_by Int?      @map("uploaded_by") // TEMPORARY: Optional for migration
   file_name   String
   file_url    String    @db.VarChar(500)
   file_type   String?   @default("link")
@@ -611,8 +611,8 @@ model SystemSetting {
 
 model emailaccount {
   id       String @id @default(cuid())
-  tenantId String @map("tenant_id") // STRICT
-  userId   Int    @map("userId") // STRICT
+  tenantId String? @map("tenant_id") // TEMPORARY: Optional for migration
+  userId   Int?    @map("userId") // TEMPORARY: Optional for migration
   name     String
   email    String @unique
   provider String
@@ -651,7 +651,7 @@ model emailaccount {
 
 model emaillog {
   id        String   @id @default(cuid())
-  tenantId  String   @map("tenant_id") // STRICT
+  tenantId  String?  @map("tenant_id") // TEMPORARY: Optional for migration
   accountId String
   direction String
   from      String
@@ -670,7 +670,7 @@ model emaillog {
 
 model cachedemail {
   id          String   @id @default(cuid())
-  tenantId    String   @map("tenant_id") // STRICT
+  tenantId    String?  @map("tenant_id") // TEMPORARY: Optional for migration
   accountId   String
   uid         Int
   from        String
@@ -707,7 +707,7 @@ model emailattachment {
 
 model emaildraft {
   id             String   @id @default(cuid())
-  tenantId       String   @map("tenant_id") // STRICT
+  tenantId       String?  @map("tenant_id") // TEMPORARY: Optional for migration
   accountId      String
   to             String?  @db.Text
   cc             String?  @db.Text
@@ -797,7 +797,7 @@ model emailthreadmember {
 
 model contact {
   id            String    @id @default(cuid())
-  tenantId      String    @map("tenant_id") // STRICT
+  tenantId      String?   @map("tenant_id") // TEMPORARY: Optional for migration
   accountId     String
   email         String
   name          String?
@@ -823,7 +823,7 @@ model contact {
 
 model emailtemplate {
   id         String    @id @default(cuid())
-  tenantId   String    @map("tenant_id") // STRICT
+  tenantId   String?   @map("tenant_id") // TEMPORARY: Optional for migration
   accountId  String
   name       String    @db.VarChar(100)
   subject    String?   @db.VarChar(500)
@@ -844,7 +844,7 @@ model emailtemplate {
 
 model scheduledemail {
   id           String    @id @default(cuid())
-  tenantId     String    @map("tenant_id") // STRICT
+  tenantId     String?   @map("tenant_id") // TEMPORARY: Optional for migration
   accountId    String
   to           String    @db.Text
   cc           String?   @db.Text
