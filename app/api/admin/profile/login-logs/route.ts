@@ -16,11 +16,12 @@ export async function GET() {
         const connection = await pool.getConnection();
 
         try {
+
             const [logs]: any = await connection.execute(
-                `SELECT id, ip_address, user_agent, login_time, success 
-                 FROM admin_login_history 
-                 WHERE admin_id = ? 
-                 ORDER BY login_time DESC 
+                `SELECT id, ip_address, user_agent, location, status, created_at as login_time
+                 FROM login_history 
+                 WHERE user_id = ? 
+                 ORDER BY created_at DESC 
                  LIMIT 50`,
                 [session.id]
             );

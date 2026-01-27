@@ -76,7 +76,7 @@ export function CustomerActivityThread({ customer }: ThreadProps) {
                         <div>
                             <div className="flex items-center gap-2">
                                 <Link
-                                    href={`/admin/leads/${customer.customer_id}`}
+                                    href={`leads/${customer.customer_id}`}
                                     className="text-sm font-medium leading-none hover:underline"
                                     onClick={(e) => e.stopPropagation()}
                                 >

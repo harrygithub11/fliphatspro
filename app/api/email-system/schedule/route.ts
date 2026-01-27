@@ -4,23 +4,16 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import pool from '@/lib/db'
+import { v4 as uuidv4 } from 'uuid'
+import { requireTenantAuth } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
-function verifyAdmin(request: NextRequest): boolean {
-  const authHeader = request.headers.get('authorization')
-  if (!authHeader) return false
-  return authHeader.replace('Bearer ', '').startsWith('YWRtaW4')
-}
-
 // GET - List scheduled emails
 export async function GET(request: NextRequest) {
-  if (!verifyAdmin(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   try {
+    const { session, tenantId } = await requireTenantAuth(request)
     const { searchParams } = new URL(request.url)
     const accountId = searchParams.get('accountId')
     const status = searchParams.get('status') || 'pending'
@@ -29,16 +22,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Account ID required' }, { status: 400 })
     }
 
-    const where: any = { accountId }
+    let query = `
+      SELECT * FROM scheduledemail 
+      WHERE accountId = ? AND tenant_id = ?
+    `
+    const params: any[] = [accountId, tenantId]
+
     if (status) {
-      where.status = status
+      query += ` AND status = ?`
+      params.push(status)
     }
 
-    const scheduledEmails = await prisma.scheduledemail.findMany({
-      where,
-      orderBy: { scheduledFor: 'asc' },
-      take: 50,
-    })
+    query += ` ORDER BY scheduledFor ASC LIMIT 50`
+
+    const [scheduledEmails]: any = await pool.execute(query, params)
 
     return NextResponse.json({
       success: true,
@@ -56,11 +53,8 @@ export async function GET(request: NextRequest) {
 
 // POST - Schedule new email
 export async function POST(request: NextRequest) {
-  if (!verifyAdmin(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   try {
+    const { session, tenantId } = await requireTenantAuth(request)
     const body = await request.json()
     const {
       accountId,
@@ -90,26 +84,36 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const scheduledEmail = await prisma.scheduledemail.create({
-      data: {
-        accountId,
-        to,
-        cc: cc || null,
-        bcc: bcc || null,
-        subject,
-        body: bodyText || null,
-        htmlBody: htmlBody || null,
-        attachments: attachments ? JSON.stringify(attachments) : null,
-        scheduledFor: scheduleDate,
-        status: 'pending',
-      },
-    })
+    const id = uuidv4()
+    const now = new Date()
 
-    console.log('[EMAIL_SCHEDULED]', scheduledEmail.id, 'for', scheduleDate)
+    await pool.execute(`
+      INSERT INTO scheduledemail (
+        id, accountId, \`to\`, cc, bcc, subject, body, htmlBody, attachments, scheduledFor, status, retryCount, createdAt, updatedAt, tenant_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      id,
+      accountId,
+      to,
+      cc || null,
+      bcc || null,
+      subject,
+      bodyText || null,
+      htmlBody || null,
+      attachments ? JSON.stringify(attachments) : null,
+      scheduleDate,
+      'pending',
+      0,
+      now,
+      now,
+      tenantId
+    ])
+
+    console.log('[EMAIL_SCHEDULED]', id, 'for', scheduleDate)
 
     return NextResponse.json({
       success: true,
-      scheduledEmail,
+      scheduledEmail: { id, scheduledFor: scheduleDate, status: 'pending' },
     })
   } catch (error: any) {
     console.error('[SCHEDULE_CREATE_ERROR]', error.message)
@@ -122,11 +126,8 @@ export async function POST(request: NextRequest) {
 
 // PATCH - Update scheduled email (before sending)
 export async function PATCH(request: NextRequest) {
-  if (!verifyAdmin(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   try {
+    const { session, tenantId } = await requireTenantAuth(request)
     const body = await request.json()
     const {
       scheduleId,
@@ -145,29 +146,33 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Check if already sent
-    const existing = await prisma.scheduledemail.findUnique({
-      where: { id: scheduleId },
-    })
+    const [existing]: any = await pool.execute(
+      `SELECT * FROM scheduledemail WHERE id = ? AND tenant_id = ?`,
+      [scheduleId, tenantId]
+    )
 
-    if (!existing) {
+    if (existing.length === 0) {
       return NextResponse.json({ error: 'Scheduled email not found' }, { status: 404 })
     }
 
-    if (existing.status === 'sent') {
+    if (existing[0].status === 'sent') {
       return NextResponse.json(
         { error: 'Cannot edit already sent email' },
         { status: 400 }
       )
     }
 
-    const updateData: any = {}
-    if (to) updateData.to = to
-    if (cc !== undefined) updateData.cc = cc
-    if (bcc !== undefined) updateData.bcc = bcc
-    if (subject) updateData.subject = subject
-    if (bodyText !== undefined) updateData.body = bodyText
-    if (htmlBody !== undefined) updateData.htmlBody = htmlBody
-    if (attachments !== undefined) updateData.attachments = JSON.stringify(attachments)
+    const updates: string[] = []
+    const values: any[] = []
+
+    if (to) { updates.push(`\`to\` = ?`); values.push(to) }
+    if (cc !== undefined) { updates.push(`cc = ?`); values.push(cc) }
+    if (bcc !== undefined) { updates.push(`bcc = ?`); values.push(bcc) }
+    if (subject) { updates.push(`subject = ?`); values.push(subject) }
+    if (bodyText !== undefined) { updates.push(`body = ?`); values.push(bodyText) }
+    if (htmlBody !== undefined) { updates.push(`htmlBody = ?`); values.push(htmlBody) }
+    if (attachments !== undefined) { updates.push(`attachments = ?`); values.push(JSON.stringify(attachments)) }
+
     if (scheduledFor) {
       const newDate = new Date(scheduledFor)
       if (newDate <= new Date()) {
@@ -176,19 +181,23 @@ export async function PATCH(request: NextRequest) {
           { status: 400 }
         )
       }
-      updateData.scheduledFor = newDate
+      updates.push(`scheduledFor = ?`); values.push(newDate)
     }
 
-    const scheduledEmail = await prisma.scheduledemail.update({
-      where: { id: scheduleId },
-      data: updateData,
-    })
+    if (updates.length > 0) {
+      updates.push(`updatedAt = ?`); values.push(new Date())
+
+      const query = `UPDATE scheduledemail SET ${updates.join(', ')} WHERE id = ? AND tenant_id = ?`
+      values.push(scheduleId, tenantId)
+
+      await pool.execute(query, values)
+    }
 
     console.log('[SCHEDULED_EMAIL_UPDATED]', scheduleId)
 
     return NextResponse.json({
       success: true,
-      scheduledEmail,
+      message: 'Scheduled email updated'
     })
   } catch (error: any) {
     console.error('[SCHEDULE_UPDATE_ERROR]', error.message)
@@ -201,11 +210,8 @@ export async function PATCH(request: NextRequest) {
 
 // DELETE - Cancel scheduled email
 export async function DELETE(request: NextRequest) {
-  if (!verifyAdmin(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   try {
+    const { session, tenantId } = await requireTenantAuth(request)
     const { searchParams } = new URL(request.url)
     const scheduleId = searchParams.get('scheduleId')
 
@@ -214,26 +220,27 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Check if already sent
-    const existing = await prisma.scheduledemail.findUnique({
-      where: { id: scheduleId },
-    })
+    const [existing]: any = await pool.execute(
+      `SELECT * FROM scheduledemail WHERE id = ? AND tenant_id = ?`,
+      [scheduleId, tenantId]
+    )
 
-    if (!existing) {
+    if (existing.length === 0) {
       return NextResponse.json({ error: 'Scheduled email not found' }, { status: 404 })
     }
 
-    if (existing.status === 'sent') {
+    if (existing[0].status === 'sent') {
       return NextResponse.json(
         { error: 'Cannot cancel already sent email' },
         { status: 400 }
       )
     }
 
-    // Mark as cancelled instead of deleting
-    await prisma.scheduledemail.update({
-      where: { id: scheduleId },
-      data: { status: 'cancelled' },
-    })
+    // Mark as cancelled
+    await pool.execute(
+      `UPDATE scheduledemail SET status = 'cancelled', updatedAt = ? WHERE id = ? AND tenant_id = ?`,
+      [new Date(), scheduleId, tenantId]
+    )
 
     console.log('[SCHEDULED_EMAIL_CANCELLED]', scheduleId)
 

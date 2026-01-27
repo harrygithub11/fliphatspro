@@ -13,6 +13,7 @@ interface NewYearHeroProps {
     announcementBadge?: string;
     ctaText?: string;
     offerEndRequest?: string | null;
+    onTrack?: (actionType?: string) => void;
 }
 
 export function NewYearHero({
@@ -22,7 +23,8 @@ export function NewYearHero({
     subheadline,
     announcementBadge = "FLASH SALE LIVE",
     ctaText = "Get Instant Access",
-    offerEndRequest
+    offerEndRequest,
+    onTrack
 }: NewYearHeroProps) {
     // Determine the date to show
     const targetDateStr = offerEndRequest || '2026-01-15';
@@ -113,7 +115,7 @@ export function NewYearHero({
                     </div>
 
                     {/* We can wrap standard VideoDialog or custom onClick here but for visual matching I used the layout above */}
-                    <div className="absolute inset-0 z-30 opacity-0">
+                    <div className="absolute inset-0 z-30 opacity-0" onClick={() => onTrack?.('click')}>
                         <VideoDialog videoSrc={videoSrc} />
                     </div>
                 </motion.div>

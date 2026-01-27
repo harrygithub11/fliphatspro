@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
-import { getSession } from '@/lib/auth';
+import { requireTenantAuth } from '@/lib/auth';
 
 async function getContext(params: Promise<{ id: string }>) {
     return params;
@@ -8,19 +8,16 @@ async function getContext(params: Promise<{ id: string }>) {
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
     try {
-        const session = await getSession();
-        // if (!session || session.role !== 'admin') {
-        //     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        // }
+        const { session, tenantId } = await requireTenantAuth(request);
 
         const { id } = await getContext(context.params);
         const connection = await pool.getConnection();
 
         try {
-            // 1. Fetch source page
+            // 1. Fetch source page with tenant check
             const [rows]: any = await connection.execute(
-                'SELECT * FROM landing_pages WHERE id = ?',
-                [id]
+                'SELECT * FROM landing_pages WHERE id = ? AND tenant_id = ?',
+                [id, tenantId]
             );
 
             if (rows.length === 0) {
@@ -34,16 +31,14 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
             const newName = `Copy of ${sourcePage.name}`;
             const newSlug = `${sourcePage.slug}-copy-${randomSuffix}`;
 
-            // 2. Insert duplicated page
-            // We use JSON.stringify(sourcePage.content) because in DB it's stored as JSON string or handled by driver
-            // Actually sourcePage.content might already be an object if mysql2 parsed it, or string.
+            // 2. Insert duplicated page with tenant_id
             const contentValue = typeof sourcePage.content === 'string'
                 ? sourcePage.content
                 : JSON.stringify(sourcePage.content);
 
             const [result]: any = await connection.execute(
-                'INSERT INTO landing_pages (name, slug, content, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())',
-                [newName, newSlug, contentValue, 0] // Default to Draft (is_active = 0)
+                'INSERT INTO landing_pages (tenant_id, name, slug, content, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())',
+                [tenantId, newName, newSlug, contentValue, 0] // Default to Draft (is_active = 0)
             );
 
             const newId = result.insertId;
@@ -51,7 +46,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
             // 3. Log activity
             const { logAdminActivity } = await import('@/lib/activity-logger');
             await logAdminActivity(
-                session?.id || 1,
+                session.id,
                 'page_duplicate',
                 `Duplicated page "${sourcePage.name}" as "${newName}"`,
                 'landing_page',
@@ -69,7 +64,10 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         } finally {
             connection.release();
         }
-    } catch (error) {
+    } catch (error: any) {
+        if (error.message?.includes('Access denied')) {
+            return NextResponse.json({ error: error.message }, { status: 401 });
+        }
         console.error('Duplicate Page Error:', error);
         return NextResponse.json({ error: 'Failed to duplicate page' }, { status: 500 });
     }

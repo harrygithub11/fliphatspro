@@ -23,6 +23,7 @@ interface BookingModalProps {
     amount?: number;
     source?: string;
     paymentLink?: string;
+    onInteract?: () => void;
 }
 
 export function BookingModal({
@@ -31,7 +32,8 @@ export function BookingModal({
     triggerText,
     amount = 5000,
     source = 'website',
-    paymentLink
+    paymentLink,
+    onInteract
 }: BookingModalProps) {
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -143,6 +145,7 @@ export function BookingModal({
     };
 
     const handleDirectLink = async () => {
+        if (onInteract) onInteract();
         if (paymentLink) {
             // Track Click
             try {
@@ -173,6 +176,7 @@ export function BookingModal({
     }
 
     const handleOpenChange = (newOpen: boolean) => {
+        if (newOpen && onInteract) onInteract();
         setOpen(newOpen);
         // Dispatch custom event so StickyCTA can listen
         const event = new CustomEvent('bookingModalState', { detail: { open: newOpen } });

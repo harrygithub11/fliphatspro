@@ -15,18 +15,26 @@ export async function GET() {
 
         const connection = await pool.getConnection();
 
-        // 1. Fetch Admin Basic Info
-        const [adminRows]: any = await connection.execute(
-            'SELECT id, name, email, role, phone, avatar_url, timezone, language, created_at, last_login FROM admins WHERE id = ?',
+        // 1. Try users table first
+        let [rows]: any = await connection.execute(
+            'SELECT id, name, email, avatar_url, phone, timezone, language, created_at FROM users WHERE id = ?',
             [session.id]
         );
 
-        if (adminRows.length === 0) {
+        // 2. Fallback to admins (legacy)
+        if (rows.length === 0) {
+            [rows] = await connection.execute(
+                'SELECT id, name, email, avatar_url, phone, timezone, "en" as language, created_at, role FROM admins WHERE id = ?',
+                [session.id]
+            );
+        }
+
+        if (rows.length === 0) {
             connection.release();
             return NextResponse.json({ success: false, message: 'Admin not found' }, { status: 404 });
         }
 
-        const admin = adminRows[0];
+        const admin = rows[0];
 
         // 2. Fetch Preferences (or use defaults if not exist)
         const [prefRows]: any = await connection.execute(
@@ -47,6 +55,7 @@ export async function GET() {
             success: true,
             user: {
                 ...admin,
+                role: session.tenantRole || 'member',
                 preferences
             }
         });
@@ -73,10 +82,10 @@ export async function PUT(req: Request) {
         try {
             await connection.beginTransaction();
 
-            // 1. Update Admin Table
+            // 1. Update Users Table
             if (name || phone || timezone || language) {
                 await connection.execute(
-                    `UPDATE admins 
+                    `UPDATE users 
                      SET name = COALESCE(?, name), 
                          phone = COALESCE(?, phone), 
                          timezone = COALESCE(?, timezone),

@@ -260,5 +260,18 @@ export const DEFAULT_PAGE_CONTENT = {
             question: "How long until I go live?",
             answer: "Once you share your product details and requirements, we guarantee your store will be ready for launch within 24 hours."
         }
+    ],
+    section_order: [
+        'hero',
+        'marquee',
+        'problem_section',
+        'live_demos',
+        'comparison_table',
+        'features',
+        'order_flow',
+        'setup_process',
+        'testimonials',
+        'pricing',
+        'faq'
     ]
 };

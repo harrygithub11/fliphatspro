@@ -1,12 +1,17 @@
 
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
+import { requireTenantAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 // GET: Fetch all tasks with customer info (enhanced with pagination, search, sort)
 export async function GET(request: Request) {
     try {
+        // Require tenant context
+        const { session, tenantId } = await requireTenantAuth(request);
+        const currentUserId = session.id;
+
         const { searchParams } = new URL(request.url);
         const status = searchParams.get('status');
         const priority = searchParams.get('priority');
@@ -17,10 +22,6 @@ export async function GET(request: Request) {
         const page = parseInt(searchParams.get('page') || '1');
         const perPage = parseInt(searchParams.get('per_page') || '50');
         const offset = (page - 1) * perPage;
-
-        const { getSession } = await import('@/lib/auth');
-        const session = await getSession();
-        const currentUserId = session?.id || 0;
 
         let query = `
             SELECT t.*, c.name AS customer_name, c.email AS customer_email, 
@@ -44,9 +45,9 @@ export async function GET(request: Request) {
             LEFT JOIN admins asg ON t.assigned_to = asg.id
             LEFT JOIN admins sc ON t.status_changed_by = sc.id
             LEFT JOIN task_reads tr ON t.id = tr.task_id AND tr.user_id = ?
-            WHERE 1=1
+            WHERE t.tenant_id = ? AND t.deleted_at IS NULL
         `;
-        const params: any[] = [currentUserId];
+        const params: any[] = [currentUserId, tenantId];
 
         if (status && status !== 'all') {
             query += ` AND t.status = ? `;
@@ -92,9 +93,10 @@ export async function GET(request: Request) {
         try {
             const [rows]: any = await connection.execute(query, params);
 
-            // Get total count for pagination
+            // Get total count for pagination (tenant-scoped, excluding soft-deleted)
             const [countResult]: any = await connection.execute(
-                `SELECT COUNT(*) as total FROM tasks`
+                `SELECT COUNT(*) as total FROM tasks WHERE tenant_id = ? AND deleted_at IS NULL`,
+                [tenantId]
             );
             const total = countResult[0]?.total || 0;
 
@@ -123,26 +125,29 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
     try {
+        // Require tenant context
+        const { session, tenantId } = await requireTenantAuth(request);
+        const createdBy = session.id;
+
         const body = await request.json();
         const { title, customer_id, due_date, priority, assigned_to, status } = body;
-
-        const { getSession } = await import('@/lib/auth');
-        const session = await getSession();
-        const createdBy = session ? session.id : null;
 
         const connection = await pool.getConnection();
         try {
             const [result]: any = await connection.execute(
-                'INSERT INTO tasks (title, customer_id, due_date, priority, status, created_by, assigned_to) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                [title, customer_id, due_date || null, priority || 'medium', status || 'open', createdBy, assigned_to || null]
+                'INSERT INTO tasks (tenant_id, title, customer_id, due_date, priority, status, created_by, assigned_to) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [tenantId, title, customer_id, due_date || null, priority || 'medium', status || 'open', createdBy, assigned_to || null]
             );
 
             // Log Admin Activity
             const { getSession } = await import('@/lib/auth');
             const session = await getSession();
             if (session) {
-                // Fetch customer name
-                const [cust]: any = await connection.execute('SELECT name FROM customers WHERE id = ?', [customer_id]);
+                // Fetch customer name (with tenant filter)
+                const [cust]: any = await connection.execute(
+                    'SELECT name FROM customers WHERE id = ? AND tenant_id = ?',
+                    [customer_id, tenantId]
+                );
                 const customerName = cust[0]?.name || 'Unknown';
 
                 const { logAdminActivity } = await import('@/lib/activity-logger');
@@ -156,9 +161,17 @@ export async function POST(request: Request) {
             }
 
             // Notify Assignee
-            if (assigned_to && assigned_to !== createdBy) {
+            if (assigned_to) {
                 const { createNotification } = await import('@/lib/notifications');
-                await createNotification(Number(assigned_to), 'task_assigned', result.insertId, createdBy || 0);
+                await createNotification({
+                    tenantId,
+                    userId: Number(assigned_to),
+                    type: 'task_assigned',
+                    title: 'New Task Assigned',
+                    message: `You have been assigned a new task: "${title}"`,
+                    link: `/workspace?taskId=${result.insertId}`,
+                    data: { taskId: result.insertId, createdBy }
+                });
             }
 
             return NextResponse.json({ success: true });
@@ -173,6 +186,9 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
     try {
+        // CRITICAL: Require tenant context
+        const { session, tenantId } = await requireTenantAuth(request);
+
         const body = await request.json();
         const { id, ...updates } = body;
 
@@ -182,11 +198,8 @@ export async function PUT(request: Request) {
 
         const connection = await pool.getConnection();
         try {
-            // If status is being updated, also track who changed it
-            const { getSession } = await import('@/lib/auth');
-            const session = await getSession();
-
-            if (updates.status && session) {
+            // If status is being updated, track who changed it
+            if (updates.status) {
                 updates.status_changed_by = session.id;
                 updates.status_changed_at = new Date().toISOString().slice(0, 19).replace('T', ' ');
             }
@@ -195,26 +208,26 @@ export async function PUT(request: Request) {
             const values = Object.values(updates);
             const setClause = keys.map(k => `${k} = ?`).join(', ');
 
+            // CRITICAL: Include tenant_id in WHERE clause
             await connection.execute(
-                `UPDATE tasks SET ${setClause} WHERE id = ?`,
-                [...values, id]
+                `UPDATE tasks SET ${setClause} WHERE id = ? AND tenant_id = ?`,
+                [...values, id, tenantId]
             );
 
             // Log Admin Activity
-            if (session) {
-                const { logAdminActivity } = await import('@/lib/activity-logger');
-                const changes = Object.entries(updates)
-                    .map(([key, value]) => `${key} to '${value}'`)
-                    .join(', ');
+            const { logAdminActivity } = await import('@/lib/activity-logger');
+            const changes = Object.entries(updates)
+                .map(([key, value]) => `${key} to '${value}'`)
+                .join(', ');
 
-                await logAdminActivity(
-                    session.id,
-                    'task_update',
-                    `Updated task #${id}: ${changes} `,
-                    'task',
-                    id
-                );
-            }
+            await logAdminActivity(
+                session.id,
+                'task_update',
+                `Updated task #${id}: ${changes}`,
+                'task',
+                id
+            );
+
             return NextResponse.json({ success: true });
         } finally {
             connection.release();
@@ -227,6 +240,9 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
     try {
+        // CRITICAL: Require tenant context
+        const { session, tenantId } = await requireTenantAuth(request);
+
         const { searchParams } = new URL(request.url);
         const id = searchParams.get('id');
 
@@ -236,25 +252,33 @@ export async function DELETE(request: Request) {
 
         const connection = await pool.getConnection();
         try {
-            // Get task info before deleting for logging
-            const [taskRows]: any = await connection.execute('SELECT title FROM tasks WHERE id = ?', [id]);
+            // Get task info before deleting (with tenant filter)
+            const [taskRows]: any = await connection.execute(
+                'SELECT title FROM tasks WHERE id = ? AND tenant_id = ?',
+                [id, tenantId]
+            );
+
+            if (taskRows.length === 0) {
+                return NextResponse.json({ success: false, message: 'Task not found' }, { status: 404 });
+            }
             const taskTitle = taskRows[0]?.title || 'Unknown';
 
-            await connection.execute('DELETE FROM tasks WHERE id = ?', [id]);
+            // SOFT DELETE: Set deleted_at instead of hard delete
+            await connection.execute(
+                'UPDATE tasks SET deleted_at = NOW() WHERE id = ? AND tenant_id = ?',
+                [id, tenantId]
+            );
 
             // Log Admin Activity
-            const { getSession } = await import('@/lib/auth');
-            const session = await getSession();
-            if (session) {
-                const { logAdminActivity } = await import('@/lib/activity-logger');
-                await logAdminActivity(
-                    session.id,
-                    'task_delete',
-                    `Deleted task "${taskTitle}"`,
-                    'task',
-                    parseInt(id)
-                );
-            }
+            const { logAdminActivity } = await import('@/lib/activity-logger');
+            await logAdminActivity(
+                session.id,
+                'task_delete',
+                `Deleted task "${taskTitle}"`,
+                'task',
+                parseInt(id)
+            );
+
             return NextResponse.json({ success: true });
         } finally {
             connection.release();

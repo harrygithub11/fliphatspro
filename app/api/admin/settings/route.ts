@@ -1,126 +1,169 @@
+
 import { NextResponse } from 'next/server';
-import pool from '@/lib/db';
-import { getSession } from '@/lib/auth';
-import crypto from 'crypto';
+import { requireTenantRole } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { WORKSPACE_SETTINGS_SCHEMA } from '@/lib/settings-config';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
     try {
-        const session = await getSession();
+        // Use 'admin' role check which internally gets tenant context
+        const { tenantId } = await requireTenantRole('viewer', request);
+        // Allow viewers to read settings? Or member? Let's say 'member' is fine for reading public-ish config?
+        // Actually, configuration usually requires Admin. 'viewer' might need it for branding though.
+        // Let's stick to safe defaults.
 
-        const connection = await pool.getConnection();
-        try {
-            // Fetch all settings as key-value pairs
-            const [rows]: any = await connection.execute('SELECT `key`, `value` FROM system_settings');
+        const tenant = await prisma.tenant.findUnique({
+            where: { id: tenantId },
+            include: {
+                settings_: true // TenantSetting[]
+            }
+        });
 
-            // Convert to object
-            const settings: any = {
-                site_name: 'FliphatMedia',
-                razorpay_key_id: '',
-                razorpay_key_secret: '',
-                facebook_pixel_id: '',
-                google_analytics_id: '',
-                offer_end_date: '',
-                newyear_offer_date: '',
-                facebook_page_id: '',
-                facebook_access_token: '',
-                facebook_app_secret: '',
-                webhook_verify_token: ''
-            };
-
-            rows.forEach((row: any) => {
-                settings[row.key] = row.value;
-            });
-
-            return NextResponse.json(settings);
-        } finally {
-            connection.release();
+        if (!tenant) {
+            return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
         }
-    } catch (error) {
-        console.error('Fetch Settings Error:', error);
-        return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });
+
+        // Merge Core Fields and Dynamic Settings into one flat object
+        const values: Record<string, any> = {
+            name: tenant.name,
+            slug: tenant.slug,
+            domain: tenant.domain,
+            logoUrl: tenant.logoUrl,
+            plan: tenant.plan, // Read-only usually, but good to have
+            status: tenant.status
+        };
+
+        // Add dynamic settings
+        if (tenant.settings_) {
+            tenant.settings_.forEach((s: any) => {
+                values[s.settingKey] = s.settingValue;
+            });
+        }
+
+        // Apply Defaults from Schema if value is missing
+        WORKSPACE_SETTINGS_SCHEMA.forEach(section => {
+            section.fields.forEach(field => {
+                if (values[field.key] === undefined && field.defaultValue !== undefined) {
+                    values[field.key] = field.defaultValue;
+                }
+            });
+        });
+
+        return NextResponse.json({
+            config: WORKSPACE_SETTINGS_SCHEMA,
+            values: values
+        });
+
+    } catch (error: any) {
+        // Handle auth errors gracefully
+        if (error.message.includes('Unauthorized') || error.message.includes('Forbidden')) {
+            return NextResponse.json({ error: error.message }, { status: 401 });
+        }
+        console.error('Settings Fetch Error:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
 
-export async function POST(request: Request) {
+export async function PATCH(request: Request) {
     try {
-        const session = await getSession();
+        const { tenantId } = await requireTenantRole('admin', request);
 
         const body = await request.json();
+        const updates: Record<string, any> = {};
+        const settingUpdates: Record<string, any> = {};
 
-        const connection = await pool.getConnection();
-        try {
-            // Check if this is a single key-value update (from GeneralSettings) or bulk update
-            if (body.key && body.value !== undefined) {
-                // Single setting update (offer dates)
-                const { key, value, description } = body;
-
-                const [existing]: any = await connection.execute(
-                    'SELECT id FROM system_settings WHERE `key` = ?',
-                    [key]
-                );
-
-                if (existing.length === 0) {
-                    await connection.execute(
-                        'INSERT INTO system_settings (id, `key`, `value`, description) VALUES (?, ?, ?, ?)',
-                        [crypto.randomUUID(), key, value, description || '']
-                    );
-                } else {
-                    await connection.execute(
-                        'UPDATE system_settings SET `value` = ?, description = ? WHERE `key` = ?',
-                        [value, description || '', key]
-                    );
-                }
-            } else {
-                // Bulk update (API & Integration settings)
-                console.log('Bulk updating settings:', body);
-
-                const settingsToUpdate = [
-                    { key: 'site_name', value: body.site_name },
-                    { key: 'razorpay_key_id', value: body.razorpay_key_id },
-                    { key: 'razorpay_key_secret', value: body.razorpay_key_secret },
-                    { key: 'facebook_pixel_id', value: body.facebook_pixel_id },
-                    { key: 'google_analytics_id', value: body.google_analytics_id },
-                    { key: 'facebook_page_id', value: body.facebook_page_id },
-                    { key: 'facebook_access_token', value: body.facebook_access_token },
-                    { key: 'facebook_app_secret', value: body.facebook_app_secret },
-                    { key: 'webhook_verify_token', value: body.webhook_verify_token }
-                ];
-
-                for (const setting of settingsToUpdate) {
-                    const safeValue = setting.value ?? '';
-                    console.log(`Processing ${setting.key}:`, safeValue ? 'Has Value' : 'Empty');
-
-                    const [existing]: any = await connection.execute(
-                        'SELECT id FROM system_settings WHERE `key` = ?',
-                        [setting.key]
-                    );
-
-                    try {
-                        if (existing.length === 0) {
-                            await connection.execute(
-                                'INSERT INTO system_settings (id, `key`, `value`) VALUES (?, ?, ?)',
-                                [crypto.randomUUID(), setting.key, safeValue]
-                            );
-                        } else {
-                            await connection.execute(
-                                'UPDATE system_settings SET `value` = ? WHERE `key` = ?',
-                                [safeValue, setting.key]
-                            );
+        // Iterate through schema to validate and route fields
+        for (const section of WORKSPACE_SETTINGS_SCHEMA) {
+            for (const field of section.fields) {
+                if (body[field.key] !== undefined) {
+                    if (field.storage === 'tenant') {
+                        // Only allow updating certain core tenant fields
+                        if (['name', 'slug', 'domain', 'logoUrl'].includes(field.key)) {
+                            updates[field.key] = body[field.key];
                         }
-                    } catch (dbError) {
-                        console.error(`DB Error for ${setting.key}:`, dbError);
+                    } else if (field.storage === 'tenant_setting') {
+                        settingUpdates[field.key] = body[field.key];
                     }
                 }
             }
-
-            return NextResponse.json({ success: true });
-        } finally {
-            connection.release();
         }
-    } catch (error) {
-        console.error('Update Settings Error:', error);
-        return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 });
+
+        // Slug Validation
+        if (updates.slug !== undefined) {
+            const newSlug = String(updates.slug).toLowerCase().trim();
+
+            // Format validation
+            if (!/^[a-z0-9-]+$/.test(newSlug)) {
+                return NextResponse.json({
+                    error: 'Slug must contain only lowercase letters, numbers, and hyphens'
+                }, { status: 400 });
+            }
+
+            if (newSlug.length < 3) {
+                return NextResponse.json({
+                    error: 'Slug must be at least 3 characters'
+                }, { status: 400 });
+            }
+
+            // Uniqueness check (excluding current tenant)
+            const existing = await prisma.tenant.findFirst({
+                where: {
+                    slug: newSlug,
+                    id: { not: tenantId }
+                }
+            });
+
+            if (existing) {
+                return NextResponse.json({
+                    error: 'This workspace URL is already taken'
+                }, { status: 400 });
+            }
+
+            updates.slug = newSlug; // Ensure lowercase
+        }
+
+        // 1. Update Core Tenant Fields
+        if (Object.keys(updates).length > 0) {
+            await prisma.tenant.update({
+                where: { id: tenantId },
+                data: updates
+            });
+        }
+
+        // 2. Upsert Dynamic Settings
+        const updatePromises = Object.entries(settingUpdates).map(([key, value]) => {
+            // Convert value to string for storage
+            let stringValue = String(value);
+            if (typeof value === 'boolean') stringValue = value ? 'true' : 'false';
+            if (typeof value === 'object') stringValue = JSON.stringify(value);
+            if (value === null || value === undefined) stringValue = '';
+
+            return prisma.tenantSetting.upsert({
+                where: {
+                    tenantId_settingKey: {
+                        tenantId: tenantId,
+                        settingKey: key
+                    }
+                },
+                update: { settingValue: stringValue },
+                create: {
+                    tenantId: tenantId,
+                    settingKey: key,
+                    settingValue: stringValue
+                }
+            });
+        });
+
+        if (updatePromises.length > 0) {
+            await prisma.$transaction(updatePromises);
+        }
+
+        return NextResponse.json({ success: true });
+
+    } catch (error: any) {
+        console.error('Settings Update Error:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

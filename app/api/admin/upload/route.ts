@@ -1,14 +1,12 @@
 import { NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
-import { getSession } from '@/lib/auth';
+import { requireTenantRole } from '@/lib/auth';
 
 export async function POST(request: Request) {
     try {
-        const session = await getSession();
-        if (!session || session.role !== 'admin') {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
+        // Use consistent tenant-aware auth (Admin role required)
+        const { session, tenantId } = await requireTenantRole('admin', request);
 
         const formData = await request.formData();
         const file = formData.get('file') as File;
@@ -42,8 +40,14 @@ export async function POST(request: Request) {
         const url = `/uploads/${filename}`;
         return NextResponse.json({ url });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Upload Error:', error);
+
+        // Handle auth errors gracefully
+        if (error.message && (error.message.includes('Unauthorized') || error.message.includes('high'))) {
+            return NextResponse.json({ error: error.message }, { status: 401 });
+        }
+
         return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
     }
 }

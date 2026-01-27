@@ -1,34 +1,48 @@
-import WebsiteHeader from '@/components/website/WebsiteHeader'
-import Hero from '@/components/website/Hero'
-import Intro from '@/components/website/Intro'
-import CoreBelief from '@/components/website/CoreBelief'
-import Services from '@/components/website/Services'
-import Process from '@/components/website/Process'
-import CaseStudies from '@/components/website/CaseStudies'
-import Testimonials from '@/components/website/Testimonials'
-import FinalCTA from '@/components/website/FinalCTA'
-import WebsiteFooter from '@/components/website/WebsiteFooter'
+"use client";
+import React from "react";
+import { LinkPreview } from "@/components/ui/link-preview";
 
-export const metadata = {
-    title: 'Fliphats | Creative & Performance Marketing Agency',
-    description: 'Fliphats is a creative and performance marketing agency. We blend creativity with strategy to help brands grow smarter, faster, and stronger.',
-}
-
-export default function WebsiteHomePage() {
+export default function LinkPreviewDemoSecond() {
     return (
-        <div className="relative overflow-x-hidden bg-paper text-ink">
-            <WebsiteHeader />
-            <main>
-                <Hero />
-                <Intro />
-                <CoreBelief />
-                <Services />
-                <Process />
-                <CaseStudies />
-                <Testimonials />
-                <FinalCTA />
-            </main>
-            <WebsiteFooter />
+        <div className="flex justify-center items-center h-screen flex-col px-4 bg-background text-foreground">
+            <div className="max-w-3xl w-full space-y-10">
+                <p className="text-neutral-500 dark:text-neutral-400 text-xl md:text-3xl text-left">
+                    Visit{" "}
+                    <LinkPreview
+                        url="https://ui.aceternity.com"
+                        className="font-bold bg-clip-text text-transparent bg-gradient-to-br from-purple-500 to-pink-500"
+                    >
+                        Aceternity UI
+                    </LinkPreview>{" "}
+                    for amazing Tailwind and Framer Motion components.
+                </p>
+
+                <p className="text-neutral-500 dark:text-neutral-400 text-xl md:text-3xl text-left">
+                    I listen to{" "}
+                    <LinkPreview
+                        url="https://www.youtube.com/watch?v=S-z6vyR89Ig&list=RDMM&index=3"
+                        imageSrc="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=2070&auto=format&fit=crop"
+                        isStatic
+                        className="font-bold text-foreground"
+                    >
+                        this music
+                    </LinkPreview>{" "}
+                    and I watch{" "}
+                    <LinkPreview
+                        url="/templates"
+                        imageSrc="https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=2525&auto=format&fit=crop"
+                        isStatic
+                        className="font-bold text-foreground"
+                    >
+                        this movie
+                    </LinkPreview>{" "}
+                    twice a day
+                </p>
+            </div>
+
+            <div className="mt-20 flex gap-4 text-sm text-neutral-400">
+                <span>Hover over links to see preview</span>
+            </div>
         </div>
-    )
+    );
 }

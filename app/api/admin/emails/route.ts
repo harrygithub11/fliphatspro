@@ -1,25 +1,35 @@
 import { NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
+import { requireTenantAuth } from '@/lib/auth';
 import pool from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
     try {
-        // const session = await getSession();
-        // if (!session) {
-        //     console.log('⚠️ Emails GET: Auth missing, bypassing for debug');
-        // return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
-        // }
+        const { session, tenantId, tenantRole, permissions } = await requireTenantAuth(request);
+
+        // RBAC: Check if user has permission to view emails
+        const canViewEmails =
+            permissions?.emails?.view === 'all' ||
+            permissions?.emails?.view === true ||
+            tenantRole === 'owner' ||
+            tenantRole === 'admin';
+
+        if (!canViewEmails) {
+            return NextResponse.json({
+                success: false,
+                message: 'You do not have permission to view emails'
+            }, { status: 403 });
+        }
 
         const { searchParams } = new URL(request.url);
         const page = parseInt(searchParams.get('page') || '1');
         const limit = parseInt(searchParams.get('limit') || '20');
         const offset = (page - 1) * limit;
-        const status = searchParams.get('status'); // sent, queued, failed, draft
+        const status = searchParams.get('status');
         const customerId = searchParams.get('customer_id');
 
-        // Build Query
+        // User-level isolation: Only show emails from user's own SMTP accounts
         let query = `
             SELECT e.*, 
                    s.name as smtp_account_name, 
@@ -29,9 +39,10 @@ export async function GET(request: Request) {
             FROM emails e
             LEFT JOIN smtp_accounts s ON e.smtp_account_id = s.id
             LEFT JOIN customers c ON e.customer_id = c.id
-            WHERE 1=1
+            WHERE e.tenant_id = ?
+              AND e.smtp_account_id IN (SELECT id FROM smtp_accounts WHERE created_by = ? AND tenant_id = ?)
         `;
-        const params: any[] = [];
+        const params: any[] = [tenantId, session.id, tenantId];
 
         if (status) {
             query += ' AND e.status = ?';
@@ -43,16 +54,16 @@ export async function GET(request: Request) {
             params.push(customerId);
         }
 
-        // Count Total
+        // Count Total (tenant-scoped)
+        const countParams = [...params];
         const [countRows]: any = await pool.execute(
-            `SELECT COUNT(*) as total FROM emails e WHERE 1=1 ${status ? 'AND status = ?' : ''} ${customerId ? 'AND customer_id = ?' : ''}`,
-            params
+            `SELECT COUNT(*) as total FROM emails e WHERE e.tenant_id = ? ${status ? 'AND e.status = ?' : ''} ${customerId ? 'AND e.customer_id = ?' : ''}`,
+            countParams
         );
         const total = countRows[0].total;
 
         // Fetch Data
         query += ` ORDER BY e.created_at DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
-        // params.push(limit, offset); // Removed to avoid mysql2 execute error
 
         const [rows]: any = await pool.execute(query, params);
 
@@ -68,11 +79,10 @@ export async function GET(request: Request) {
         });
 
     } catch (error: any) {
-        console.error('Fetch Emails Error - Full Stack:', error);
+        console.error('Fetch Emails Error:', error);
         return NextResponse.json({
             success: false,
-            message: 'Server Error: ' + error.message,
-            stack: error.stack
+            message: 'Server Error: ' + error.message
         }, { status: 500 });
     }
 }

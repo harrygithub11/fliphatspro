@@ -1,11 +1,12 @@
-
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
+import { requireTenantAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
     try {
+        const { tenantId } = await requireTenantAuth(request);
         const { searchParams } = new URL(request.url);
         const adminId = searchParams.get('admin_id');
         const type = searchParams.get('type'); // 'all', 'notes', 'system'
@@ -23,14 +24,14 @@ export async function GET(request: Request) {
                 c.name as customer_name,
                 c.email as customer_email,
 
-                a.name as admin_name
+                u.name as admin_name
             FROM interactions i
             LEFT JOIN customers c ON i.customer_id = c.id
-            LEFT JOIN admins a ON i.created_by = a.id
-            WHERE 1=1
+            LEFT JOIN users u ON i.created_by = u.id
+            WHERE i.tenant_id = ?
         `;
 
-        const params: any[] = [];
+        const params: any[] = [tenantId];
 
         if (adminId && adminId !== 'all') {
             query += ` AND i.created_by = ? `;

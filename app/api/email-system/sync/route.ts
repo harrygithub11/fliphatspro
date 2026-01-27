@@ -1,9 +1,11 @@
+
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { decrypt } from '@/lib/crypto'
+import { decrypt } from '@/lib/smtp-encrypt'
 import Imap from 'imap'
 import { simpleParser } from 'mailparser'
 import { Readable } from 'stream'
+import pool from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -23,7 +25,7 @@ async function syncFolder(imap: any, accountId: string, folderName: string, limi
       if (err) {
         clearTimeout(timeout)
         console.log(`[SYNC_${folderName}] Error opening box:`, err.message)
-        return resolve([]) // Don't fail entire sync if one folder fails
+        return reject(err) // Reject so fallback logic can run
       }
 
       const total = box.messages.total
@@ -52,36 +54,59 @@ async function syncFolder(imap: any, accountId: string, folderName: string, limi
       fetch.on('message', (msg: any, seqno: number) => {
         expectedMessages++
 
-        msg.on('body', (stream: any) => {
-          simpleParser(stream as Readable, (parseErr: any, parsed: any) => {
-            parsedMessages++
+        const attributesPromise = new Promise((resolve) => {
+          msg.once('attributes', (attrs: any) => resolve(attrs))
+        })
 
-            if (!parseErr && parsed) {
-              try {
-                const fromText = parsed.from?.text || parsed.from?.value?.[0]?.address || 'Unknown'
-                const toText = parsed.to?.text || parsed.to?.value?.[0]?.address || ''
-                const hasAttachments = parsed.attachments && parsed.attachments.length > 0
-                const attachmentCount = parsed.attachments?.length || 0
-
-                emails.push({
-                  uid: seqno,
-                  folder: folderName,
-                  from: fromText.substring(0, 255),
-                  to: toText.substring(0, 255),
-                  subject: (parsed.subject || '(No Subject)').substring(0, 500),
-                  textSnippet: (parsed.text || '').substring(0, 1000),
-                  htmlContent: parsed.html || null,
-                  date: parsed.date || new Date(),
-                  hasAttachments,
-                  attachmentCount,
-                })
-              } catch (e: any) {
-                console.error('[SYNC_PARSE_ERROR]', e.message)
-              }
-            }
-
-            checkComplete()
+        const bodyPromise = new Promise((resolve) => {
+          msg.on('body', (stream: any) => {
+            simpleParser(stream as Readable, (parseErr: any, parsed: any) => {
+              resolve({ parseErr, parsed })
+            })
           })
+        })
+
+        Promise.all([attributesPromise, bodyPromise]).then(([attrs, bodyResult]: any) => {
+          parsedMessages++
+          const { parseErr, parsed } = bodyResult
+          const attributes = attrs || {}
+          // Capture Flags
+          const flags = attributes.flags || []
+          const isRead = flags.includes('\\Seen') ? 1 : 0
+
+          if (!parseErr && parsed) {
+            try {
+              const fromText = parsed.from?.text || parsed.from?.value?.[0]?.address || 'Unknown'
+              const toText = parsed.to?.text || parsed.to?.value?.[0]?.address || ''
+              const hasAttachments = parsed.attachments && parsed.attachments.length > 0
+              const attachmentCount = parsed.attachments?.length || 0
+
+              // Date Priority: 1. Header Date (Sender), 2. Internal Date (Server), 3. Now
+              // Log dates for debugging
+              const headerDate = parsed.date;
+              const internalDate = attributes.date;
+
+              const emailDate = headerDate || internalDate || new Date()
+
+              emails.push({
+                uid: seqno,
+                folder: folderName,
+                from: fromText.substring(0, 255),
+                to: parsed.to,
+                toText: toText,
+                subject: (parsed.subject || '(No Subject)').substring(0, 500),
+                textSnippet: (parsed.text || '').substring(0, 1000),
+                htmlContent: parsed.html || null,
+                date: emailDate,
+                hasAttachments,
+                attachmentCount,
+                isRead
+              })
+            } catch (e: any) {
+              console.error('[SYNC_PARSE_ERROR]', e.message)
+            }
+          }
+          checkComplete()
         })
       })
 
@@ -100,9 +125,26 @@ async function syncFolder(imap: any, accountId: string, folderName: string, limi
   })
 }
 
+// Helper to ensure valid JSON for recipients
+const sanitizeRecipient = (recip: any) => {
+  if (!recip) return JSON.stringify([]);
+  if (typeof recip === 'string') {
+    return JSON.stringify([{ address: recip, name: '' }]);
+  }
+  if (Array.isArray(recip)) return JSON.stringify(recip);
+  if (recip && typeof recip === 'object') return JSON.stringify([recip]);
+  return JSON.stringify([]);
+}
+
 async function syncEmails(accountId: string, limit: number = 50) {
-  const account = await prisma.emailaccount.findUnique({ where: { id: accountId } })
-  if (!account || !account.isActive) {
+  // Fetch from smtp_accounts
+  const [rows]: any = await pool.execute(
+    `SELECT * FROM smtp_accounts WHERE id = ?`,
+    [accountId]
+  )
+
+  const account = rows[0]
+  if (!account || !account.is_active) {
     throw new Error('Account not found or inactive')
   }
 
@@ -110,107 +152,111 @@ async function syncEmails(accountId: string, limit: number = 50) {
     const timeout = setTimeout(() => reject(new Error('IMAP timeout')), 90000)
 
     try {
-      const password = decrypt(account.password)
+      const password = decrypt(account.encrypted_password)
       const imap = new Imap({
         user: account.username,
         password,
-        host: account.imapHost,
-        port: account.imapPort,
-        tls: account.imapSecure,
+        host: account.imap_host,
+        port: account.imap_port,
+        tls: account.imap_secure === 1,
         tlsOptions: { rejectUnauthorized: false },
       })
 
       imap.once('ready', async () => {
         console.log('[SYNC_IMAP_READY]')
-        
+
         try {
-          // Sync INBOX (25 most recent)
+          // Sync INBOX
           const inboxEmails = await syncFolder(imap, accountId, 'INBOX', 25)
           console.log(`[SYNC_INBOX] Got ${inboxEmails.length} emails`)
 
-          // Sync Sent (25 most recent)
-          const sentEmails = await syncFolder(imap, accountId, 'Sent', 25)
+          // Sync Sent (Robust)
+          let sentEmails: any[] = []
+          try {
+            sentEmails = await syncFolder(imap, accountId, 'Sent', 25)
+          } catch (e) {
+            console.log('[SYNC_SENT_RETRY] Sent folder failed, trying Sent Items')
+            try {
+              sentEmails = await syncFolder(imap, accountId, 'Sent Items', 25)
+            } catch (e2) {
+              console.log('[SYNC_SENT_RETRY] Sent Items failed, trying INBOX.Sent')
+              try {
+                sentEmails = await syncFolder(imap, accountId, 'INBOX.Sent', 25)
+              } catch (e3) {
+                console.log('[SYNC_SENT_FAIL] All Sent folder variants failed')
+              }
+            }
+          }
+          // Normalize to 'Sent' for frontend consistency
+          if (sentEmails.length > 0) {
+            sentEmails.forEach(e => e.folder = 'Sent')
+          }
           console.log(`[SYNC_SENT] Got ${sentEmails.length} emails`)
 
           const allEmails = [...inboxEmails, ...sentEmails]
           console.log(`[SYNC_SAVING] ${allEmails.length} total emails`)
 
-          // Save all emails to database
-          for (const email of allEmails) {
-            try {
-              // Create unique ID combining uid and folder
-              const uniqueId = `${accountId}-${email.uid}-${email.folder}`
-              
-              await prisma.cachedemail.upsert({
-                where: {
-                  accountId_uid_folder: {
-                    accountId: accountId,
-                    uid: email.uid,
-                    folder: email.folder,
-                  },
-                },
-                update: {
-                  from: email.from,
-                  to: email.to,
-                  subject: email.subject,
-                  textSnippet: email.textSnippet,
-                  htmlContent: email.htmlContent,
-                  date: email.date,
-                  hasAttachments: email.hasAttachments || false,
-                  attachmentCount: email.attachmentCount || 0,
-                },
-                create: {
-                  id: uniqueId,
-                  accountId,
-                  uid: email.uid,
-                  folder: email.folder,
-                  from: email.from,
-                  to: email.to,
-                  subject: email.subject,
-                  textSnippet: email.textSnippet,
-                  htmlContent: email.htmlContent,
-                  date: email.date,
-                  hasAttachments: email.hasAttachments || false,
-                  attachmentCount: email.attachmentCount || 0,
-                },
-              })
-            } catch (dbError: any) {
-              console.error('[SYNC_DB_ERROR]', dbError.message)
-            }
+          // Save to SQL 'emails' table
+          if (allEmails.length > 0) {
+            const values: any[] = []
+            // Columns: tenant_id, user_id, smtp_account_id, uid, folder, from_name, from_address, recipient_to, body_text, body_html, received_at, attachment_count, subject
+            const placeholders = allEmails.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ')
+
+            allEmails.forEach(email => {
+              const toJSON = sanitizeRecipient(email.to || email.toText);
+              const fromVal = email.from || '';
+
+              values.push(
+                account.tenant_id,
+                account.created_by,
+                accountId,
+                email.uid,
+                email.folder,
+                fromVal.substring(0, 255), // from_name
+                fromVal.substring(0, 255), // from_address
+                toJSON, // recipient_to (JSON)
+                email.textSnippet, // body_text
+                email.htmlContent,
+                email.date,
+                email.attachmentCount,
+                email.subject,
+                email.isRead
+              )
+            })
+
+            await pool.execute(`
+                INSERT INTO emails 
+                (tenant_id, user_id, smtp_account_id, uid, folder, from_name, from_address, recipient_to, body_text, body_html, received_at, attachment_count, subject, is_read)
+                VALUES ${placeholders}
+                ON DUPLICATE KEY UPDATE
+                from_name = VALUES(from_name),
+                recipient_to = VALUES(recipient_to),
+                subject = VALUES(subject),
+                body_text = VALUES(body_text),
+                body_html = VALUES(body_html),
+                received_at = VALUES(received_at),
+                attachment_count = VALUES(attachment_count),
+                is_read = VALUES(is_read)
+              `, values)
           }
 
-          await prisma.emailaccount.update({
-            where: { id: accountId },
-            data: { lastSync: new Date() },
-          })
+          // Update last_sync
+          await pool.execute(
+            `UPDATE smtp_accounts SET last_sync = NOW() WHERE id = ?`,
+            [accountId]
+          )
 
-          // Record analytics
           try {
+            // Analytics (Optional)
             const today = new Date()
             today.setHours(0, 0, 0, 0)
-            
             await prisma.emailanalytics.upsert({
-              where: {
-                accountId_date: {
-                  accountId,
-                  date: today,
-                },
-              },
-              update: {
-                emailsReceived: { increment: inboxEmails.length },
-                emailsSent: { increment: sentEmails.length },
-              },
-              create: {
-                accountId,
-                date: today,
-                emailsSent: sentEmails.length,
-                emailsReceived: inboxEmails.length,
-                emailsRead: 0,
-              },
+              where: { accountId_date: { accountId: String(accountId), date: today } },
+              update: { emailsReceived: { increment: inboxEmails.length }, emailsSent: { increment: sentEmails.length } },
+              create: { accountId: String(accountId), date: today, emailsSent: sentEmails.length, emailsReceived: inboxEmails.length, emailsRead: 0 }
             })
-            console.log(`[SYNC_ANALYTICS] Recorded: ${inboxEmails.length} received, ${sentEmails.length} sent`)
-          } catch (analyticsError: any) {
-            console.error('[SYNC_ANALYTICS_ERROR]', analyticsError.message)
+          } catch (e: any) {
+            console.error('[SYNC_ANALYTICS_SKIP]', e.message)
           }
 
           clearTimeout(timeout)

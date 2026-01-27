@@ -1,44 +1,46 @@
 
-import pool from '@/lib/db';
+import { prisma } from '@/lib/prisma';
 
-export async function createNotification(
-    userId: number,
-    type: string,
-    referenceId: number,
-    actorId: number
-) {
-    const connection = await pool.getConnection();
-    try {
-        await connection.execute(
-            `INSERT INTO notifications (user_id, type, reference_id, is_read, created_at, created_by)
-             VALUES (?, ?, ?, FALSE, NOW(), ?)`,
-            [userId, type, referenceId, actorId]
-        );
-    } catch (error) {
-        console.error('Failed to create notification', error);
-    } finally {
-        connection.release();
-    }
+export type NotificationType = 'info' | 'warning' | 'success' | 'error' | 'system' | 'mention' | 'task_assigned';
+
+interface CreateNotificationParams {
+    tenantId: string;
+    userId: number;
+    title: string;
+    message: string;
+    type: NotificationType;
+    link?: string;
+    data?: any;
 }
 
-export async function createTeamNotification(
-    type: string,
-    referenceId: number,
-    actorId: number,
-    excludeUserId?: number
-) {
-    // Get all admins except actor and excluded user
-    const connection = await pool.getConnection();
+/**
+ * Creates a new notification for a user
+ */
+export async function createNotification({
+    tenantId,
+    userId,
+    title,
+    message,
+    type,
+    link,
+    data
+}: CreateNotificationParams) {
     try {
-        const [admins]: any = await connection.execute(
-            'SELECT id FROM admins WHERE id != ? AND id != ?',
-            [actorId, excludeUserId || 0]
+        // Use raw SQL to bypass Prisma client stale types issues
+        await prisma.$executeRawUnsafe(
+            `INSERT INTO notifications (tenantId, userId, user_id, title, message, type, is_read, link, data, created_at) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+            tenantId,
+            userId,
+            userId,
+            title,
+            message,
+            type,
+            0, // is_read = false
+            link || null,
+            data ? JSON.stringify(data) : null
         );
-
-        for (const admin of admins) {
-            await createNotification(admin.id, type, referenceId, actorId);
-        }
-    } finally {
-        connection.release();
+    } catch (error) {
+        console.error('Failed to create notification (Raw SQL):', error);
     }
 }

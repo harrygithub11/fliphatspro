@@ -125,7 +125,7 @@ export function KanbanBoard({ tasks, onStatusChange, onTaskClick }: KanbanBoardP
 
                                     {/* Customer */}
                                     {task.customer_name && (
-                                        <Link href={`/admin/leads/${task.customer_id}`} className="flex items-center gap-1 text-blue-600 hover:underline">
+                                        <Link href={`leads/${task.customer_id}`} className="flex items-center gap-1 text-blue-600 hover:underline">
                                             <User className="w-3 h-3" />
                                             {task.customer_name.split(' ')[0]}
                                         </Link>
@@ -133,7 +133,7 @@ export function KanbanBoard({ tasks, onStatusChange, onTaskClick }: KanbanBoardP
 
                                     {/* Related Order */}
                                     {task.related_order_id && (
-                                        <Link href={`/admin/orders/${task.related_order_id}`} className="flex items-center gap-1 text-amber-600">
+                                        <Link href={`orders/${task.related_order_id}`} className="flex items-center gap-1 text-amber-600">
                                             <Package className="w-3 h-3" />
                                             #{task.related_order_id}
                                         </Link>

@@ -8,8 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Paperclip, Send, Search, X, Plus } from 'lucide-react';
+import { Loader2, Paperclip, Send, Search, X, Plus, Clock, Calendar, Check } from 'lucide-react';
 import { useComposeEmail } from '@/context/ComposeEmailContext';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 export function ComposeModal() {
     const { isOpen, closeCompose, data } = useComposeEmail();
@@ -18,8 +19,8 @@ export function ComposeModal() {
     const [sending, setSending] = useState(false);
     const [accounts, setAccounts] = useState<any[]>([]);
     const [templates, setTemplates] = useState<any[]>([]);
-    const [draftId, setDraftId] = useState<number | null>(null);
     const [attachments, setAttachments] = useState<any[]>([]);
+    const [showSuccess, setShowSuccess] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -28,6 +29,9 @@ export function ComposeModal() {
         body: '',
         smtp_account_id: ''
     });
+
+    // Schedule State
+    const [scheduledFor, setScheduledFor] = useState<string>('');
 
     // Lead Search State
     const [leads, setLeads] = useState<{ id: number, name: string, email: string }[]>([]);
@@ -47,6 +51,7 @@ export function ComposeModal() {
             }));
             if (data.to) setSearchQuery(data.to); // Pre-fill search if 'to' is provided
             setAttachments([]); // Clear attachments when opening new compose
+            setScheduledFor(''); // Reset schedule
         }
     }, [isOpen, data]);
 
@@ -146,44 +151,108 @@ export function ComposeModal() {
     };
 
     const handleSend = async () => {
+        console.log('[COMPOSE] handleSend clicked');
+
+        let targetAccountId = formData.smtp_account_id;
+        if (!targetAccountId && accounts.length > 0) {
+            targetAccountId = accounts[0].id;
+            console.log('[COMPOSE] Defaulting accountId to:', targetAccountId);
+        }
+
+        if (!targetAccountId) {
+            console.error('[COMPOSE] No account ID found!');
+            toast({ title: "Configuration Error", description: "No sending account selected", variant: "destructive" });
+            return;
+        }
+
         if (!formData.to || !formData.subject || !formData.body) {
+            console.warn('[COMPOSE] Validation failed:', formData);
             toast({ title: "Validation Error", description: "Please fill required fields", variant: "destructive" });
             return;
         }
 
+        const isScheduled = !!scheduledFor;
+        let scheduleDateStr = scheduledFor;
+
+        if (isScheduled) {
+            const scheduleDate = new Date(scheduledFor);
+            const now = new Date();
+
+            // If scheduled time is in past or extremely close (within 1 min), just warn or bump it?
+            // API rejects if <= now.
+            if (scheduleDate <= now) {
+                console.warn('[COMPOSE] Schedule time is in past:', scheduleDate);
+                toast({
+                    title: "Invalid Schedule Time",
+                    description: "Scheduled time must be in the future. Please pick a later time.",
+                    variant: "destructive"
+                });
+                return;
+            }
+            scheduleDateStr = scheduleDate.toISOString();
+        }
+
         setSending(true);
+        console.log('[COMPOSE] Sending payload...', { isScheduled, scheduledFor: scheduleDateStr });
+
         try {
-            const res = await fetch('/api/email-system/send', {
+            const endpoint = isScheduled ? '/api/email-system/schedule' : '/api/email-system/send';
+
+            const payload: any = {
+                accountId: targetAccountId,
+                to: formData.to,
+                subject: formData.subject,
+                attachments: attachments.map(a => ({
+                    filename: a.filename,
+                    data: a.data,
+                    contentType: a.contentType
+                }))
+            };
+
+            if (isScheduled) {
+                payload.scheduledFor = scheduleDateStr;
+                payload.bodyText = formData.body; // API expects bodyText
+                payload.htmlBody = `<p>${formData.body.replace(/\n/g, '<br>')}</p>`;
+            } else {
+                payload.text = formData.body;
+                payload.html = `<p>${formData.body.replace(/\n/g, '<br>')}</p>`;
+            }
+
+            console.log('[COMPOSE] Payload:', payload);
+
+            const res = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': 'Bearer YWRtaW4='
                 },
-                body: JSON.stringify({
-                    accountId: formData.smtp_account_id,
-                    to: formData.to,
-                    subject: formData.subject,
-                    text: formData.body,
-                    html: `<p>${formData.body.replace(/\n/g, '<br>')}</p>`,
-                    attachments: attachments.map(a => ({
-                        filename: a.filename,
-                        data: a.data,
-                        contentType: a.contentType
-                    }))
-                })
+                body: JSON.stringify(payload)
             });
+
             const resData = await res.json();
-            if (resData.success) {
-                toast({ title: "Sent", description: "Email sent successfully." });
-                closeCompose();
-                setFormData({ ...formData, subject: '', body: '', to: '' });
-                setSearchQuery('');
-                setAttachments([]);
+            console.log('[COMPOSE] Response:', resData);
+
+            if (resData.success || resData.scheduledEmail) {
+                setShowSuccess(true);
+                setTimeout(() => {
+                    setShowSuccess(false);
+                    closeCompose();
+                    setFormData({ ...formData, subject: '', body: '', to: '' });
+                    setSearchQuery('');
+                    setAttachments([]);
+                    setScheduledFor('');
+                }, 2000);
             } else {
-                toast({ title: "Error", description: resData.error || resData.message || "Failed to send", variant: "destructive" });
+                console.error('[COMPOSE] Server Error:', resData);
+                toast({
+                    title: "Error",
+                    description: resData.error || resData.message || (isScheduled ? "Failed to schedule" : "Failed to send"),
+                    variant: "destructive"
+                });
             }
-        } catch (e) {
-            toast({ title: "Error", description: "Network error", variant: "destructive" });
+        } catch (e: any) {
+            console.error('[COMPOSE] Network Exception:', e);
+            toast({ title: "Error", description: "Network error: " + e.message, variant: "destructive" });
         } finally {
             setSending(false);
         }
@@ -199,9 +268,6 @@ export function ComposeModal() {
         let newTo = '';
 
         if (currentTo === '' || !currentTo.includes(',')) {
-            // Check if what we have is just a partial search or actual text
-            // For simplicity, if there's no comma, we replace. 
-            // Better: if there are multiple, append.
             newTo = email;
         } else {
             const parts = currentTo.split(',').map(p => p.trim());
@@ -217,6 +283,26 @@ export function ComposeModal() {
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && closeCompose()}>
             <DialogContent className="sm:max-w-[800px] p-0 gap-0 overflow-hidden bg-white">
+                {showSuccess && (
+                    <div className="absolute inset-0 z-50 bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center animate-in fade-in duration-300">
+                        <div className="relative mb-6 transform scale-125">
+                            <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center animate-in zoom-in duration-500">
+                                <Send className="w-10 h-10 text-green-600 animate-pulse" />
+                            </div>
+                            <div className="absolute -bottom-2 -right-2 bg-white rounded-full p-2 shadow-lg">
+                                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                                    <Check className="w-5 h-5 text-white" />
+                                </div>
+                            </div>
+                        </div>
+                        <h3 className="text-2xl font-black text-slate-900 mb-2 uppercase tracking-tight animate-in slide-in-from-bottom-4 duration-500 delay-100">
+                            {scheduledFor ? 'Email Scheduled!' : 'Email Sent!'}
+                        </h3>
+                        <p className="text-slate-500 font-medium animate-in slide-in-from-bottom-4 duration-500 delay-200">
+                            Your message has been successfully delivered.
+                        </p>
+                    </div>
+                )}
                 <DialogHeader className="p-4 pr-10 border-b bg-zinc-50 flex flex-row items-center justify-between">
                     <DialogTitle className="text-lg font-black uppercase tracking-tight">New Message</DialogTitle>
                     <div className="flex gap-2">
@@ -338,8 +424,35 @@ export function ComposeModal() {
                         <label className="cursor-pointer p-2 hover:bg-zinc-200 rounded-full transition-colors flex items-center gap-2 group">
                             <input type="file" multiple className="hidden" onChange={handleFileChange} />
                             <Paperclip className="w-5 h-5 text-zinc-500 group-hover:text-black" />
-                            <span className="text-xs font-bold hidden sm:inline">Attach Files</span>
+                            <span className="text-xs font-bold hidden sm:inline">Attach</span>
                         </label>
+
+                        {/* Scheduler UI */}
+                        <Popover modal={true}>
+                            <PopoverTrigger asChild>
+                                <Button variant={scheduledFor ? "secondary" : "ghost"} className={`gap-2 ${scheduledFor ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'text-zinc-500 hover:text-black'}`}>
+                                    <Clock className="w-4 h-4" />
+                                    <span className="text-xs font-bold">{scheduledFor ? new Date(scheduledFor).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Schedule'}</span>
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-4 bg-white z-[10000]" align="start">
+                                <div className="space-y-4">
+                                    <h4 className="font-medium text-sm">Pick a date & time</h4>
+                                    <Input
+                                        type="datetime-local"
+                                        className="w-full"
+                                        min={new Date().toISOString().slice(0, 16)}
+                                        value={scheduledFor}
+                                        onChange={(e) => setScheduledFor(e.target.value)}
+                                    />
+                                    {scheduledFor && (
+                                        <Button variant="ghost" size="sm" className="w-full text-red-500 hover:text-red-600 h-8" onClick={() => setScheduledFor('')}>
+                                            Clear Schedule
+                                        </Button>
+                                    )}
+                                </div>
+                            </PopoverContent>
+                        </Popover>
                     </div>
 
                     <div className="flex gap-3">
@@ -349,10 +462,12 @@ export function ComposeModal() {
                         <Button
                             onClick={handleSend}
                             disabled={sending}
-                            className="bg-black text-white hover:bg-zinc-800 px-8 font-black uppercase tracking-widest text-xs h-11 shadow-lg active:scale-95 transition-all"
+                            className={`px-8 font-black uppercase tracking-widest text-xs h-11 shadow-lg active:scale-95 transition-all ${scheduledFor ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-black text-white hover:bg-zinc-800'}`}
                         >
-                            {sending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
-                            Send Email
+                            {sending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> :
+                                scheduledFor ? <Calendar className="w-4 h-4 mr-2" /> : <Send className="w-4 h-4 mr-2" />
+                            }
+                            {scheduledFor ? 'Schedule Send' : 'Send Email'}
                         </Button>
                     </div>
                 </DialogFooter>

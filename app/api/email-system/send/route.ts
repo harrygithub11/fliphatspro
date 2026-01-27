@@ -1,22 +1,12 @@
-/**
- * Email Sending API
- * Sends emails via SMTP using configured email accounts
- */
-
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import pool from '@/lib/db'
 import { decrypt } from '@/lib/crypto'
 import nodemailer from 'nodemailer'
 import Imap from 'imap'
+import { requireTenantAuth } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
-
-function verifyAdmin(request: NextRequest): boolean {
-  const authHeader = request.headers.get('authorization')
-  if (!authHeader) return false
-  const token = authHeader.replace('Bearer ', '')
-  return token.startsWith('YWRtaW4')
-}
 
 // Function to save sent email to IMAP Sent folder
 async function saveToSentFolder(account: any, password: string, mailContent: string): Promise<void> {
@@ -33,7 +23,7 @@ async function saveToSentFolder(account: any, password: string, mailContent: str
     imap.once('ready', () => {
       // Open Sent folder (try multiple common names)
       const sentFolders = ['Sent', 'INBOX.Sent', '[Gmail]/Sent Mail', 'Sent Items', 'Sent Messages']
-      
+
       const tryFolder = (index: number) => {
         if (index >= sentFolders.length) {
           console.log('[IMAP_SENT] No Sent folder found, using INBOX')
@@ -84,11 +74,9 @@ async function saveToSentFolder(account: any, password: string, mailContent: str
 }
 
 export async function POST(request: NextRequest) {
-  if (!verifyAdmin(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   try {
+    const { tenantId } = await requireTenantAuth(request)
+
     const body = await request.json()
     const { accountId, to, subject, text, html, attachments } = body
 
@@ -111,23 +99,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get account from database
-    const account = await prisma.emailaccount.findUnique({
-      where: { id: accountId },
-    })
+    // Get account from database using smtp_accounts
+    const [accounts]: any = await pool.execute(
+      `SELECT id, name, from_email as email, username, encrypted_password, host as smtpHost, port as smtpPort, imap_host as imapHost, imap_port as imapPort, imap_secure as imapSecure, is_active as isActive FROM smtp_accounts WHERE id = ? AND tenant_id = ? AND is_active = 1`,
+      [accountId, tenantId]
+    )
 
-    if (!account) {
-      return NextResponse.json({ error: 'Email account not found' }, { status: 404 })
+    if (accounts.length === 0) {
+      return NextResponse.json({ error: 'Email account not found or access denied' }, { status: 404 })
     }
 
-    if (!account.isActive) {
-      return NextResponse.json({ error: 'Email account is disabled' }, { status: 400 })
-    }
+    const account = accounts[0]
+    account.smtpSecure = account.smtpPort === 465
 
     // Decrypt password
     let decryptedPassword: string
     try {
-      decryptedPassword = decrypt(account.password)
+      decryptedPassword = decrypt(account.encrypted_password)
     } catch (error) {
       console.error('[PASSWORD_DECRYPT_ERROR]', error)
       return NextResponse.json(
@@ -190,20 +178,20 @@ export async function POST(request: NextRequest) {
     const info = await transporter.sendMail(mailOptions)
 
     console.log(`[EMAIL_SENT] From: ${account.email}, To: ${to}, MessageID: ${info.messageId}`)
-    
+
     // Save to IMAP Sent folder (so it appears in webmail)
     try {
       // Build RFC822 message
       const date = new Date().toUTCString()
       const boundary = '----=_Part_' + Date.now()
-      
+
       let rfcMessage = `From: "${account.name}" <${account.email}>\r\n`
       rfcMessage += `To: ${to}\r\n`
       rfcMessage += `Subject: ${subject}\r\n`
       rfcMessage += `Date: ${date}\r\n`
       rfcMessage += `Message-ID: <${info.messageId}>\r\n`
       rfcMessage += `MIME-Version: 1.0\r\n`
-      
+
       if (html) {
         rfcMessage += `Content-Type: multipart/alternative; boundary="${boundary}"\r\n\r\n`
         rfcMessage += `--${boundary}\r\n`
@@ -224,16 +212,17 @@ export async function POST(request: NextRequest) {
       console.error('[IMAP_SAVE_ERROR]', imapError.message)
       // Don't fail the send if IMAP save fails
     }
-    
-    // Save sent email to database immediately for instant display
+
+    // Save sent email to database immediately for instant display (Tenant Scoped)
     try {
       const uniqueId = `sent-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
       const hasAttachments = attachments && attachments.length > 0
-      
+
       await prisma.cachedemail.create({
         data: {
           id: uniqueId,
-          accountId: accountId,
+          tenantId: tenantId, // Enforce tenant isolation
+          accountId: String(accountId),
           uid: Math.floor(Math.random() * 2147483647), // Random INT within MySQL INT range
           folder: 'Sent',
           from: account.email,
@@ -246,17 +235,18 @@ export async function POST(request: NextRequest) {
           attachmentCount: hasAttachments ? attachments.length : 0,
         }
       })
-      
+
       console.log(`[EMAIL_CACHED] Sent email saved to database`)
-      
-      // Update analytics
+
+      // Update analytics - omitting tenantId update for now as schema might not have it
+      // or we accept it's global per account (since account IS tenant scoped, it's implicitly tenant scoped)
       const today = new Date()
       today.setHours(0, 0, 0, 0)
-      
+
       await prisma.emailanalytics.upsert({
         where: {
           accountId_date: {
-            accountId: accountId,
+            accountId: String(accountId),
             date: today,
           },
         },
@@ -264,14 +254,14 @@ export async function POST(request: NextRequest) {
           emailsSent: { increment: 1 },
         },
         create: {
-          accountId: accountId,
+          accountId: String(accountId),
           date: today,
           emailsSent: 1,
           emailsReceived: 0,
           emailsRead: 0,
         },
       })
-      
+
       console.log(`[ANALYTICS_UPDATED] Sent count incremented`)
     } catch (cacheError: any) {
       console.error('[EMAIL_CACHE_ERROR]', cacheError.message)
@@ -288,6 +278,9 @@ export async function POST(request: NextRequest) {
     })
   } catch (error: any) {
     console.error('[SEND_EMAIL_ERROR]', error)
+    if (error.message.includes('Tenant context required') || error.message.includes('Access denied')) {
+      return NextResponse.json({ error: error.message }, { status: 401 })
+    }
     return NextResponse.json(
       {
         error: 'Failed to send email',

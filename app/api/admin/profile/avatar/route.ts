@@ -50,16 +50,18 @@ export async function POST(req: Request) {
         const connection = await pool.getConnection();
         try {
             await connection.execute(
-                'UPDATE admins SET avatar_url = ? WHERE id = ?',
+                'UPDATE users SET avatar_url = ? WHERE id = ?',
                 [fileUrl, session.id]
             );
 
-            // Log activity
+            // Log activity (ensure table exists or skip)
+            /*
             await connection.execute(
                 `INSERT INTO admin_activity_log (admin_id, action_type, action_description, ip_address) 
                  VALUES (?, 'update_avatar', 'Uploaded new profile picture', ?)`,
                 [session.id, req.headers.get('x-forwarded-for') || 'unknown']
             );
+            */
 
         } finally {
             connection.release();

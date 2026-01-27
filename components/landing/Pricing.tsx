@@ -22,6 +22,7 @@ interface PricingProps {
     source?: string;
     paymentLink?: string;
     ctaConfig?: any;
+    onTrack?: (actionType?: string) => void;
 }
 
 const defaultFeatures = [
@@ -42,7 +43,8 @@ export function Pricing({
     buttonText = "Get Instant Access",
     source = 'website',
     paymentLink,
-    ctaConfig
+    ctaConfig,
+    onTrack
 }: PricingProps) {
     const mode = ctaConfig?.primary_mode || (paymentLink ? 'payment_link' : 'booking');
     const modes = ctaConfig?.modes || {};
@@ -114,6 +116,7 @@ export function Pricing({
                             source={`${source}:pricing`}
                             paymentLink={targetLink}
                             triggerText={btnText}
+                            onInteract={() => onTrack?.('click')}
                         >
                             <motion.button
                                 whileHover={{ scale: 1.02 }}
@@ -124,7 +127,7 @@ export function Pricing({
                             </motion.button>
                         </BookingModal>
                         <div className="pt-2 w-full">
-                            <BookingModal type="book" triggerText="Talk to an Expert" source={`${source}:pricing_expert`} />
+                            <BookingModal type="book" triggerText="Talk to an Expert" source={`${source}:pricing_expert`} onInteract={() => onTrack?.('click')} />
                         </div>
                     </CardFooter>
                 </Card>

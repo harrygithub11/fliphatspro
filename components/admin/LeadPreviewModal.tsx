@@ -14,20 +14,24 @@ import { Textarea } from '@/components/ui/textarea';
 import { Phone, Mail, MapPin, Calendar, ExternalLink, MessageSquare, StickyNote, Plus, Clock, Activity, Briefcase } from 'lucide-react';
 import Link from 'next/link';
 import { useComposeEmail } from '@/context/ComposeEmailContext';
+import { useCRM, StageSelect, ScoreSelect } from '@/app/apps/crm/CRMContext';
+import { useSlugSafe } from '@/lib/slug-context';
 
 interface LeadPreviewModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     leadId: number | null;
     initialData?: any; // Snapshot from list
-    stages: any[];
-    scores: any[];
+    stages?: any[]; // Deprecated
+    scores?: any[]; // Deprecated
     admins: any[];
     onUpdate?: () => void; // Trigger refresh in parent
 }
 
-export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, stages, scores, admins, onUpdate }: LeadPreviewModalProps) {
+export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, admins, onUpdate }: LeadPreviewModalProps) {
     const { openCompose } = useComposeEmail();
+    const slugContext = useSlugSafe();
+    const slug = slugContext?.slug || '';
     const [loading, setLoading] = useState(false);
     const [details, setDetails] = useState<any>(null);
     const [activeTab, setActiveTab] = useState('timeline');
@@ -118,7 +122,7 @@ export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, stag
                             <div>
                                 <DialogTitle className="text-xl font-bold flex items-center gap-2">
                                     {lead.name}
-                                    <Link href={`/admin/leads/${leadId}`} className="text-muted-foreground hover:text-primary transition-colors">
+                                    <Link href={slug ? `/${slug}/leads/${leadId}` : `/leads/${leadId}`} className="text-muted-foreground hover:text-primary transition-colors">
                                         <ExternalLink className="w-4 h-4" />
                                     </Link>
                                 </DialogTitle>
@@ -142,22 +146,16 @@ export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, stag
                         <div className="flex flex-col gap-3 items-end shrink-0">
                             {/* Status & Score Row */}
                             <div className="flex items-center gap-2">
-                                <Select value={lead?.stage} onValueChange={(v) => handleUpdate('stage', v)}>
-                                    <SelectTrigger className="h-8 w-[140px] text-xs bg-background">
-                                        <SelectValue placeholder="Stage" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {stages.map(s => <SelectItem key={s.id} value={s.value}>{s.label}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                                <Select value={lead?.score} onValueChange={(v) => handleUpdate('score', v)}>
-                                    <SelectTrigger className="h-8 w-[100px] text-xs bg-background">
-                                        <SelectValue placeholder="Score" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {scores.map(s => <SelectItem key={s.id} value={s.value}>{s.label}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
+                                <StageSelect
+                                    value={lead?.stage}
+                                    onChange={(v) => handleUpdate('stage', v)}
+                                    className="h-8 w-[140px] text-xs bg-background"
+                                />
+                                <ScoreSelect
+                                    value={lead?.score}
+                                    onChange={(v) => handleUpdate('score', v)}
+                                    className="h-8 w-[100px] text-xs bg-background"
+                                />
                             </div>
 
                             {/* Owner Row */}
@@ -411,7 +409,7 @@ export function LeadPreviewModal({ open, onOpenChange, leadId, initialData, stag
                             </Button>
                             <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Close</Button>
                             <Button size="sm" asChild>
-                                <Link href={`/admin/leads/${leadId}`}>Full Profile</Link>
+                                <Link href={slug ? `/${slug}/leads/${leadId}` : `/leads/${leadId}`}>Full Profile</Link>
                             </Button>
                         </div>
                     </div>

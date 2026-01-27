@@ -1,26 +1,15 @@
-/**
- * Email Drafts API
- * Handles draft email CRUD operations with auto-save support
- */
-
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import pool from '@/lib/db'
+import { requireTenantAuth } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
-function verifyAdmin(request: NextRequest): boolean {
-  const authHeader = request.headers.get('authorization')
-  if (!authHeader) return false
-  return authHeader.replace('Bearer ', '').startsWith('YWRtaW4')
-}
-
-// GET - List all drafts for an account
+// GET - List all drafts for an account (Tenant Scoped)
 export async function GET(request: NextRequest) {
-  if (!verifyAdmin(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   try {
+    const { tenantId } = await requireTenantAuth(request)
+
     const { searchParams } = new URL(request.url)
     const accountId = searchParams.get('accountId')
 
@@ -29,12 +18,15 @@ export async function GET(request: NextRequest) {
     }
 
     const drafts = await prisma.emaildraft.findMany({
-      where: { accountId },
+      where: {
+        accountId,
+        tenantId: tenantId // Enforce tenant isolation
+      },
       orderBy: { updatedAt: 'desc' },
-      take: 50, // Limit to 50 most recent drafts
+      take: 50,
     })
 
-    console.log(`[DRAFTS_LIST] Found ${drafts.length} drafts for account ${accountId}`)
+    console.log(`[DRAFTS_LIST] Found ${drafts.length} drafts for account ${accountId} (Tenant: ${tenantId})`)
 
     return NextResponse.json({
       success: true,
@@ -43,6 +35,9 @@ export async function GET(request: NextRequest) {
     })
   } catch (error: any) {
     console.error('[DRAFTS_LIST_ERROR]', error.message)
+    if (error.message.includes('Tenant context required') || error.message.includes('Access denied')) {
+      return NextResponse.json({ error: error.message }, { status: 401 })
+    }
     return NextResponse.json(
       { error: 'Failed to list drafts', details: error.message },
       { status: 500 }
@@ -50,13 +45,11 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Create or update a draft
+// POST - Create or update a draft (Tenant Scoped)
 export async function POST(request: NextRequest) {
-  if (!verifyAdmin(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   try {
+    const { tenantId } = await requireTenantAuth(request)
+
     const body = await request.json()
     const {
       id, // if updating existing draft
@@ -75,6 +68,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Account ID required' }, { status: 400 })
     }
 
+    // Verify account belongs to tenant using smtp_accounts
+    const [accounts]: any = await pool.execute(
+      `SELECT id FROM smtp_accounts WHERE id = ? AND tenant_id = ? AND is_active = 1`,
+      [accountId, tenantId]
+    )
+
+    if (accounts.length === 0) {
+      return NextResponse.json({ error: 'Account not found or access denied' }, { status: 404 })
+    }
+
     // Check if draft is empty (no point saving)
     const isEmpty = !to && !cc && !bcc && !subject && !draftBody && !htmlBody
     if (isEmpty) {
@@ -89,7 +92,15 @@ export async function POST(request: NextRequest) {
     let draft
 
     if (id) {
-      // Update existing draft
+      // Update existing draft (Verify access)
+      const existingDraft = await prisma.emaildraft.findFirst({
+        where: { id, tenantId: tenantId }
+      })
+
+      if (!existingDraft) {
+        return NextResponse.json({ error: 'Draft not found or access denied' }, { status: 404 })
+      }
+
       draft = await prisma.emaildraft.update({
         where: { id },
         data: {
@@ -108,6 +119,7 @@ export async function POST(request: NextRequest) {
       // Create new draft
       draft = await prisma.emaildraft.create({
         data: {
+          tenantId, // Add tenantId
           accountId,
           to: to || null,
           cc: cc || null,
@@ -128,6 +140,9 @@ export async function POST(request: NextRequest) {
     })
   } catch (error: any) {
     console.error('[DRAFT_SAVE_ERROR]', error.message)
+    if (error.message.includes('Tenant context required') || error.message.includes('Access denied')) {
+      return NextResponse.json({ error: error.message }, { status: 401 })
+    }
     return NextResponse.json(
       { error: 'Failed to save draft', details: error.message },
       { status: 500 }
@@ -135,13 +150,11 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// DELETE - Delete a draft
+// DELETE - Delete a draft (Tenant Scoped)
 export async function DELETE(request: NextRequest) {
-  if (!verifyAdmin(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   try {
+    const { tenantId } = await requireTenantAuth(request)
+
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 
@@ -149,9 +162,18 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Draft ID required' }, { status: 400 })
     }
 
-    await prisma.emaildraft.delete({
-      where: { id },
+    // Verify access before delete (Implicitly via deleteMany with tenantId, or findFirst)
+    // Using deleteMany is safer to ensure tenant scoping even if ID is known
+    const result = await prisma.emaildraft.deleteMany({
+      where: {
+        id,
+        tenantId: tenantId
+      },
     })
+
+    if (result.count === 0) {
+      return NextResponse.json({ error: 'Draft not found or access denied' }, { status: 404 })
+    }
 
     console.log('[DRAFT_DELETED]', id)
 
@@ -161,6 +183,9 @@ export async function DELETE(request: NextRequest) {
     })
   } catch (error: any) {
     console.error('[DRAFT_DELETE_ERROR]', error.message)
+    if (error.message.includes('Tenant context required') || error.message.includes('Access denied')) {
+      return NextResponse.json({ error: error.message }, { status: 401 })
+    }
     return NextResponse.json(
       { error: 'Failed to delete draft', details: error.message },
       { status: 500 }

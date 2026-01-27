@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
+import { requireTenantAuth } from '@/lib/auth';
 import pool from '@/lib/db';
 import Papa from 'papaparse';
 
@@ -38,10 +38,8 @@ function cleanPhone(phone: string): string {
 
 export async function POST(request: Request) {
     try {
-        const session = await getSession();
-        if (!session) {
-            return NextResponse.json({ success: false, message: 'Not authenticated' }, { status: 401 });
-        }
+        // CRITICAL: Require tenant context for data isolation
+        const { session, tenantId } = await requireTenantAuth(request);
 
         const formData = await request.formData();
         const file = formData.get('file') as File;
@@ -180,8 +178,7 @@ export async function POST(request: Request) {
                 const phone = phoneCol ? cleanPhone(String(row[phoneCol] || '')) : '';
                 const email = emailCol ? String(row[emailCol] || '').trim() : '';
                 const location = locationCol ? String(row[locationCol] || '').trim() : null;
-                const budgetRaw = budgetCol ? parseFloat(String(row[budgetCol] || '').replace(/[^0-9.]/g, '')) : 0;
-                const budget = isNaN(budgetRaw) ? 0 : budgetRaw;
+                const budget = budgetCol ? String(row[budgetCol] || '').trim() : null;
 
                 // Parse timestamp if available
                 let submissionTime = null;
@@ -227,13 +224,13 @@ export async function POST(request: Request) {
                     let existingRows: any[] = [];
                     if (email || phone) {
                         const checkConditions: string[] = [];
-                        const checkParams: string[] = [];
+                        const checkParams: string[] = [tenantId]; // CRITICAL: tenant_id first
                         if (email) { checkConditions.push('email = ?'); checkParams.push(email); }
-                        if (phone && phone.length > 5) { checkConditions.push('phone = ?'); checkParams.push(phone); } // minimal phone validation
+                        if (phone && phone.length > 5) { checkConditions.push('phone = ?'); checkParams.push(phone); }
 
                         if (checkConditions.length > 0) {
                             const [rows]: any = await connection.execute(
-                                `SELECT * FROM customers WHERE ${checkConditions.join(' OR ')} LIMIT 1`,
+                                `SELECT * FROM customers WHERE tenant_id = ? AND (${checkConditions.join(' OR ')}) AND deleted_at IS NULL LIMIT 1`,
                                 checkParams
                             );
                             existingRows = rows;
@@ -295,17 +292,17 @@ export async function POST(request: Request) {
 
 
                         if (updates.length > 0) {
-                            updateParams.push(existing.id);
+                            updateParams.push(existing.id, tenantId); // Add tenant_id to params
                             await connection.execute(
-                                `UPDATE customers SET ${updates.join(', ')} WHERE id = ?`,
+                                `UPDATE customers SET ${updates.join(', ')} WHERE id = ? AND tenant_id = ?`,
                                 updateParams
                             );
 
-                            // Log enrichment
+                            // Log enrichment with tenant_id
                             await connection.execute(
-                                `INSERT INTO interactions (customer_id, type, content, created_by) 
-                                     VALUES (?, 'system_event', ?, ?)`,
-                                [existing.id, `Lead enriched via import: Added ${updatedFields.join(', ')}`, session.id]
+                                `INSERT INTO interactions (tenant_id, customer_id, type, content, created_by) 
+                                     VALUES (?, ?, 'system_event', ?, ?)`,
+                                [tenantId, existing.id, `Lead enriched via import: Added ${updatedFields.join(', ')}`, session.id]
                             );
 
                             results.updated++;
@@ -315,20 +312,22 @@ export async function POST(request: Request) {
                         continue;
                     }
 
-                    // Insert customer with timestamp if available
+                    // Insert customer with timestamp if available - CRITICAL: include tenant_id and created_by
                     const [insertResult]: any = await connection.execute(
                         `INSERT INTO customers (
-                            name, phone, email, source, campaign_name, location, stage, score, owner, created_at,
+                            tenant_id, created_by, name, phone, email, source, campaign_name, location, stage, score, owner_id, created_at,
                             ad_id, ad_name, adset_id, adset_name, campaign_id, form_id, form_name, is_organic, platform, fb_lead_status, fb_lead_id, fb_created_time, budget
                         ) 
-                         VALUES (?, ?, ?, 'csv_import', ?, ?, 'new', 'cold', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                         VALUES (?, ?, ?, ?, ?, 'csv_import', ?, ?, 'new', 'cold', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                         [
+                            tenantId,           // MANDATORY: tenant isolation
+                            session.id,         // MANDATORY: ownership tracking
                             name || 'Unknown',
                             phone,
                             email,
                             specificCampaignName,
                             location,
-                            session.name || 'unassigned',
+                            session.id,         // owner_id as INT FK
                             submissionTime || new Date().toISOString().slice(0, 19).replace('T', ' '),
                             adId, adName, adsetId, adsetName, campaignId, formId, formName, isOrganic, platform, leadStatus, fbLeadId, submissionTime, budget
                         ]
@@ -339,9 +338,10 @@ export async function POST(request: Request) {
                     // Create initial timeline entry if we have a timestamp
                     if (submissionTime) {
                         await connection.execute(
-                            `INSERT INTO interactions (customer_id, type, content, created_by, created_at) 
-                             VALUES (?, 'system_event', ?, ?, ?)`,
+                            `INSERT INTO interactions (tenant_id, customer_id, type, content, created_by, created_at) 
+                             VALUES (?, ?, 'system_event', ?, ?, ?)`,
                             [
+                                tenantId,
                                 customerId,
                                 'Lead submitted via form' + (campaignName ? ` (Campaign: ${campaignName})` : ''),
                                 session.id,

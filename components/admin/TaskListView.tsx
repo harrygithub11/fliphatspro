@@ -65,6 +65,7 @@ interface TaskListViewProps {
     onSelectTask: (taskId: number, selected: boolean) => void;
     onSelectAll: (status: string, selected: boolean) => void;
     onOpenCreateTask: (status: string) => void;
+    highlightedTaskId?: number | null;
 }
 
 const STATUS_CONFIG = {
@@ -108,6 +109,7 @@ function TaskRow({
     onTaskClick,
     onDelete,
     onDuplicate,
+    isHighlighted,
 }: {
     task: Task;
     team: TeamMember[];
@@ -119,6 +121,7 @@ function TaskRow({
     onTaskClick: () => void;
     onDelete: () => void;
     onDuplicate: () => void;
+    isHighlighted?: boolean;
 }) {
     const isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== 'done';
     const statusConfig = STATUS_CONFIG[task.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.open;
@@ -130,7 +133,7 @@ function TaskRow({
     };
 
     return (
-        <div className="group flex items-center gap-2 px-4 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-800 transition-colors">
+        <div className={`group flex items-center gap-2 px-4 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-800 transition-all duration-500 ${isHighlighted ? 'bg-amber-50 dark:bg-amber-900/20 ring-2 ring-amber-400 dark:ring-amber-500 ring-inset animate-pulse' : ''}`}>
             {/* Drag Handle */}
             <GripVertical className="w-4 h-4 text-zinc-400 opacity-0 group-hover:opacity-100 cursor-grab" />
 
@@ -163,7 +166,7 @@ function TaskRow({
                 </div>
                 {task.customer_name && (
                     <Link
-                        href={`/admin/leads/${task.customer_id}`}
+                        href={`leads/${task.customer_id}`}
                         className="ml-2 text-xs text-primary hover:underline"
                         onClick={(e) => e.stopPropagation()}
                     >
@@ -305,6 +308,7 @@ function StatusGroup({
     onOpenCreateTask,
     onDelete,
     onDuplicate,
+    highlightedTaskId,
 }: {
     status: 'open' | 'in_progress' | 'done';
     tasks: Task[];
@@ -320,6 +324,7 @@ function StatusGroup({
     onOpenCreateTask: (status: string) => void;
     onDelete: (taskId: number) => void;
     onDuplicate: (taskId: number) => void;
+    highlightedTaskId?: number | null;
 }) {
     const [collapsed, setCollapsed] = useState(false);
     const [quickAddOpen, setQuickAddOpen] = useState(false);
@@ -378,6 +383,7 @@ function StatusGroup({
                             onTaskClick={() => onTaskClick(task)}
                             onDelete={() => onDelete(task.id)}
                             onDuplicate={() => onDuplicate(task.id)}
+                            isHighlighted={highlightedTaskId === task.id}
                         />
                     ))}
 
@@ -450,6 +456,7 @@ export default function TaskListView({
     selectedTasks,
     onSelectTask,
     onSelectAll,
+    highlightedTaskId,
 }: TaskListViewProps) {
     // Group tasks by status
     const groupedTasks = {
@@ -489,6 +496,7 @@ export default function TaskListView({
                 onOpenCreateTask={onOpenCreateTask}
                 onDelete={onDelete}
                 onDuplicate={onDuplicate}
+                highlightedTaskId={highlightedTaskId}
             />
             <StatusGroup
                 status="open"
@@ -505,6 +513,7 @@ export default function TaskListView({
                 onOpenCreateTask={onOpenCreateTask}
                 onDelete={onDelete}
                 onDuplicate={onDuplicate}
+                highlightedTaskId={highlightedTaskId}
             />
             <StatusGroup
                 status="done"
@@ -521,6 +530,7 @@ export default function TaskListView({
                 onOpenCreateTask={onOpenCreateTask}
                 onDelete={onDelete}
                 onDuplicate={onDuplicate}
+                highlightedTaskId={highlightedTaskId}
             />
         </div>
     );

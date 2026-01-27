@@ -1,10 +1,9 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
+import { requireTenantAuth } from '@/lib/auth';
 import { Queue } from 'bullmq';
-import Redis from 'ioredis';
 
-// Reuse Redis connection for queue using config object to avoid type mismatch
+// Reuse Redis connection for queue
 const emailQueue = new Queue('email-queue', {
     connection: {
         host: process.env.REDIS_HOST || '127.0.0.1',
@@ -15,9 +14,25 @@ const emailQueue = new Queue('email-queue', {
 
 export async function POST(req: NextRequest) {
     try {
+        const { session, tenantId, tenantRole, permissions } = await requireTenantAuth(req);
+
+        // RBAC: Check if user has permission to send emails
+        const canSendEmails =
+            permissions?.emails?.send === true ||
+            permissions?.emails?.edit === 'all' ||
+            tenantRole === 'owner' ||
+            tenantRole === 'admin';
+
+        if (!canSendEmails) {
+            return NextResponse.json({
+                success: false,
+                message: 'You do not have permission to send emails'
+            }, { status: 403 });
+        }
+
         const body = await req.json();
         const {
-            recipients, // Expected: { to: [{email: '...'}, ...], cc: [], bcc: [] }
+            recipients,
             subject,
             body_html,
             body_text,
@@ -30,10 +45,10 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, message: 'Missing required fields' }, { status: 400 });
         }
 
-        // 1. Get Sender Info (for from_name/address)
+        // 1. Get Sender Info (verify belongs to tenant)
         const [accounts]: any = await pool.execute(
-            'SELECT from_name, from_email FROM smtp_accounts WHERE id = ?',
-            [smtp_account_id]
+            'SELECT from_name, from_email FROM smtp_accounts WHERE id = ? AND tenant_id = ?',
+            [smtp_account_id, tenantId]
         );
 
         if (accounts.length === 0) {
@@ -41,29 +56,31 @@ export async function POST(req: NextRequest) {
         }
         const sender = accounts[0];
 
-        // 2. Format Recipients for JSON storage
+        // 2. Format Recipients
         const recipientJson = JSON.stringify(recipients.to.map((r: any) => ({
             name: r.name || '',
             email: r.email
         })));
 
-        // 3. Insert into DB (Status = queued)
-        // Note: 'folder' is 'SENT' for outbound emails
-        // 'direction' is 'outbound'
         // 3. Threading Logic
         let threadId = `thread_out_${Date.now()}`;
         if (in_reply_to) {
-            const [parent]: any = await pool.execute('SELECT thread_id FROM emails WHERE message_id = ? OR id = ?', [in_reply_to, in_reply_to]);
+            const [parent]: any = await pool.execute(
+                'SELECT thread_id FROM emails WHERE (message_id = ? OR id = ?) AND tenant_id = ?',
+                [in_reply_to, in_reply_to, tenantId]
+            );
             if (parent.length > 0) threadId = parent[0].thread_id;
         }
 
+        // 4. Insert email with tenant_id
         const [result]: any = await pool.execute(`
             INSERT INTO emails (
-                smtp_account_id, customer_id, direction, folder, status, 
+                tenant_id, smtp_account_id, customer_id, direction, folder, status, 
                 from_address, from_name, subject, body_html, body_text, 
                 recipient_to, in_reply_to, thread_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
+            tenantId,
             smtp_account_id,
             related_customer_id || null,
             'outbound',
@@ -81,23 +98,21 @@ export async function POST(req: NextRequest) {
 
         const emailId = result.insertId;
 
-        // 3. Log as Interaction (for Global Activity/Timeline)
+        // 5. Log as Interaction (for Global Activity/Timeline)
         if (related_customer_id) {
-            // Assuming `session` is available in the scope, if not, it needs to be passed or retrieved.
-            // For now, using a placeholder for created_by.
-            const createdBy = null; // Replace with actual session?.id if available
             await pool.execute(`
-                INSERT INTO interactions (customer_id, type, content, created_at, created_by)
-                VALUES (?, 'email_outbound', ?, NOW(), ?)
+                INSERT INTO interactions (tenant_id, customer_id, type, content, created_at, created_by)
+                VALUES (?, ?, 'email_outbound', ?, NOW(), ?)
             `, [
+                tenantId,
                 related_customer_id,
                 `Email Queued: ${subject.substring(0, 100)}`,
-                createdBy
+                session.id
             ]);
         }
 
-        // 4. Add to BullMQ Queue
-        await emailQueue.add('send-email', { emailId });
+        // 6. Add to BullMQ Queue
+        await emailQueue.add('send-email', { emailId, tenantId });
 
         return NextResponse.json({ success: true, message: 'Email queued for sending', emailId });
 

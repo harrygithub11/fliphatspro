@@ -1,28 +1,20 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
-import { getSession } from '@/lib/auth';
+import { requireTenantAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
     try {
-        const fs = require('fs');
-        const session = await getSession();
-
-        fs.appendFileSync('debug_log.txt', `[${new Date().toISOString()}] GET /api/admin/pages - Session: ${JSON.stringify(session)}\n`);
-
-        // if (!session || session.role !== 'admin') {
-        //     fs.appendFileSync('debug_log.txt', `[${new Date().toISOString()}] Unauthorized access attempt\n`);
-        //     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        // }
+        const { tenantId } = await requireTenantAuth(request);
 
         const connection = await pool.getConnection();
         try {
-            // Fetch summary of pages
+            // Fetch pages (tenant-scoped)
             const [rows]: any = await connection.execute(
-                'SELECT id, slug, name, is_active, page_views, conversions, created_at, updated_at FROM landing_pages ORDER BY created_at DESC'
+                'SELECT id, slug, name, is_active, page_views, conversions, created_at, updated_at FROM landing_pages WHERE tenant_id = ? ORDER BY created_at DESC',
+                [tenantId]
             );
-            fs.appendFileSync('debug_log.txt', `[${new Date().toISOString()}] Fetched ${rows.length} pages\n`);
             return NextResponse.json(rows);
         } finally {
             connection.release();
@@ -35,10 +27,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
     try {
-        const session = await getSession();
-        // if (!session || session.role !== 'admin') {
-        //     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        // }
+        const { session, tenantId } = await requireTenantAuth(request);
 
         const body = await request.json();
         const { name, slug, content } = body;
@@ -49,25 +38,26 @@ export async function POST(request: Request) {
 
         const connection = await pool.getConnection();
         try {
-            // Check for duplicate slug
-            const [existing]: any = await connection.execute('SELECT id FROM landing_pages WHERE slug = ?', [slug]);
+            // Check for duplicate slug within tenant
+            const [existing]: any = await connection.execute(
+                'SELECT id FROM landing_pages WHERE slug = ? AND tenant_id = ?',
+                [slug, tenantId]
+            );
             if (existing.length > 0) {
-                return NextResponse.json({ error: 'Slug already exists' }, { status: 409 });
+                return NextResponse.json({ error: 'Slug already exists in this workspace' }, { status: 409 });
             }
 
-            // Default content if not provided
             const pageContent = content || { settings: {}, hero: {} };
 
-            // Insert new page
+            // Insert with tenant_id
             const [result]: any = await connection.execute(
-                'INSERT INTO landing_pages (name, slug, content) VALUES (?, ?, ?)',
-                [name, slug, JSON.stringify(pageContent)]
+                'INSERT INTO landing_pages (tenant_id, name, slug, content) VALUES (?, ?, ?, ?)',
+                [tenantId, name, slug, JSON.stringify(pageContent)]
             );
 
-            // Log activity
             const { logAdminActivity } = await import('@/lib/activity-logger');
             await logAdminActivity(
-                session?.id || 1, // Fallback ID for internal debug
+                session.id,
                 'page_create',
                 `Created landing page "${name}" (/sale/${slug})`,
                 'landing_page',

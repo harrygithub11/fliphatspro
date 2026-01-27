@@ -13,9 +13,10 @@ interface StickyCTAProps {
     ctaConfig?: any; // { primary_mode, modes }
     paymentLink?: string; // Fallback
     offerEndDate?: string | null;
+    onTrack?: (actionType?: string) => void;
 }
 
-export function StickyCTA({ price, originalPrice = 12000, source, ctaConfig, paymentLink, offerEndDate }: StickyCTAProps) {
+export function StickyCTA({ price, originalPrice = 12000, source, ctaConfig, paymentLink, offerEndDate, onTrack }: StickyCTAProps) {
     const [show, setShow] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
@@ -127,6 +128,7 @@ export function StickyCTA({ price, originalPrice = 12000, source, ctaConfig, pay
                                         paymentLink={targetLink}
                                         amount={cta_amount}
                                         triggerText={btnText}
+                                        onInteract={() => onTrack?.('click')}
                                     >
                                         <button className="group relative flex items-center gap-2 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white px-6 py-3 rounded-xl font-bold text-sm md:text-base shadow-lg shadow-orange-900/20 transition-all hover:scale-[1.02]">
                                             <span>{btnText}</span>

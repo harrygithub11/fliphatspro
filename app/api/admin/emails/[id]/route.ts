@@ -1,12 +1,30 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
+import { requireTenantAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
     try {
+        const { session, tenantId, tenantRole, permissions } = await requireTenantAuth(req);
+
+        // RBAC: Check if user has permission to view emails
+        const canViewEmails =
+            permissions?.emails?.view === 'all' ||
+            permissions?.emails?.view === true ||
+            tenantRole === 'owner' ||
+            tenantRole === 'admin';
+
+        if (!canViewEmails) {
+            return NextResponse.json({
+                success: false,
+                message: 'You do not have permission to view emails'
+            }, { status: 403 });
+        }
+
         const id = params.id;
+        // User-level isolation: Only show emails from user's own SMTP accounts
         const [rows]: any = await pool.execute(
             `SELECT e.*, 
                     s.name as smtp_account_name, 
@@ -17,8 +35,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
              FROM emails e
              LEFT JOIN smtp_accounts s ON e.smtp_account_id = s.id
              LEFT JOIN customers c ON e.customer_id = c.id
-             WHERE e.id = ?`,
-            [id]
+             WHERE e.id = ? AND e.tenant_id = ?
+               AND e.smtp_account_id IN (SELECT id FROM smtp_accounts WHERE created_by = ? AND tenant_id = ?)`,
+            [id, tenantId, session.id, tenantId]
         );
 
         if (rows.length === 0) {

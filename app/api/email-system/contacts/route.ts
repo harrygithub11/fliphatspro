@@ -1,26 +1,14 @@
-/**
- * Contacts API
- * Manage email contacts with details
- */
-
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireTenantAuth } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
-function verifyAdmin(request: NextRequest): boolean {
-  const authHeader = request.headers.get('authorization')
-  if (!authHeader) return false
-  return authHeader.replace('Bearer ', '').startsWith('YWRtaW4')
-}
-
 // GET - List all contacts for account
 export async function GET(request: NextRequest) {
-  if (!verifyAdmin(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   try {
+    const { tenantId } = await requireTenantAuth(request)
+
     const { searchParams } = new URL(request.url)
     const accountId = searchParams.get('accountId')
     const search = searchParams.get('search')
@@ -30,7 +18,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Account ID required' }, { status: 400 })
     }
 
-    const where: any = { accountId }
+    const where: any = {
+      tenantId,
+      accountId
+    }
 
     if (search) {
       where.OR = [
@@ -66,11 +57,9 @@ export async function GET(request: NextRequest) {
 
 // POST - Create or update contact
 export async function POST(request: NextRequest) {
-  if (!verifyAdmin(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   try {
+    const { tenantId } = await requireTenantAuth(request)
+
     const body = await request.json()
     const {
       accountId,
@@ -114,6 +103,7 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date(),
       },
       create: {
+        tenantId,
         accountId,
         email,
         name: name || null,
@@ -145,11 +135,9 @@ export async function POST(request: NextRequest) {
 
 // PATCH - Update contact stats (email count, last email date)
 export async function PATCH(request: NextRequest) {
-  if (!verifyAdmin(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   try {
+    const { tenantId } = await requireTenantAuth(request)
+
     const body = await request.json()
     const { contactId, emailCount, lastEmailDate } = body
 
@@ -158,7 +146,10 @@ export async function PATCH(request: NextRequest) {
     }
 
     const contact = await prisma.contact.update({
-      where: { id: contactId },
+      where: {
+        id: contactId,
+        tenantId: tenantId
+      },
       data: {
         emailCount: emailCount !== undefined ? emailCount : undefined,
         lastEmailDate: lastEmailDate !== undefined ? new Date(lastEmailDate) : undefined,
@@ -181,11 +172,9 @@ export async function PATCH(request: NextRequest) {
 
 // DELETE - Delete contact
 export async function DELETE(request: NextRequest) {
-  if (!verifyAdmin(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   try {
+    const { tenantId } = await requireTenantAuth(request)
+
     const { searchParams } = new URL(request.url)
     const contactId = searchParams.get('contactId')
 
@@ -194,7 +183,10 @@ export async function DELETE(request: NextRequest) {
     }
 
     await prisma.contact.delete({
-      where: { id: contactId },
+      where: {
+        id: contactId,
+        tenantId: tenantId
+      },
     })
 
     console.log('[CONTACT_DELETED]', contactId)

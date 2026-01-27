@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -57,6 +57,49 @@ export function SecurityPanel() {
         }
     };
 
+    const [sessions, setSessions] = useState<any[]>([]);
+    const [loadingSessions, setLoadingSessions] = useState(true);
+
+    const fetchSessions = async () => {
+        try {
+            const res = await fetch('/api/admin/profile/sessions');
+            const data = await res.json();
+            if (data.success) {
+                setSessions(data.sessions);
+            }
+        } catch (error) {
+            console.error('Failed to fetch sessions:', error);
+        } finally {
+            setLoadingSessions(false);
+        }
+    };
+
+    // Load sessions on mount
+    useEffect(() => {
+        fetchSessions();
+    }, []);
+
+    const handleRevokeSession = async (sessionId: string, isAll: boolean = false) => {
+        try {
+            const url = isAll
+                ? '/api/admin/profile/sessions?all=true'
+                : `/api/admin/profile/sessions?id=${sessionId}`;
+
+            const res = await fetch(url, { method: 'DELETE' });
+            if (res.ok) {
+                toast({
+                    description: isAll ? "All other sessions logged out" : "Session revoked",
+                    className: "bg-green-500 text-white"
+                });
+                fetchSessions();
+            } else {
+                toast({ variant: 'destructive', description: "Failed to revoke session" });
+            }
+        } catch (error) {
+            toast({ variant: 'destructive', description: "Error revoking session" });
+        }
+    };
+
     return (
         <div className="space-y-6">
             <Card className="border-l-4 border-l-orange-500">
@@ -90,7 +133,6 @@ export function SecurityPanel() {
                             onChange={(e) => setNewPassword(e.target.value)}
                             placeholder="Enter new password (min 8 characters)"
                         />
-                        {/* Password strength indicator could go here */}
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="confirm-password">Confirm New Password</Label>
@@ -114,21 +156,58 @@ export function SecurityPanel() {
                     <CardDescription>Manage devices currently logged into your account.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="flex items-center justify-between p-4 border rounded-lg bg-zinc-50 dark:bg-zinc-900">
-                        <div className="flex items-center gap-3">
-                            <ShieldCheck className="h-8 w-8 text-green-500" />
-                            <div>
-                                <p className="font-medium text-sm">Current Session</p>
-                                <p className="text-xs text-muted-foreground">Active now • This Device</p>
+                    <div className="space-y-4">
+                        {loadingSessions ? (
+                            <div className="text-center py-4 text-muted-foreground">Loading sessions...</div>
+                        ) : sessions.length === 0 ? (
+                            <div className="text-center py-4 text-muted-foreground">
+                                No active sessions found. (You might need to re-login to see this device)
                             </div>
-                        </div>
-                        <Button variant="outline" size="sm" disabled>
-                            Active
-                        </Button>
+                        ) : (
+                            sessions.map((session) => (
+                                <div key={session.id} className="flex items-center justify-between p-4 border rounded-lg bg-zinc-50 dark:bg-zinc-900">
+                                    <div className="flex items-center gap-3">
+                                        <ShieldCheck className={`h-8 w-8 ${session.is_current ? 'text-green-500' : 'text-zinc-400'}`} />
+                                        <div>
+                                            <p className="font-medium text-sm">
+                                                {session.user_agent ? (
+                                                    session.user_agent.includes('Mozilla') ? 'Web Browser' : session.user_agent
+                                                ) : 'Unknown Device'}
+                                            </p>
+                                            <div className="text-xs text-muted-foreground space-x-2">
+                                                <span>{new Date(session.last_active).toLocaleString()}</span>
+                                                <span>•</span>
+                                                <span>{session.ip_address || 'Unknown IP'}</span>
+                                                {session.is_current && <span className="text-green-600 font-medium">• This Device</span>}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {session.is_current ? (
+                                        <Button variant="outline" size="sm" disabled className="ml-2">
+                                            Active
+                                        </Button>
+                                    ) : (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="ml-2 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                                            onClick={() => handleRevokeSession(session.id)}
+                                        >
+                                            Log Out
+                                        </Button>
+                                    )}
+                                </div>
+                            ))
+                        )}
                     </div>
 
-                    <div className="mt-4">
-                        <Button variant="outline" className="w-full sm:w-auto text-red-600 border-red-200 hover:bg-red-50">
+                    <div className="mt-6 pt-4 border-t">
+                        <Button
+                            variant="outline"
+                            className="w-full sm:w-auto text-red-600 border-red-200 hover:bg-red-50"
+                            onClick={() => handleRevokeSession('', true)}
+                            disabled={sessions.length <= 1}
+                        >
                             <LogOut className="h-4 w-4 mr-2" /> Log Out All Other Devices
                         </Button>
                     </div>

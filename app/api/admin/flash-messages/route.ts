@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
+import { requireTenantAuth } from '@/lib/auth';
 import pool from '@/lib/db';
 import { prisma } from '@/lib/prisma';
 
@@ -7,10 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
     try {
-        const session = await getSession();
-        if (!session) {
-            return NextResponse.json({ success: false, message: 'Not authenticated' }, { status: 401 });
-        }
+        const { session, tenantId } = await requireTenantAuth(request);
 
         const p = prisma as any;
 
@@ -18,11 +15,12 @@ export async function GET(request: Request) {
         const type = searchParams.get('type');
         const withUserId = searchParams.get('withUserId');
 
-        // Case 1: Fetch Chat History with specific user
+        // Case 1: Fetch Chat History with specific user (tenant-scoped)
         if (type === 'chat' && withUserId) {
             const partnerId = parseInt(withUserId);
             const messages = await p.flashMessage.findMany({
                 where: {
+                    tenantId,
                     type: 'chat',
                     OR: [
                         { senderId: session.id, receiverId: partnerId },
@@ -30,8 +28,8 @@ export async function GET(request: Request) {
                     ]
                 },
                 include: {
-                    sender: { select: { id: true, name: true, avatar_url: true } },
-                    receiver: { select: { id: true, name: true, avatar_url: true } }
+                    sender: { select: { id: true, name: true, avatarUrl: true } },
+                    receiver: { select: { id: true, name: true, avatarUrl: true } }
                 },
                 orderBy: { sentAt: 'asc' },
                 take: 100
@@ -39,26 +37,28 @@ export async function GET(request: Request) {
             return NextResponse.json({ success: true, messages });
         }
 
-        // Case 1.5: Group Chat (General)
+        // Case 1.5: Group Chat (tenant-scoped)
         if (type === 'group_chat') {
             const messages = await p.flashMessage.findMany({
                 where: {
+                    tenantId,
                     type: 'group_chat',
                     receiverId: null
                 },
                 include: {
-                    sender: { select: { id: true, name: true, avatar_url: true } }
+                    sender: { select: { id: true, name: true, avatarUrl: true } }
                 },
-                orderBy: { sentAt: 'asc' }, // Chat order
+                orderBy: { sentAt: 'asc' },
                 take: 100
             });
             return NextResponse.json({ success: true, messages });
         }
 
-        // Case 2: Fetch Unread Chats
+        // Case 2: Fetch Unread Chats (tenant-scoped)
         if (type === 'unread_chats') {
             const messages = await p.flashMessage.findMany({
                 where: {
+                    tenantId,
                     receiverId: session.id,
                     isRead: false,
                     type: 'chat'
@@ -68,15 +68,12 @@ export async function GET(request: Request) {
             return NextResponse.json({ success: true, messages });
         }
 
-        // Case 3: Fetch Recent Chat Activity (List of conversations)
+        // Case 3: Conversations (tenant-scoped)
         if (type === 'conversations') {
-            // This is a bit complex in pure Prisma without raw SQL for "distinct recent", 
-            // so for now we just fetch recent 100 messages involving user and client-side distinct?
-            // Or we just return list of admins (handled by frontend for now).
-            // Let's sticking to fetching unread chats count per user?
             const unreadCounts = await p.flashMessage.groupBy({
                 by: ['senderId'],
                 where: {
+                    tenantId,
                     receiverId: session.id,
                     isRead: false,
                     type: 'chat'
@@ -86,10 +83,11 @@ export async function GET(request: Request) {
             return NextResponse.json({ success: true, unreadCounts });
         }
 
-        // Case 4: History of Flash Messages (Broadcasts)
+        // Case 4: History (tenant-scoped)
         if (type === 'history') {
             const messages = await p.flashMessage.findMany({
                 where: {
+                    tenantId,
                     type: 'flash',
                     OR: [
                         { senderId: session.id },
@@ -97,8 +95,8 @@ export async function GET(request: Request) {
                     ]
                 },
                 include: {
-                    sender: { select: { id: true, name: true, avatar_url: true } },
-                    receiver: { select: { id: true, name: true, avatar_url: true } }
+                    sender: { select: { id: true, name: true, avatarUrl: true } },
+                    receiver: { select: { id: true, name: true, avatarUrl: true } }
                 },
                 orderBy: { sentAt: 'desc' },
                 take: 50
@@ -106,16 +104,16 @@ export async function GET(request: Request) {
             return NextResponse.json({ success: true, messages });
         }
 
-        // Default: Fetch unread FLASH messages (for Popup)
-        // IMPORTANT: Filter by type='flash' so chats don't pop up
+        // Default: Fetch unread FLASH messages (tenant-scoped)
         const messages = await p.flashMessage.findMany({
             where: {
+                tenantId,
                 receiverId: session.id,
                 isRead: false,
-                type: 'flash' // Only flash messages trigger popup
+                type: 'flash'
             },
             include: {
-                sender: { select: { id: true, name: true, avatar_url: true } },
+                sender: { select: { id: true, name: true, avatarUrl: true } },
                 parentMessage: true
             },
             orderBy: { sentAt: 'desc' }
@@ -131,35 +129,32 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
     try {
-        const session = await getSession();
-        if (!session) {
-            return NextResponse.json({ success: false, message: 'Not authenticated' }, { status: 401 });
-        }
+        const { session, tenantId } = await requireTenantAuth(request);
 
         const p = prisma as any;
 
         const body = await request.json();
         const { receiverId, message, parentMessageId, type = 'flash', attachmentUrl, attachmentType } = body;
 
-        // Validation: receiverId is required unless it's a group chat
         if ((!receiverId && type !== 'group_chat') || !message) {
             return NextResponse.json({ success: false, message: 'Missing required fields' }, { status: 400 });
         }
 
         const newMessage = await p.flashMessage.create({
             data: {
+                tenantId,
                 senderId: session.id,
                 receiverId: receiverId ? parseInt(receiverId) : null,
                 message,
                 attachmentUrl,
                 attachmentType,
                 parentMessageId,
-                type, // 'flash' or 'chat' or 'group_chat'
+                type,
                 isRead: false
             },
             include: {
-                sender: { select: { id: true, name: true, avatar_url: true } },
-                receiver: { select: { id: true, name: true, avatar_url: true } }
+                sender: { select: { id: true, name: true, avatarUrl: true } },
+                receiver: { select: { id: true, name: true, avatarUrl: true } }
             }
         });
 
@@ -173,10 +168,7 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
     try {
-        const session = await getSession();
-        if (!session) {
-            return NextResponse.json({ success: false, message: 'Not authenticated' }, { status: 401 });
-        }
+        const { session, tenantId } = await requireTenantAuth(request);
 
         const p = prisma as any;
 
@@ -187,14 +179,12 @@ export async function PUT(request: Request) {
             return NextResponse.json({ success: false, message: 'Missing message ID' }, { status: 400 });
         }
 
-        // Verify ownership (only receiver can mark/read)
         const message = await p.flashMessage.findUnique({ where: { id } });
-        if (!message) {
+        if (!message || message.tenantId !== tenantId) {
             return NextResponse.json({ success: false, message: 'Message not found' }, { status: 404 });
         }
 
         if (message.receiverId !== session.id) {
-            // Alternatively, maybe sender can update content? But this endpoint is for marking Read.
             return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
         }
 

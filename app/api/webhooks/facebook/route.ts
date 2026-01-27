@@ -84,15 +84,47 @@ async function processLead(value: any) {
 
     console.log(`Processing Lead: ${leadgenId} from Page: ${pageId}`);
 
-    // Fetch Page Access Token
-    const pageAccessToken = await getSetting('facebook_access_token');
-    if (!pageAccessToken) {
-        console.error('No Page Access Token found');
-        return;
-    }
+    // Fetch Page Access Token (System Level? Or Tenant Level?)
+    // Assuming App Access Token is verified globally, but Page Token might be tenant specific?
+    // Let's assume we use a System Page Token or we fetch tenant's token.
+    // Actually, usually each tenant connects their own page. So we should find the tenant by Page ID first.
 
-    // Fetch Lead Details from Graph API
+    const connection = await pool.getConnection();
+    let tenantId = null;
+    let pageAccessToken = null;
+
     try {
+        // 1. Identify Tenant by Page ID
+        const [settings]: any = await connection.execute(
+            `SELECT tenant_id FROM site_settings WHERE setting_key = 'facebook_page_id' AND setting_value = ?`,
+            [pageId]
+        );
+
+        if (settings.length === 0) {
+            console.error(`No tenant found for Facebook Page ID: ${pageId}`);
+            return;
+        }
+        tenantId = settings[0].tenant_id;
+
+        // 2. Fetch Tenant's Page Access Token
+        const [tokenRows]: any = await connection.execute(
+            `SELECT setting_value FROM site_settings WHERE tenant_id = ? AND setting_key = 'facebook_access_token'`,
+            [tenantId]
+        );
+
+        if (tokenRows.length > 0) {
+            pageAccessToken = tokenRows[0].setting_value;
+        } else {
+            // Fallback to global if needed? Unlikely for SaaS.
+            pageAccessToken = await getSetting('facebook_access_token');
+        }
+
+        if (!pageAccessToken) {
+            console.error('No Page Access Token found for tenant', tenantId);
+            return;
+        }
+
+        // Fetch Lead Details from Graph API
         const response = await fetch(`https://graph.facebook.com/v19.0/${leadgenId}?access_token=${pageAccessToken}`);
         if (!response.ok) {
             const err = await response.text();
@@ -146,85 +178,82 @@ async function processLead(value: any) {
             form_source: leadData.form_name || `Form ${formId}`
         };
 
-        // Upsert Customer
-        const connection = await pool.getConnection();
-        try {
-            // Check if facebook_lead_id exists
-            const [existingFb] = await connection.execute(
-                'SELECT id FROM customers WHERE facebook_lead_id = ?',
-                [leadgenId]
+        // Upsert Customer (Tenant Scoped)
+
+        // Check if facebook_lead_id exists for this tenant
+        const [existingFb] = await connection.execute(
+            'SELECT id FROM customers WHERE facebook_lead_id = ? AND tenant_id = ?',
+            [leadgenId, tenantId]
+        );
+
+        if ((existingFb as any).length > 0) {
+            console.log('Lead already exists (by FB ID)');
+            return;
+        }
+
+        // Check by email if available (Tenant Scoped)
+        let customerId = null;
+        if (email) {
+            const [existingEmail] = await connection.execute(
+                'SELECT id FROM customers WHERE email = ? AND tenant_id = ?',
+                [email, tenantId]
+            );
+            if ((existingEmail as any).length > 0) {
+                customerId = (existingEmail as any)[0].id;
+            }
+        }
+
+        if (customerId) {
+            // Update existing customer
+            await connection.execute(
+                `UPDATE customers 
+                    SET facebook_lead_id = ?, 
+                        ad_data = ?,
+                        source = IF(source IS NULL OR source = '', 'Facebook Lead Form', source)
+                    WHERE id = ? AND tenant_id = ?`,
+                [leadgenId, JSON.stringify(adData), customerId, tenantId]
+            );
+            console.log(`Updated Customer #${customerId} with FB Lead info`);
+
+            await connection.execute(
+                `INSERT INTO admin_activity_logs (tenant_id, action_type, action_description, entity_type, entity_id)
+                    VALUES (?, ?, ?, ?, ?)`,
+                [tenantId, 'lead_merged', `Merged FB Lead: ${name || email || leadgenId}`, 'customer', customerId]
             );
 
-            if ((existingFb as any).length > 0) {
-                console.log('Lead already exists (by FB ID)');
-                return;
-            }
+        } else {
+            // Create new customer with tenant_id
+            const safeName = name || `FB Lead ${leadgenId.substr(-4)}`;
+            const safeEmail = email || `fb-lead-${leadgenId}@placeholder.com`;
 
-            // Check by email if available
-            let customerId = null;
-            if (email) {
-                const [existingEmail] = await connection.execute(
-                    'SELECT id FROM customers WHERE email = ?',
-                    [email]
-                );
-                if ((existingEmail as any).length > 0) {
-                    customerId = (existingEmail as any)[0].id;
-                }
-            }
+            const [result] = await connection.execute(
+                `INSERT INTO customers (tenant_id, name, email, phone, source, stage, score, facebook_lead_id, ad_data)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [
+                    tenantId,
+                    safeName,
+                    safeEmail,
+                    phone,
+                    `FB: ${adData.form_source}`,
+                    'new',
+                    'cold',
+                    leadgenId,
+                    JSON.stringify(adData)
+                ]
+            );
+            const newId = (result as any).insertId;
+            console.log(`Created new Customer #${newId} from FB Lead`);
 
-            if (customerId) {
-                // Update existing customer
-                await connection.execute(
-                    `UPDATE customers 
-                     SET facebook_lead_id = ?, 
-                         ad_data = ?,
-                         source = IF(source IS NULL OR source = '', 'Facebook Lead Form', source)
-                     WHERE id = ?`,
-                    [leadgenId, JSON.stringify(adData), customerId]
-                );
-                console.log(`Updated Customer #${customerId} with FB Lead info`);
-
-                await connection.execute(
-                    `INSERT INTO admin_activity_logs (action_type, action_description, entity_type, entity_id)
-                     VALUES (?, ?, ?, ?)`,
-                    ['lead_merged', `Merged FB Lead: ${name || email || leadgenId}`, 'customer', customerId]
-                );
-
-            } else {
-                // Create new customer
-                // Fallback for Name/Email if missing
-                const safeName = name || `FB Lead ${leadgenId.substr(-4)}`;
-                const safeEmail = email || `fb-lead-${leadgenId}@placeholder.com`; // Ensure uniqueness if email missing
-
-                const [result] = await connection.execute(
-                    `INSERT INTO customers (name, email, phone, source, stage, score, facebook_lead_id, ad_data)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-                    [
-                        safeName,
-                        safeEmail,
-                        phone,
-                        `FB: ${adData.form_source}`, // nicer source name
-                        'new',
-                        'cold',
-                        leadgenId,
-                        JSON.stringify(adData)
-                    ]
-                );
-                const newId = (result as any).insertId;
-                console.log(`Created new Customer #${newId} from FB Lead`);
-
-                await connection.execute(
-                    `INSERT INTO admin_activity_logs (action_type, action_description, entity_type, entity_id)
-                     VALUES (?, ?, ?, ?)`,
-                    ['lead_created', `New FB Lead: ${safeName}`, 'customer', newId]
-                );
-            }
-
-        } finally {
-            connection.release();
+            await connection.execute(
+                `INSERT INTO admin_activity_logs (tenant_id, action_type, action_description, entity_type, entity_id)
+                    VALUES (?, ?, ?, ?, ?)`,
+                [tenantId, 'lead_created', `New FB Lead: ${safeName}`, 'customer', newId]
+            );
         }
 
     } catch (err) {
         console.error('Error fetching/saving lead:', err);
+    } finally {
+        connection.release();
     }
 }

@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import pool from '@/lib/db'
 import { decrypt } from '@/lib/crypto'
 import nodemailer from 'nodemailer'
 
@@ -16,9 +17,9 @@ export const maxDuration = 60
 function verifyCronAuth(request: NextRequest): boolean {
   const authHeader = request.headers.get('authorization')
   const cronSecret = process.env.CRON_SECRET || 'default-cron-secret-change-me'
-  
+
   if (!authHeader) return false
-  
+
   const token = authHeader.replace('Bearer ', '')
   return token === cronSecret || token.startsWith('YWRtaW4') // Allow admin auth too
 }
@@ -27,17 +28,20 @@ async function sendScheduledEmail(scheduledEmail: any) {
   try {
     console.log('[SCHEDULED_SEND] Processing:', scheduledEmail.id)
 
-    // Get email account
-    const account = await prisma.emailaccount.findUnique({
-      where: { id: scheduledEmail.accountId },
-    })
+    // Get email account from smtp_accounts
+    const [accounts]: any = await pool.execute(
+      `SELECT id, name, username, encrypted_password, host as smtpHost, port as smtpPort, is_active FROM smtp_accounts WHERE id = ?`,
+      [scheduledEmail.accountId]
+    )
 
-    if (!account || !account.isActive) {
+    if (accounts.length === 0 || !accounts[0].is_active) {
       throw new Error('Email account not found or inactive')
     }
+    const account = accounts[0]
+    account.smtpSecure = account.smtpPort === 465
 
     // Decrypt password
-    const password = decrypt(account.password)
+    const password = decrypt(account.encrypted_password)
 
     // Create transporter
     const transporter = nodemailer.createTransport({

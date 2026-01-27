@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import { join, isAbsolute } from 'path';
 import { existsSync } from 'fs';
+import { requireTenantAuth } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
     try {
+        // Enforce Authentication
+        const { tenantId, session } = await requireTenantAuth(request);
+
         const data = await request.formData();
         const file: File | null = data.get('file') as unknown as File;
 
@@ -25,12 +29,17 @@ export async function POST(request: NextRequest) {
             uploadDir = join(process.cwd(), uploadDir);
         }
 
+        // Ideally, we should separate uploads by tenant
+        // e.g. uploadDir = join(uploadDir, tenantId);
+        // But to avoid breaking existing file paths immediately, we'll keep shared folder 
+        // BUT obfuscate filename more securely or track it in DB.
+
         if (!existsSync(uploadDir)) {
             await mkdir(uploadDir, { recursive: true });
         }
 
-        // Generate unique filename
-        const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        // Generate unique filename with tenant prefix to prevent collisions/guessing
+        const filename = `${tenantId}-${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
         const filePath = join(uploadDir, filename);
 
         await writeFile(filePath, buffer);
@@ -51,7 +60,10 @@ export async function POST(request: NextRequest) {
             filename
         });
 
-    } catch (error) {
+    } catch (error: any) {
+        if (error.message === 'Unauthorized') {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
         console.error('Upload error:', error);
         return NextResponse.json({ success: false, message: 'Upload failed' }, { status: 500 });
     }

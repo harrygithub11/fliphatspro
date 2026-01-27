@@ -3,8 +3,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { encrypt } from '@/lib/smtp-encrypt';
 
+import { requireTenantAuth } from '@/lib/auth';
+
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
     try {
+        const { tenantId } = await requireTenantAuth(req);
         const id = params.id;
         const body = await req.json();
         const {
@@ -18,7 +21,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
             return NextResponse.json({ success: false, message: 'Missing required fields' }, { status: 400 });
         }
 
-        // 2. Prepare Update Query
+        // 2. Prepare Update Query with Tenant Check
         let query = `UPDATE smtp_accounts SET 
             name = ?, provider = ?, host = ?, port = ?, username = ?, 
             from_email = ?, from_name = ?,
@@ -44,10 +47,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
             queryParams.push(encryptedImapPassword);
         }
 
-        query += ` WHERE id = ?`;
-        queryParams.push(id);
+        query += ` WHERE id = ? AND tenant_id = ?`;
+        queryParams.push(id, tenantId);
 
-        await pool.execute(query, queryParams);
+        const [result]: any = await pool.execute(query, queryParams);
+
+        if (result.affectedRows === 0) {
+            return NextResponse.json({ success: false, message: 'Account not found or access denied' }, { status: 404 });
+        }
 
         // TODO: Test Connection if requested
 
@@ -61,8 +68,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
     try {
+        const { tenantId } = await requireTenantAuth(req);
         const id = params.id;
-        await pool.execute('DELETE FROM smtp_accounts WHERE id = ?', [id]);
+        const [result]: any = await pool.execute('DELETE FROM smtp_accounts WHERE id = ? AND tenant_id = ?', [id, tenantId]);
+
+        if (result.affectedRows === 0) {
+            return NextResponse.json({ success: false, message: 'Account not found or access denied' }, { status: 404 });
+        }
+
         return NextResponse.json({ success: true });
     } catch (error: any) {
         return NextResponse.json({ success: false, message: error.message }, { status: 500 });
