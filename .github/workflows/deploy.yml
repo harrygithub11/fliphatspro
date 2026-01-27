@@ -41,10 +41,10 @@ jobs:
 
             # Restart application with force delete to ensure clean slate
             pm2 delete fliphatspro-web || true
-            pm2 start npm --name "fliphatspro-web" -- start
+            pm2 start ecosystem.config.js --only fliphatspro-web
             
-            pm2 restart fliphatspro-worker --update-env || echo "Worker checked"
-            pm2 restart fliphatspro-imap --update-env || echo "IMAP checked"
+            pm2 restart fliphatspro-worker --update-env || pm2 start ecosystem.config.js --only fliphatspro-worker
+            pm2 restart fliphatspro-imap --update-env || pm2 start ecosystem.config.js --only fliphatspro-imap
             
             # Save PM2 process list so it survives reboot
             pm2 save
