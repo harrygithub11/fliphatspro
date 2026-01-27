@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    output: 'standalone',
+    // output: 'standalone', // Disabled to support custom server.ts
     eslint: {
         ignoreDuringBuilds: true,
     },
