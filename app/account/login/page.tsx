@@ -346,13 +346,17 @@ function LoginForm() {
 
                 // Default base domain
                 let baseDomain = "fliphats.com";
+                let isLocalhost = false;
 
                 // Handle localhost
-                if (host.includes("localhost")) {
+                if (host.includes("localhost") || host.includes("127.0.0.1")) {
                     baseDomain = "localhost";
+                    isLocalhost = true;
                 } else {
+                    // Production / Staging logic
                     const parts = host.split(".");
                     if (parts.length > 2) {
+                        // e.g., account.fliphats.com -> fliphats.com
                         baseDomain = parts.slice(1).join(".");
                     } else {
                         baseDomain = host;
@@ -360,7 +364,11 @@ function LoginForm() {
                 }
 
                 // Construct CRM URL
-                const crmBase = `${protocol}//crm.${baseDomain}${port}`;
+                // If we are on production (fliphats.com), force https and remove port if it's there erroneously
+                const cleanProtocol = isLocalhost ? protocol : "https:";
+                const cleanPort = isLocalhost ? port : "";
+
+                const crmBase = `${cleanProtocol}//crm.${baseDomain}${cleanPort}`;
                 const crmDashboard = `${crmBase}/dashboard`;
 
                 // HANDOFF LOGIC
