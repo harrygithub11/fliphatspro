@@ -7,6 +7,260 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ============================================
+// MULTI-TENANT CORE MODELS
+// ============================================
+
+model Tenant {
+  id        String       @id @default(uuid())
+  name      String       @db.VarChar(255)
+  slug      String       @unique @db.VarChar(100)
+  plan      TenantPlan   @default(free)
+  status    TenantStatus @default(active)
+  ownerId   Int?         @map("owner_id")
+  logoUrl   String?      @map("logo_url") @db.VarChar(500)
+  domain    String?      @db.VarChar(255)
+  settings  Json?
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  users         TenantUser[]
+  customers     Customer[]
+  orders        Order[]
+  tasks         Task[]
+  interactions  Interaction[]
+  files         File[]
+  deals         Deal[]
+  landingPages  LandingPage[]
+  leadStages    LeadStage[]
+  leadScores    LeadScore[]
+  settings_     TenantSetting[]
+  roles         TenantRoleDefinition[]
+  subscription  Subscription?
+  notifications Notification[]
+  emails        Email[]
+  smtpAccounts  SmtpAccount[]
+
+  @@index([slug])
+  @@index([status])
+  @@index([ownerId])
+  @@map("tenants")
+}
+
+enum TenantPlan {
+  free
+  starter
+  professional
+  enterprise
+}
+
+enum TenantStatus {
+  active
+  suspended
+  archived
+}
+
+model Subscription {
+  id         String             @id @default(uuid())
+  tenantId   String             @unique @map("company_id")
+  plan       TenantPlan         @default(free)
+  status     SubscriptionStatus @default(active)
+  trialStart DateTime?          @map("trial_start")
+  trialEnd   DateTime?          @map("trial_end")
+  startDate  DateTime           @default(now()) @map("start_date")
+  endDate    DateTime?          @map("end_date")
+  createdAt  DateTime           @default(now()) @map("created_at")
+  updatedAt  DateTime           @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("subscriptions")
+}
+
+enum SubscriptionStatus {
+  active
+  past_due
+  canceled
+  trialing
+  ended
+}
+
+model User {
+  id              Int       @id @default(autoincrement())
+  email           String    @unique @db.VarChar(255)
+  passwordHash    String    @map("password_hash") @db.VarChar(255)
+  name            String?   @db.VarChar(255)
+  avatarUrl       String?   @map("avatar_url") @db.VarChar(500)
+  phone           String?   @db.VarChar(20)
+  timezone        String    @default("UTC") @db.VarChar(50)
+  language        String    @default("en") @db.VarChar(10)
+  emailVerifiedAt DateTime? @map("email_verified_at")
+  lastLogin       DateTime? @map("last_login")
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  tenants        TenantUser[]
+  platformAdmin  PlatformAdmin?
+  activeSessions ActiveSession[]
+  notifications  Notification[]
+  UserPresence   UserPresence?
+
+  sentFlashMessages     FlashMessage[] @relation("SentFlashMessages")
+  receivedFlashMessages FlashMessage[] @relation("ReceivedFlashMessages")
+  deals                 Deal[]
+
+  @@index([email])
+  @@index([isActive])
+  @@map("users")
+}
+
+model TenantUser {
+  id             Int        @id @default(autoincrement())
+  tenantId       String     @map("tenant_id")
+  userId         Int        @map("user_id")
+  role           TenantRole @default(member)
+  roleId         Int?       @map("role_id")
+  permissions    Json?
+  invitedBy      Int?       @map("invited_by")
+  invitedAt      DateTime?  @map("invited_at")
+  joinedAt       DateTime   @default(now()) @map("joined_at")
+  lastAccessedAt DateTime?  @map("last_accessed_at")
+
+  tenant  Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user    User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleDef TenantRoleDefinition? @relation(fields: [roleId], references: [id])
+
+  @@unique([tenantId, userId])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([role])
+  @@index([roleId])
+  @@map("tenant_users")
+}
+
+model TenantRoleDefinition {
+  id          Int      @id @default(autoincrement())
+  tenantId    String   @map("tenant_id")
+  name        String   @db.VarChar(50)
+  description String?  @db.VarChar(255)
+  permissions Json?
+  isSystem    Boolean  @default(false) @map("is_system")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users  TenantUser[]
+
+  @@unique([tenantId, name])
+  @@map("tenant_roles")
+}
+
+enum TenantRole {
+  owner
+  admin
+  member
+  viewer
+}
+
+model PlatformAdmin {
+  id          Int          @id @default(autoincrement())
+  userId      Int          @unique @map("user_id")
+  role        PlatformRole
+  permissions Json?
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([role])
+  @@map("platform_admins")
+}
+
+model ActiveSession {
+  id           BigInt   @id @default(autoincrement())
+  userId       Int      @map("user_id")
+  sessionToken String   @unique @map("session_token") @db.VarChar(255)
+  ipAddress    String?  @map("ip_address") @db.VarChar(45)
+  userAgent    String?  @map("user_agent") @db.Text
+  isRevoked    Boolean  @default(false) @map("is_revoked")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(0)
+  expiresAt    DateTime @default(now()) @map("expires_at") @db.Timestamp(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sessionToken])
+  @@index([userId])
+  @@map("active_sessions")
+}
+
+enum PlatformRole {
+  platform_owner
+  master_admin
+  super_admin
+}
+
+model TenantInvitation {
+  id         Int        @id @default(autoincrement())
+  tenantId   String     @map("tenant_id")
+  email      String     @db.VarChar(255)
+  role       TenantRole @default(member)
+  token      String     @unique @db.VarChar(255)
+  invitedBy  Int        @map("invited_by")
+  expiresAt  DateTime   @map("expires_at")
+  acceptedAt DateTime?  @map("accepted_at")
+  createdAt  DateTime   @default(now()) @map("created_at")
+
+  @@index([token])
+  @@index([email])
+  @@index([tenantId])
+  @@map("tenant_invitations")
+}
+
+model TenantSetting {
+  id           Int      @id @default(autoincrement())
+  tenantId     String   @map("tenant_id")
+  settingKey   String   @map("setting_key") @db.VarChar(100)
+  settingValue String?  @map("setting_value") @db.Text
+  description  String?  @db.VarChar(255)
+  isEncrypted  Boolean  @default(false) @map("is_encrypted")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, settingKey])
+  @@index([settingKey])
+  @@map("tenant_settings")
+}
+
+model TenantAuditLog {
+  id         BigInt   @id @default(autoincrement())
+  tenantId   String?  @map("tenant_id")
+  userId     Int?     @map("user_id")
+  action     String   @db.VarChar(100)
+  entityType String?  @map("entity_type") @db.VarChar(50)
+  entityId   String?  @map("entity_id") @db.VarChar(36)
+  oldValues  Json?    @map("old_values")
+  newValues  Json?    @map("new_values")
+  ipAddress  String?  @map("ip_address") @db.VarChar(45)
+  userAgent  String?  @map("user_agent") @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("tenant_audit_logs")
+}
+
+// ============================================
+// LEGACY ADMIN MODEL (kept for backward compatibility)
+// ============================================
+
 model Admin {
   id            Int       @id @default(autoincrement())
   name          String?
@@ -22,47 +276,54 @@ model Admin {
 
   login_logs    AdminLoginLog[]
   activity_logs AdminActivityLog[]
-  isOnline      Boolean       @default(false)
+  isOnline      Boolean            @default(false)
   lastSeen      DateTime?
-  
-  sentFlashMessages     FlashMessage[] @relation("SentFlashMessages")
-  receivedFlashMessages FlashMessage[] @relation("ReceivedFlashMessages")
-  presence              UserPresence?
-  meetings              Meeting[]     @relation("AdminMeetings")
+
+
+  presence              UserPresence?  @relation(fields: [userPresenceId], references: [id])
+  meetings              Meeting[]      @relation("AdminMeetings")
+  userPresenceId        Int?
 
   @@map("admins")
 }
 
 model FlashMessage {
-  id          String    @id @default(cuid())
-  senderId    Int
-  receiverId  Int?
-  message     String    @db.Text
-  attachmentUrl String?
-  attachmentType String? // "image", "video", "file"
-  type        String    @default("flash") // "flash", "chat", "group_chat"
-  isRead      Boolean   @default(false)
-  readAt      DateTime?
-  deliveredAt DateTime?
-  sentAt      DateTime  @default(now())
-  
-  sender      Admin     @relation("SentFlashMessages", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver    Admin?    @relation("ReceivedFlashMessages", fields: [receiverId], references: [id], onDelete: Cascade)
-  
+  id             String    @id @default(cuid())
+  tenantId       String?   @map("tenant_id")
+  senderId       Int
+  receiverId     Int?
+  message        String    @db.Text
+  attachmentUrl  String?
+  attachmentType String?
+  type           String    @default("flash")
+  isRead         Boolean   @default(false)
+  readAt         DateTime?
+  deliveredAt    DateTime?
+  sentAt         DateTime  @default(now())
+
+  sender   User  @relation("SentFlashMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User? @relation("ReceivedFlashMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
   parentMessageId String?
-  parentMessage FlashMessage? @relation("Thread", fields: [parentMessageId], references: [id])
-  replies       FlashMessage[] @relation("Thread")
+  parentMessage   FlashMessage?  @relation("Thread", fields: [parentMessageId], references: [id])
+  replies         FlashMessage[] @relation("Thread")
 
   @@index([senderId])
   @@index([receiverId])
   @@index([isRead])
+  @@index([tenantId])
   @@map("flash_messages")
 }
 
+// ============================================
+// TENANT-SCOPED BUSINESS MODELS
+// ============================================
+
 model Customer {
   id           Int           @id @default(autoincrement())
+  tenantId     String        @map("tenant_id") // STRICT: NOT NULL
   name         String?
-  email        String?       @unique
+  email        String? // Removed unique, scoped by tenant? Or global unique? User said "No data overlap". Usually email is unique per tenant.
   phone        String?
   whatsapp     String?
   notes        String?       @db.Text
@@ -75,7 +336,7 @@ model Customer {
   location     String?       @db.VarChar(255)
   company      String?       @db.VarChar(255)
   project_desc String?       @db.Text
-  
+
   // Facebook Lead Gen fields
   ad_id           String? @db.VarChar(191)
   ad_name         String? @db.VarChar(191)
@@ -90,44 +351,53 @@ model Customer {
   fb_created_time String? @db.VarChar(191)
   is_organic      Boolean @default(false)
   platform        String? @db.VarChar(191)
-  budget          String?  @db.VarChar(50)
+  budget          String? @db.VarChar(50)
 
-  created_at   DateTime?     @default(now()) @db.Timestamp(0)
-  updated_at   DateTime?     @default(now()) @updatedAt @db.Timestamp(0)
+  created_by Int       @map("created_by") // STRICT: NOT NULL
+  created_at DateTime? @default(now()) @db.Timestamp(0)
+  updated_at DateTime? @default(now()) @updatedAt @db.Timestamp(0)
 
-  facebook_lead_id String?       @unique
-  ad_data      Json?
+  facebook_lead_id String? @unique
+  ad_data          Json?
 
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   orders       Order[]
   interactions Interaction[]
   tasks        Task[]
   files        File[]
+  deals        Deal[]
 
+  @@index([tenantId])
   @@map("customers")
 }
 
 model Order {
-  id                  Int             @id @default(autoincrement())
+  id                  Int              @id @default(autoincrement())
+  tenantId            String           @map("tenant_id") // STRICT NOT NULL
   customer_id         Int?
   razorpay_order_id   String?
   razorpay_payment_id String?
-  amount              Decimal?        @db.Decimal(10, 2)
-  currency            String?         @default("INR")
-  source              String?         @default("Website")
-  status              OrderStatus     @default(initiated)
-  invoice_url         String?         @db.VarChar(500)
-  proposal_status     ProposalStatus  @default(draft)
+  amount              Decimal?         @db.Decimal(10, 2)
+  currency            String?          @default("INR")
+  source              String?          @default("Website")
+  status              OrderStatus      @default(initiated)
+  invoice_url         String?          @db.VarChar(500)
+  proposal_status     ProposalStatus   @default(draft)
   payment_mode        String?
   onboarding_status   OnboardingStatus @default(pending)
-  due_date            DateTime?       @db.DateTime(0)
-  created_at          DateTime?       @default(now()) @db.Timestamp(0)
-  updated_at          DateTime?       @default(now()) @updatedAt @db.Timestamp(0)
+  due_date            DateTime?        @db.DateTime(0)
 
-  customer            Customer?       @relation(fields: [customer_id], references: [id])
-  project_submission  ProjectSubmission[]
-  interactions        Interaction[]
-  tasks               Task[]
+  created_by Int       @map("created_by") // STRICT NOT NULL
+  created_at DateTime? @default(now()) @db.Timestamp(0)
+  updated_at DateTime? @default(now()) @updatedAt @db.Timestamp(0)
 
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer           Customer?           @relation(fields: [customer_id], references: [id])
+  project_submission ProjectSubmission[]
+  interactions       Interaction[]
+  tasks              Task[]
+
+  @@index([tenantId])
   @@map("orders")
 }
 
@@ -138,19 +408,22 @@ enum OnboardingStatus {
 
 model ProjectSubmission {
   id              Int       @id @default(autoincrement())
+  tenantId        String?   @map("tenant_id")
   order_id        Int?
   brand_name      String?
   assets_url      String?   @db.VarChar(500)
   raw_data_json   Json?
   submission_date DateTime? @default(now()) @db.Timestamp(0)
 
-  order           Order?    @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  order Order? @relation(fields: [order_id], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
   @@map("project_submissions")
 }
 
 model Interaction {
   id          Int                  @id @default(autoincrement())
+  tenantId    String?              @map("tenant_id")
   customer_id Int?
   order_id    Int?
   type        InteractionType
@@ -159,14 +432,17 @@ model Interaction {
   created_by  Int?
   created_at  DateTime?            @default(now()) @db.Timestamp(0)
 
-  customer    Customer?            @relation(fields: [customer_id], references: [id], onDelete: Cascade)
-  order       Order?               @relation(fields: [order_id], references: [id])
+  tenant   Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+  order    Order?    @relation(fields: [order_id], references: [id])
 
+  @@index([tenantId])
   @@map("interactions")
 }
 
 model Task {
   id               Int          @id @default(autoincrement())
+  tenantId         String       @map("tenant_id") // STRICT NOT NULL
   customer_id      Int?
   related_order_id Int?
   assigned_to      Int?
@@ -175,42 +451,47 @@ model Task {
   due_date         DateTime?    @db.Timestamp(0)
   status           TaskStatus   @default(open)
   priority         TaskPriority @default(medium)
-  
-  created_by        Int?
-  status_changed_at DateTime?   @db.Timestamp(0)
+
+  created_by        Int       @map("created_by") // STRICT: NOT NULL
+  status_changed_at DateTime? @db.Timestamp(0)
   status_changed_by Int?
-  updated_at        DateTime?   @default(now()) @updatedAt @db.Timestamp(0)
-  created_at        DateTime?   @default(now()) @db.Timestamp(0)
+  updated_at        DateTime? @default(now()) @updatedAt @db.Timestamp(0)
+  created_at        DateTime? @default(now()) @db.Timestamp(0)
 
-  customer         Customer?    @relation(fields: [customer_id], references: [id], onDelete: Cascade)
-  order            Order?       @relation(fields: [related_order_id], references: [id])
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+  order    Order?    @relation(fields: [related_order_id], references: [id])
 
+  @@index([tenantId])
   @@map("tasks")
 }
 
 model File {
   id          Int       @id @default(autoincrement())
+  tenantId    String    @map("tenant_id") // STRICT NOT NULL
   customer_id Int?
-  uploaded_by Int?
+  uploaded_by Int       @map("uploaded_by") // STRICT NOT NULL
   file_name   String
   file_url    String    @db.VarChar(500)
   file_type   String?   @default("link")
   created_at  DateTime? @default(now()) @db.Timestamp(0)
 
-  customer    Customer? @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customer_id], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
   @@map("files")
 }
 
 model AdminLoginLog {
-  id          Int       @id @default(autoincrement())
-  admin_id    Int?
-  ip_address  String?   @db.VarChar(45)
-  user_agent  String?   @db.Text
-  login_time  DateTime? @default(now()) @db.Timestamp(0)
-  success     Boolean?  @default(true)
+  id         Int       @id @default(autoincrement())
+  admin_id   Int?
+  ip_address String?   @db.VarChar(45)
+  user_agent String?   @db.Text
+  login_time DateTime? @default(now()) @db.Timestamp(0)
+  success    Boolean?  @default(true)
 
-  admin       Admin?    @relation(fields: [admin_id], references: [id], onDelete: Cascade)
+  admin Admin? @relation(fields: [admin_id], references: [id], onDelete: Cascade)
 
   @@map("admin_login_logs")
 }
@@ -225,19 +506,19 @@ model AdminActivityLog {
   created_at         DateTime? @default(now()) @db.Timestamp(0)
   ip_address         String?   @db.VarChar(45)
 
-  admin              Admin?    @relation(fields: [admin_id], references: [id], onDelete: Cascade)
+  admin Admin? @relation(fields: [admin_id], references: [id], onDelete: Cascade)
 
   @@map("admin_activity_logs")
 }
 
 model AdminPreferences {
-  id           Int       @id @default(autoincrement())
-  admin_id     Int?
-  theme        String?   @default("system") @db.VarChar(20)
-  notify_email Boolean?  @default(true)
-  notify_in_app Boolean? @default(true)
-  default_view String?   @default("dashboard") @db.VarChar(50)
-  updated_at   DateTime? @default(now()) @db.Timestamp(0)
+  id            Int       @id @default(autoincrement())
+  admin_id      Int?
+  theme         String?   @default("system") @db.VarChar(20)
+  notify_email  Boolean?  @default(true)
+  notify_in_app Boolean?  @default(true)
+  default_view  String?   @default("dashboard") @db.VarChar(50)
+  updated_at    DateTime? @default(now()) @db.Timestamp(0)
 
   @@map("admin_preferences")
 }
@@ -329,76 +610,83 @@ model SystemSetting {
 }
 
 model emailaccount {
-  id            String    @id @default(cuid())
-  name          String    // Display name (e.g., "Support Gmail")
-  email         String    @unique
-  provider      String    // gmail, outlook, custom, etc.
-  
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id") // STRICT
+  userId   Int    @map("userId") // STRICT
+  name     String
+  email    String @unique
+  provider String
+
   // IMAP Settings
-  imapHost      String
-  imapPort      Int       @default(993)
-  imapSecure    Boolean   @default(true)
-  
+  imapHost   String
+  imapPort   Int     @default(993)
+  imapSecure Boolean @default(true)
+
   // SMTP Settings
-  smtpHost      String
-  smtpPort      Int       @default(587)
-  smtpSecure    Boolean   @default(false)
-  
+  smtpHost   String
+  smtpPort   Int     @default(587)
+  smtpSecure Boolean @default(false)
+
   // Authentication
-  username      String    // Usually same as email
-  password      String    // Encrypted
-  
+  username String
+  password String
+
   // Status
-  isActive      Boolean   @default(true)
-  isDefault     Boolean   @default(false)
-  lastSync      DateTime?
-  
+  isActive  Boolean   @default(true)
+  isDefault Boolean   @default(false)
+  lastSync  DateTime?
+
   // Signature
-  signature     String?   @db.Text
-  signatureHtml String?   @db.Text
-  useSignature  Boolean   @default(false)
-  
+  signature     String? @db.Text
+  signatureHtml String? @db.Text
+  useSignature  Boolean @default(false)
+
   // Timestamps
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
   @@map("emailaccount")
 }
 
 model emaillog {
   id        String   @id @default(cuid())
+  tenantId  String   @map("tenant_id") // STRICT
   accountId String
-  direction String   // "sent" or "received"
+  direction String
   from      String
   to        String
   subject   String
   body      String?  @db.LongText
-  status    String   // "success" or "failed"
+  status    String
   error     String?  @db.Text
   timestamp DateTime @default(now())
-  
-  @@map("emaillog")
+
+  @@index([tenantId])
   @@index([accountId])
   @@index([timestamp])
+  @@map("emaillog")
 }
 
 model cachedemail {
-  id             String   @id @default(cuid())
-  accountId      String
-  uid            Int
-  from           String
-  to             String
-  subject        String
-  textSnippet    String   @db.Text
-  htmlContent    String?  @db.LongText
-  date           DateTime
-  createdAt      DateTime @default(now())
-  
-  folder         String   @default("INBOX")
-  hasAttachments Boolean  @default(false)
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id") // STRICT
+  accountId   String
+  uid         Int
+  from        String
+  to          String
+  subject     String
+  textSnippet String   @db.Text
+  htmlContent String?  @db.LongText
+  date        DateTime
+  createdAt   DateTime @default(now())
+
+  folder          String  @default("INBOX")
+  hasAttachments  Boolean @default(false)
   attachmentCount Int     @default(0)
-  
+
   @@unique([accountId, uid, folder])
+  @@index([tenantId])
   @@index([accountId])
   @@index([date])
   @@map("cachedemail")
@@ -406,19 +694,20 @@ model cachedemail {
 
 model emailattachment {
   id          String   @id @default(cuid())
-  emailId     String   // cachedemail.id or draftId
+  emailId     String
   filename    String
   contentType String
-  size        Int      // bytes
-  data        String   @db.LongText  // base64 encoded
+  size        Int
+  data        String   @db.LongText
   createdAt   DateTime @default(now())
-  
+
   @@index([emailId])
   @@map("emailattachment")
 }
 
 model emaildraft {
   id             String   @id @default(cuid())
+  tenantId       String   @map("tenant_id") // STRICT
   accountId      String
   to             String?  @db.Text
   cc             String?  @db.Text
@@ -429,7 +718,8 @@ model emaildraft {
   hasAttachments Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
-  
+
+  @@index([tenantId])
   @@index([accountId])
   @@index([updatedAt])
   @@map("emaildraft")
@@ -442,7 +732,7 @@ model emailreadstatus {
   emailFolder String   @default("INBOX")
   isRead      Boolean  @default(true)
   readAt      DateTime @default(now())
-  
+
   @@unique([accountId, emailUid, emailFolder])
   @@index([accountId])
   @@map("emailreadstatus")
@@ -455,7 +745,7 @@ model emaillabel {
   color     String   @default("#3B82F6")
   icon      String?
   createdAt DateTime @default(now())
-  
+
   @@unique([accountId, name])
   @@index([accountId])
   @@map("emaillabel")
@@ -468,7 +758,7 @@ model emaillabeling {
   emailFolder String   @default("INBOX")
   labelId     String
   createdAt   DateTime @default(now())
-  
+
   @@unique([accountId, emailUid, emailFolder, labelId])
   @@index([accountId])
   @@index([labelId])
@@ -477,6 +767,7 @@ model emaillabeling {
 
 model emailthread {
   id            String   @id @default(cuid())
+  tenantId      String   @map("tenant_id") // STRICT
   accountId     String
   subject       String   @db.VarChar(500)
   participants  String   @db.Text
@@ -485,7 +776,8 @@ model emailthread {
   unreadCount   Int      @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  
+
+  @@index([tenantId])
   @@index([accountId])
   @@index([lastEmailDate])
   @@map("emailthread")
@@ -497,7 +789,7 @@ model emailthreadmember {
   emailUid    Int
   emailFolder String   @default("INBOX")
   createdAt   DateTime @default(now())
-  
+
   @@unique([threadId, emailUid, emailFolder])
   @@index([threadId])
   @@map("emailthreadmember")
@@ -505,6 +797,7 @@ model emailthreadmember {
 
 model contact {
   id            String    @id @default(cuid())
+  tenantId      String    @map("tenant_id") // STRICT
   accountId     String
   email         String
   name          String?
@@ -520,8 +813,9 @@ model contact {
   isFavorite    Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  
+
   @@unique([accountId, email])
+  @@index([tenantId])
   @@index([accountId])
   @@index([email])
   @@map("contact")
@@ -529,6 +823,7 @@ model contact {
 
 model emailtemplate {
   id         String    @id @default(cuid())
+  tenantId   String    @map("tenant_id") // STRICT
   accountId  String
   name       String    @db.VarChar(100)
   subject    String?   @db.VarChar(500)
@@ -540,7 +835,8 @@ model emailtemplate {
   lastUsed   DateTime?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
-  
+
+  @@index([tenantId])
   @@index([accountId])
   @@index([category])
   @@map("emailtemplate")
@@ -548,6 +844,7 @@ model emailtemplate {
 
 model scheduledemail {
   id           String    @id @default(cuid())
+  tenantId     String    @map("tenant_id") // STRICT
   accountId    String
   to           String    @db.Text
   cc           String?   @db.Text
@@ -563,7 +860,8 @@ model scheduledemail {
   retryCount   Int       @default(0)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
-  
+
+  @@index([tenantId])
   @@index([accountId])
   @@index([scheduledFor])
   @@index([status])
@@ -571,51 +869,51 @@ model scheduledemail {
 }
 
 model emailfolder {
-  id           String   @id @default(cuid())
-  accountId    String
-  name         String   @db.VarChar(100)
-  type         String   @default("custom") @db.VarChar(20)
-  parent       String?
-  icon         String?  @db.VarChar(50)
-  color        String?  @db.VarChar(20)
-  emailCount   Int      @default(0)
-  unreadCount  Int      @default(0)
-  sortOrder    Int      @default(0)
-  createdAt    DateTime @default(now())
-  
+  id          String   @id @default(cuid())
+  accountId   String
+  name        String   @db.VarChar(100)
+  type        String   @default("custom") @db.VarChar(20)
+  parent      String?
+  icon        String?  @db.VarChar(50)
+  color       String?  @db.VarChar(20)
+  emailCount  Int      @default(0)
+  unreadCount Int      @default(0)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
   @@unique([accountId, name])
   @@index([accountId])
   @@map("emailfolder")
 }
 
 model emailrule {
-  id          String   @id @default(cuid())
-  accountId   String
-  name        String   @db.VarChar(100)
-  enabled     Boolean  @default(true)
-  priority    Int      @default(0)
-  conditions  String   @db.Text
-  actions     String   @db.Text
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  id         String   @id @default(cuid())
+  accountId  String
+  name       String   @db.VarChar(100)
+  enabled    Boolean  @default(true)
+  priority   Int      @default(0)
+  conditions String   @db.Text
+  actions    String   @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
   @@index([accountId])
   @@index([enabled])
   @@map("emailrule")
 }
 
 model emailanalytics {
-  id             String   @id @default(cuid())
-  accountId      String
-  date           DateTime @db.Date
-  emailsSent     Int      @default(0)
-  emailsReceived Int      @default(0)
-  emailsRead     Int      @default(0)
+  id              String   @id @default(cuid())
+  accountId       String
+  date            DateTime @db.Date
+  emailsSent      Int      @default(0)
+  emailsReceived  Int      @default(0)
+  emailsRead      Int      @default(0)
   avgResponseTime Int?
-  topSender      String?  @db.VarChar(255)
-  topRecipient   String?  @db.VarChar(255)
-  createdAt      DateTime @default(now())
-  
+  topSender       String?  @db.VarChar(255)
+  topRecipient    String?  @db.VarChar(255)
+  createdAt       DateTime @default(now())
+
   @@unique([accountId, date])
   @@index([accountId])
   @@index([date])
@@ -635,7 +933,7 @@ model emailtracking {
   ipAddress  String?   @db.VarChar(50)
   userAgent  String?   @db.Text
   createdAt  DateTime  @default(now())
-  
+
   @@index([accountId])
   @@index([emailId])
   @@map("emailtracking")
@@ -650,13 +948,14 @@ model sharedmailbox {
   permissions String   @db.Text
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   @@index([accountId])
   @@map("sharedmailbox")
 }
 
 model webhook {
   id          String    @id @default(cuid())
+  tenantId    String?   @map("tenant_id")
   accountId   String
   name        String    @db.VarChar(100)
   url         String    @db.VarChar(500)
@@ -665,68 +964,85 @@ model webhook {
   secret      String?   @db.VarChar(100)
   lastTrigger DateTime?
   createdAt   DateTime  @default(now())
-  
+
+  @@index([tenantId])
   @@index([accountId])
   @@index([enabled])
   @@map("webhook")
 }
 
 model LandingPage {
-  id           Int       @id @default(autoincrement())
-  slug         String    @unique @db.VarChar(255)
-  name         String    @db.VarChar(255)
-  is_active    Boolean?  @default(true)
-  content      Json?     @db.Json
-  page_views   Int?      @default(0)
-  conversions  Int?      @default(0)
-  created_at   DateTime? @default(now()) @db.DateTime(0)
-  updated_at   DateTime? @default(now()) @updatedAt @db.DateTime(0)
+  id          Int       @id @default(autoincrement())
+  tenantId    String?   @map("tenant_id")
+  slug        String    @unique @db.VarChar(255)
+  name        String    @db.VarChar(255)
+  is_active   Boolean?  @default(true)
+  content     Json?     @db.Json
+  page_views  Int?      @default(0)
+  conversions Int?      @default(0)
+  created_at  DateTime? @default(now()) @db.DateTime(0)
+  updated_at  DateTime? @default(now()) @updatedAt @db.DateTime(0)
 
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
   @@map("landing_pages")
 }
 
 model LeadStage {
-  id            Int      @id @default(autoincrement())
-  value         String   @unique @db.VarChar(50)
-  label         String   @db.VarChar(100)
-  color         String?  @default("gray") @db.VarChar(50)
-  display_order Int?     @default(0)
-  is_active     Boolean? @default(true)
+  id            Int       @id @default(autoincrement())
+  tenantId      String?   @map("tenant_id")
+  value         String    @unique @db.VarChar(50)
+  label         String    @db.VarChar(100)
+  color         String?   @default("gray") @db.VarChar(50)
+  display_order Int?      @default(0)
+  is_active     Boolean?  @default(true)
   created_at    DateTime? @default(now()) @db.Timestamp(0)
 
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
   @@map("lead_stages")
 }
 
 model LeadScore {
-  id            Int      @id @default(autoincrement())
-  value         String   @unique @db.VarChar(50)
-  label         String   @db.VarChar(100)
-  color         String?  @default("gray") @db.VarChar(50)
-  emoji         String?  @db.VarChar(10)
-  display_order Int?     @default(0)
-  is_active     Boolean? @default(true)
+  id            Int       @id @default(autoincrement())
+  tenantId      String?   @map("tenant_id")
+  value         String    @unique @db.VarChar(50)
+  label         String    @db.VarChar(100)
+  color         String?   @default("gray") @db.VarChar(50)
+  emoji         String?   @db.VarChar(10)
+  display_order Int?      @default(0)
+  is_active     Boolean?  @default(true)
   created_at    DateTime? @default(now()) @db.Timestamp(0)
 
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
   @@map("lead_scores")
 }
 
 model SiteSetting {
   id            Int       @id @default(autoincrement())
+  tenantId      String?   @map("tenant_id")
   setting_key   String    @db.VarChar(100)
   setting_value String?   @db.Text
   description   String?   @db.VarChar(255)
   created_at    DateTime? @default(now()) @db.Timestamp(0)
   updated_at    DateTime? @default(now()) @updatedAt @db.Timestamp(0)
 
+  @@index([tenantId])
   @@map("site_settings")
 }
 
 model LeadRead {
-  id           Int      @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
+  tenantId     String?   @map("tenant_id")
   admin_id     Int
   lead_id      Int
   last_read_at DateTime? @default(now()) @db.Timestamp(0)
 
+  @@index([tenantId])
   @@map("lead_reads")
 }
 
@@ -754,7 +1070,7 @@ model Setting {
   @@map("settings")
 }
 
-model SmtpAccountOld {
+model SmtpAccount {
   id                      Int       @id @default(autoincrement())
   name                    String    @db.VarChar(255)
   provider                String    @db.VarChar(50)
@@ -780,41 +1096,54 @@ model SmtpAccountOld {
   region                  String?   @db.VarChar(50)
   last_synced_at          DateTime? @db.DateTime(0)
 
+  tenantId                String?   @map("tenant_id")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  emails Email[] @relation("AccountEmails")
+
+  @@index([tenantId])
   @@map("smtp_accounts")
 }
 
-// Table for storing emails (from original SQL dump)
-model EmailOld {
-  id               Int       @id @default(autoincrement())
-  customer_id      Int?
-  user_id          Int?
-  smtp_account_id  Int?
-  status           String?   @default("draft") @db.VarChar(50)
-  recipient_to     Json
-  recipient_cc     Json?
-  recipient_bcc    Json?
-  subject          String?   @db.VarChar(255)
-  body_html        String?   @db.LongText
-  body_text        String?   @db.LongText
-  headers_json     Json?
-  related_task_id  Int?
-  error_message    String?   @db.Text
-  sent_at          DateTime? @db.DateTime(0)
-  received_at      DateTime? @db.DateTime(0)
-  created_at       DateTime? @default(now()) @db.DateTime(0)
-  updated_at       DateTime? @default(now()) @updatedAt @db.DateTime(0)
-  direction        String?   @default("outbound") @db.VarChar(20)
-  message_id       String?   @db.VarChar(255)
-  in_reply_to      String?   @db.VarChar(255)
-  folder           String?   @default("SENT") @db.VarChar(50)
-  is_read          Boolean?  @default(true)
-  from_name        String?   @db.VarChar(255)
-  from_address     String?   @db.VarChar(255)
+model Email {
+  id              Int       @id @default(autoincrement())
+  tenantId        String?   @map("tenant_id")
+  customer_id     Int?
+  user_id         Int?
+  smtp_account_id Int?
+  uid             Int?
+  status          String?   @default("draft") @db.VarChar(50)
+  recipient_to    Json
+  recipient_cc    Json?
+  recipient_bcc   Json?
+  subject         String?   @db.VarChar(255)
+  body_html       String?   @db.LongText
+  body_text       String?   @db.LongText
+  headers_json    Json?
+  related_task_id Int?
+  error_message   String?   @db.Text
+  sent_at         DateTime? @db.DateTime(0)
+  received_at     DateTime? @db.DateTime(0)
+  attachment_count Int?      @default(0) @map("attachment_count")
+  created_at      DateTime? @default(now()) @db.DateTime(0)
+  updated_at      DateTime? @default(now()) @updatedAt @db.DateTime(0)
+  direction       String?   @default("outbound") @db.VarChar(20)
+  message_id      String?   @db.VarChar(255)
+  in_reply_to     String?   @db.VarChar(255)
+  folder          String?   @default("SENT") @db.VarChar(50)
+  is_read         Boolean?  @default(true)
+  from_name       String?   @db.VarChar(255)
+  from_address    String?   @db.VarChar(255)
 
+  tenant      Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  smtpAccount SmtpAccount? @relation("AccountEmails", fields: [smtp_account_id], references: [id])
+
+  @@index([tenantId])
+  @@index([smtp_account_id])
+  @@unique([smtp_account_id, folder, uid])
   @@map("emails")
 }
 
-// Email send jobs queue
 model EmailSendJob {
   id            Int       @id @default(autoincrement())
   email_id      Int
@@ -828,7 +1157,6 @@ model EmailSendJob {
   @@map("email_send_jobs")
 }
 
-// Task read status tracking
 model TaskRead {
   id           Int       @id @default(autoincrement())
   task_id      Int
@@ -838,7 +1166,6 @@ model TaskRead {
 
   @@map("task_reads")
 }
-
 
 model TaskComment {
   id         Int       @id @default(autoincrement())
@@ -865,26 +1192,33 @@ model TaskHistory {
 }
 
 model Notification {
-  id                Int       @id @default(autoincrement())
-  user_id           Int
-  type              String    @db.VarChar(50)
-  title             String    @db.VarChar(255)
-  message           String?   @db.Text
-  is_read           Boolean   @default(false)
-  related_entity_type String? @db.VarChar(50)
-  related_entity_id Int?
-  created_at        DateTime? @default(now()) @db.Timestamp(0)
+  id                  Int       @id @default(autoincrement())
+  user_id             Int
+  type                String    @db.VarChar(50)
+  title               String    @db.VarChar(255)
+  message             String?   @db.Text
+  is_read             Boolean   @default(false)
+  link                String?   @db.Text
+  data                Json?
+  related_entity_type String?   @db.VarChar(50)
+  related_entity_id   Int?
+  created_at          DateTime? @default(now()) @db.Timestamp(0)
+  Tenant              Tenant?   @relation(fields: [tenantId], references: [id])
+  tenantId            String?
+  User                User?     @relation(fields: [userId], references: [id])
+  userId              Int?
 
   @@map("notifications")
 }
 
 model UserPresence {
-  id         Int      @id @default(autoincrement())
-  userId     Int      @unique
+  id         Int        @id @default(autoincrement())
+  userId     Int        @unique
   status     UserStatus @default(OFFLINE)
-  lastSeenAt DateTime @default(now())
-  
-  user       Admin    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastSeenAt DateTime   @default(now())
+
+  user  User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Admin Admin[]
 
   @@map("user_presence")
 }
@@ -894,8 +1228,10 @@ enum UserStatus {
   OFFLINE
   AWAY
 }
+
 model Meeting {
   id          String    @id @default(cuid())
+  tenantId    String?   @map("tenant_id")
   title       String
   description String?   @db.Text
   roomName    String    @unique
@@ -904,11 +1240,140 @@ model Meeting {
   startTime   DateTime  @default(now())
   endTime     DateTime?
   notes       String?   @db.LongText
-  
-  host        Admin     @relation("AdminMeetings", fields: [hostId], references: [id])
-  
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
 
+  host Admin @relation("AdminMeetings", fields: [hostId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
   @@map("meetings")
+}
+
+// ============================================
+// MARKETING MODULE
+// ============================================
+
+model MarketingCampaign {
+  id          String  @id @default(cuid())
+  tenantId    String? @map("tenant_id")
+  accountId   String // Link to emailaccount or smtp_accounts
+  name        String
+  description String? @db.Text
+  type        String  @default("sequence") // 'broadcast' or 'sequence'
+  status      String  @default("draft") // draft, active, paused, completed, archived
+
+  // Stats
+  sentCount  Int @default(0)
+  openCount  Int @default(0)
+  clickCount Int @default(0)
+  replyCount Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  steps CampaignStep[]
+  leads CampaignLead[]
+
+  @@index([tenantId])
+  @@index([accountId])
+  @@index([status])
+  @@map("marketing_campaign")
+}
+
+model CampaignStep {
+  id         String @id @default(cuid())
+  campaignId String
+  type       String @default("email") // email, delay
+
+  // For 'delay'
+  delaySeconds Int @default(0) // time to wait BEFORE this step executes (relative to previous step)
+
+  // For 'email'
+  subject  String? @db.VarChar(500)
+  body     String? @db.LongText
+  htmlBody String? @db.LongText
+
+  stepOrder Int @default(0)
+
+  campaign MarketingCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([stepOrder])
+  @@map("campaign_step")
+}
+
+model CampaignLead {
+  id         String @id @default(cuid())
+  campaignId String
+  leadEmail  String // We track by email to keep it loose coupling or link to Contact
+
+  status      String @default("active") // active, completed, unsubscribed, bounced, replied
+  currentStep Int    @default(0) // Index of the step they are ON or just finished? Let's say: Next step index to execute. 0 = Start.
+
+  nextStepDue DateTime? // When the next step should be executed
+  joinedAt    DateTime  @default(now())
+  completedAt DateTime?
+
+  // Engagement
+  openCount  Int     @default(0)
+  clickCount Int     @default(0)
+  replied    Boolean @default(false)
+
+  campaign MarketingCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, leadEmail])
+  @@index([status])
+  @@index([nextStepDue])
+  @@map("campaign_lead")
+}
+
+model PlatformSetting {
+  id           String   @id @default(uuid())
+  settingKey   String   @unique @map("setting_key")
+  settingValue String   @map("setting_value") @db.Text
+  description  String?
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("platform_settings")
+}
+
+model Deal {
+  id              Int       @id @default(autoincrement())
+  tenantId        String    @map("tenant_id")
+  contactId       Int?      @map("contact_id")
+  customerId      Int?      @map("customer_id")
+  title           String    @db.VarChar(255)
+  description     String?   @db.Text
+  amount          Decimal?  @default(0.00) @db.Decimal(12, 2)
+  currency        String?   @default("INR") @db.VarChar(3)
+  stage           String?   @default("lead") @db.VarChar(50)
+  probability     Int?      @default(0)
+  expectedCloseDate DateTime? @map("expected_close_date") @db.Date
+  actualCloseDate   DateTime? @map("actual_close_date") @db.Date
+  status          DealStatus @default(open)
+  lostReason      String?   @map("lost_reason") @db.Text
+  source          String?   @db.VarChar(100)
+  ownerId         Int?      @map("owner_id")
+  customFields    Json?     @map("custom_fields")
+  deletedAt       DateTime? @map("deleted_at")
+  createdAt       DateTime? @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt       DateTime? @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id])
+  owner    User?     @relation(fields: [ownerId], references: [id])
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([ownerId])
+  @@index([stage])
+  @@index([status])
+  @@map("deals")
+}
+
+enum DealStatus {
+  open
+  won
+  lost
 }

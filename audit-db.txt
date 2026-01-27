@@ -1,0 +1,10 @@
+Core Business Table Audit:
+--------------------------
+orders          | Tenant: ✅ | Owner: created_by
+tasks           | Tenant: ✅ | Owner: assigned_to
+files           | Tenant: ✅ | Owner: created_by
+customers       | Tenant: ✅ | Owner: ❌
+emails          | Tenant: ✅ | Owner: user_id
+interactions    | Tenant: ✅ | Owner: created_by
+site_settings   | Tenant: ✅ | Owner: ❌
+users           | Tenant: ❌ | Owner: ❌

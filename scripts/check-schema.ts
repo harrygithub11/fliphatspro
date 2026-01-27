@@ -1,22 +1,24 @@
 
-import pool from '../lib/db';
-import dotenv from 'dotenv';
-dotenv.config();
+import mysql from 'mysql2/promise'
 
 async function checkSchema() {
+    const connection = await mysql.createConnection({
+        host: '127.0.0.1',
+        port: 3306,
+        user: 'flipuser',
+        password: 'flippass123',
+        database: 'fliphatspro'
+    })
+
     try {
-        const [rows]: any = await pool.query("SHOW COLUMNS FROM orders");
-        console.log("Columns in 'orders' table:");
-        rows.forEach((r: any) => console.log(`- ${r.Field} (${r.Type})`));
-
-        // Also check if table exists by ensuring rows has length
-        if (rows.length === 0) console.log("Table 'orders' matches nothing or is empty definition (unlikely).");
-
-    } catch (e: any) {
-        console.error("Error Checking Schema:", e.message);
+        await connection.execute("SHOW COLUMNS FROM smtp_accounts").then(([r]: any) => console.log('smtp_accounts:', r.map((c: any) => c.Field)));
+        await connection.execute("SHOW COLUMNS FROM marketing_campaign").then(([r]: any) => console.log('marketing_campaign:', r.map((c: any) => c.Field)));
+        await connection.execute("SHOW COLUMNS FROM emails").then(([r]: any) => console.log('emails:', r.map((c: any) => c.Field)));
+    } catch (e) {
+        console.error(e)
     } finally {
-        process.exit();
+        await connection.end()
     }
 }
 
-checkSchema();
+checkSchema()

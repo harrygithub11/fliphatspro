@@ -1,0 +1,66 @@
+# Docker ignore file
+# Prevents unnecessary files from being copied to Docker image
+
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Build outputs
+.next
+out
+build
+dist
+
+# Testing
+coverage
+
+# Development files
+*.log
+npm-debug.log*
+
+# Environment files (use Docker secrets instead)
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Docker files (don't need to copy these into the image)
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# Documentation
+*.md
+docs/
+
+# Debug files
+debug*.txt
+db_error_log.txt
+*.log
+
+# SQL backups (too large)
+backup.sql
+*.sql.gz
+newyear*.sql
+
+# Development scripts
+scripts/
+*.py
+
+# Temporary files
+tmp/
+temp/

@@ -1,0 +1,42 @@
+version: '3.8'
+
+# Development-specific overrides
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  # ===========================================
+  # MySQL - Development Config
+  # ===========================================
+  mysql:
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: fliphatspro_dev
+      MYSQL_USER: flipuser
+      MYSQL_PASSWORD: flippass123
+
+  # ===========================================
+  # App - Development Mode (Hot Reload)
+  # ===========================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: fliphatspro-dev
+    environment:
+      NODE_ENV: development
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: flipuser
+      DB_PASSWORD: flippass123
+      DB_NAME: fliphatspro_dev
+      DATABASE_URL: mysql://flipuser:flippass123@mysql:3306/fliphatspro_dev
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: local-dev-secret-key-123
+    volumes:
+      # Hot reload - mount source code
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev

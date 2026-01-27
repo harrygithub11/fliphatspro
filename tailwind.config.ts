@@ -41,7 +41,7 @@ const config: Config = {
 					foreground: 'hsl(var(--muted-foreground))'
 				},
 				accent: {
-					DEFAULT: '#C20114',
+					DEFAULT: '#FF5941',
 					foreground: '#FFFFFC'
 				},
 				popover: {
@@ -63,12 +63,12 @@ const config: Config = {
 				ink: '#FFFFFC',
 				paper: '#0C120C',
 				brand: {
-					100: '#FAD8DB',
-					300: '#F0727D',
-					500: '#D61A2B',
-					600: '#C20114',
-					700: '#A30011',
-					900: '#7E000C'
+					100: '#FFEBE8',
+					300: '#FF9B8D',
+					500: '#FF5941',
+					600: '#E64A35',
+					700: '#CC3E2E',
+					900: '#99261A'
 				},
 				neutral: {
 					50: '#0C120C',
@@ -78,6 +78,20 @@ const config: Config = {
 					700: '#ECEFED',
 					800: '#F7F8F7',
 					900: '#FFFFFC'
+				},
+				// Override Red to Brand Orange-Red globally
+				red: {
+					50: '#FFF0EE',
+					100: '#FFEBE8',
+					200: '#FFCFC9',
+					300: '#FF9B8D',
+					400: '#FF7A6E',
+					500: '#FF5941',
+					600: '#E64A35',
+					700: '#CC3E2E',
+					800: '#B82E20',
+					900: '#99261A',
+					950: '#661410'
 				}
 			},
 			borderRadius: {

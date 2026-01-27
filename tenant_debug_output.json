@@ -1,0 +1,15 @@
+{
+  "fliphatsCompany": {
+    "id": 1,
+    "name": "Fliphats",
+    "tenant_id": "ba60a2bc-2921-43f5-aa81-65dc7ba298e7"
+  },
+  "targetTenant": "ba60a2bc-2921-43f5-aa81-65dc7ba298e7",
+  "unassignedForThisTenant": 55,
+  "unassignedByTenant": [
+    {
+      "tenant_id": "ba60a2bc-2921-43f5-aa81-65dc7ba298e7",
+      "cnt": 55
+    }
+  ]
+}

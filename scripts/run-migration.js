@@ -1,39 +1,28 @@
+
 const mysql = require('mysql2/promise');
 const fs = require('fs');
 const path = require('path');
+require('dotenv').config();
 
 async function runMigration() {
     const connection = await mysql.createConnection({
-        host: '127.0.0.1',
-        port: 3307,
-        user: 'root',
-        password: 'admin',
-        database: 'newyear'
+        host: process.env.DB_HOST || 'localhost',
+        user: process.env.DB_USER || 'root',
+        password: process.env.DB_PASSWORD || '',
+        database: process.env.DB_NAME || 'fliphatspro',
+        multipleStatements: true
     });
 
     try {
-        console.log('Running migration to create log tables...\n');
+        const filePath = path.join(__dirname, '../migrations/multi-tenant/010_create_rbac_tables.sql');
+        const sql = fs.readFileSync(filePath, 'utf8');
 
-        const sql = fs.readFileSync(path.join(__dirname, '../migrations/002_add_admin_logs.sql'), 'utf8');
-
-        // Split by semicolon and execute each statement
-        const statements = sql.split(';').filter(s => s.trim());
-
-        for (const statement of statements) {
-            if (statement.trim()) {
-                await connection.execute(statement);
-                console.log('✓ Executed statement');
-            }
-        }
-
-        console.log('\n✅ Migration completed successfully!');
-
-        // Verify tables were created
-        const [tables] = await connection.execute("SHOW TABLES LIKE '%log%'");
-        console.log('\nCreated tables:', tables);
+        console.log(`Executing migration from ${filePath}...`);
+        await connection.query(sql);
+        console.log("Migration completed successfully.");
 
     } catch (error) {
-        console.error('❌ Migration failed:', error.message);
+        console.error("Migration Error:", error);
     } finally {
         await connection.end();
     }

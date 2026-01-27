@@ -2,6 +2,9 @@ import { createServer } from "http";
 import next from "next";
 import { Server, Socket } from "socket.io";
 import { PrismaClient } from "@prisma/client";
+import nodemailer from "nodemailer";
+import { decrypt } from "./lib/crypto";
+import pool from "./lib/db";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "localhost";
@@ -26,6 +29,13 @@ app.prepare().then(() => {
 
         // 1. User Connects / Identifies
         socket.on("identify", async (userId: number) => {
+            // Validate User Exists First
+            const userExists = await prisma.user.findUnique({ where: { id: userId } });
+            if (!userExists) {
+                console.warn(`[Socket] Identify blocked for non-existent userId: ${userId}`);
+                return;
+            }
+
             // Add to mapping
             if (!userSockets.has(userId)) {
                 userSockets.set(userId, new Set());
@@ -219,6 +229,92 @@ app.prepare().then(() => {
             }
         } catch (e) {
             console.error("Presence cleanup error:", e);
+        }
+    }, 30000);
+
+
+
+    // --- CRON JOBS ---
+
+    // 1. Email Scheduler (Every 30s)
+    // 1. Email Scheduler (Every 30s)
+    setInterval(async () => {
+        try {
+            // Fetch pending emails due for sending (Using Raw SQL due to model issues)
+            // JOIN with smtp_accounts to get credentials in one go
+            const [pendingEmails]: any = await pool.execute(
+                `SELECT s.*, a.name as account_name, a.from_email, a.username, a.encrypted_password, a.host, a.port
+                 FROM scheduledemail s
+                 JOIN smtp_accounts a ON s.accountId = a.id
+                 WHERE s.status = 'pending' 
+                 AND s.scheduledFor <= ?
+                 LIMIT 10`,
+                [new Date()]
+            );
+
+            if (pendingEmails.length > 0) {
+                console.log(`[Cron] Found ${pendingEmails.length} pending emails`);
+            }
+
+            for (const email of pendingEmails) {
+                try {
+                    const password = decrypt(email.encrypted_password);
+
+                    const transporter = nodemailer.createTransport({
+                        host: email.host,
+                        port: email.port,
+                        secure: email.port === 465,
+                        auth: { user: email.username, pass: password },
+                        tls: { rejectUnauthorized: false }
+                    });
+
+                    await transporter.sendMail({
+                        from: `"${email.from_name}" <${email.from_email}>`,
+                        to: email.to,
+                        subject: email.subject,
+                        text: email.body || '',
+                        html: email.htmlBody || undefined
+                    });
+
+                    // Mark Sent
+                    await pool.execute(
+                        `UPDATE scheduledemail SET status = 'sent', sentAt = NOW() WHERE id = ?`,
+                        [email.id]
+                    );
+
+                    // Archive to "Sent" folder
+                    await prisma.cachedemail.create({
+                        data: {
+                            id: `sent-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                            tenantId: email.tenant_id, // Note: raw query returns tenant_id (snake_case)
+                            accountId: String(email.accountId),
+                            uid: Math.floor(Math.random() * 2147483647),
+                            folder: 'Sent',
+                            from: email.from_email,
+                            to: email.to,
+                            subject: email.subject,
+                            textSnippet: email.body ? email.body.substring(0, 100) : '',
+                            htmlContent: email.htmlBody,
+                            date: new Date(),
+                            hasAttachments: false,
+                            attachmentCount: 0
+                        }
+                    });
+
+                    console.log(`[Cron] Sent & Archived email ${email.id}`);
+
+                } catch (err: any) {
+                    console.error(`[Cron] Failed ${email.id}:`, err.message);
+                    // Update status to failed
+                    await pool.execute(
+                        `UPDATE scheduledemail SET status = 'failed', error = ?, retryCount = retryCount + 1 WHERE id = ?`,
+                        [err.message, email.id]
+                    );
+                }
+            }
+
+        } catch (e) {
+            console.error("[Cron] Scheduler Error:", e);
         }
     }, 30000);
 

@@ -1,0 +1,71 @@
+API Route Isolation Scan:
+-------------------------
+❌ Missing Tenant Auth: app\api\admin\debug\schema\route.ts
+❌ Missing Tenant Auth: app\api\admin\heartbeat\route.ts
+❌ Missing Tenant Auth: app\api\admin\leads\bulk\route.ts
+❌ Missing Tenant Auth: app\api\admin\leads\import\route.ts
+❌ Missing Tenant Auth: app\api\admin\login\route.ts
+❌ Missing Tenant Auth: app\api\admin\meetings\[id]\route.ts
+❌ Missing Tenant Auth: app\api\admin\migration\run\route.ts
+❌ Missing Tenant Auth: app\api\admin\orders\[id]\route.ts
+❌ Missing Tenant Auth: app\api\admin\pages\[id]\duplicate\route.ts
+❌ Missing Tenant Auth: app\api\admin\pages\[id]\route.ts
+❌ Missing Tenant Auth: app\api\admin\profile\activity-logs\route.ts
+❌ Missing Tenant Auth: app\api\admin\profile\avatar\route.ts
+❌ Missing Tenant Auth: app\api\admin\profile\change-password\route.ts
+❌ Missing Tenant Auth: app\api\admin\profile\login-logs\route.ts
+❌ Missing Tenant Auth: app\api\admin\profile\route.ts
+❌ Missing Tenant Auth: app\api\admin\profile\sessions\route.ts
+❌ Missing Tenant Auth: app\api\admin\proposals\route.ts
+❌ Missing Tenant Auth: app\api\admin\settings\route.ts
+❌ Missing Tenant Auth: app\api\admin\smtp-accounts\[id]\route.ts
+❌ Missing Tenant Auth: app\api\admin\tasks\stats\route.ts
+❌ Missing Tenant Auth: app\api\admin\tasks\[id]\comments\route.ts
+❌ Missing Tenant Auth: app\api\admin\tasks\[id]\read\route.ts
+❌ Missing Tenant Auth: app\api\admin\team\[id]\activity-logs\route.ts
+❌ Missing Tenant Auth: app\api\admin\team\[id]\login-logs\route.ts
+❌ Missing Tenant Auth: app\api\admin\team\[id]\reset-password\route.ts
+❌ Missing Tenant Auth: app\api\admin\tenants\my-tenants\route.ts
+❌ Missing Tenant Auth: app\api\admin\tenants\route.ts
+❌ Missing Tenant Auth: app\api\admin\tenants\switch\route.ts
+❌ Missing Tenant Auth: app\api\admin\upload\route.ts
+❌ Missing Tenant Auth: app\api\bookings\route.ts
+❌ Missing Tenant Auth: app\api\branding\route.ts
+❌ Missing Tenant Auth: app\api\contact\route.ts
+❌ Missing Tenant Auth: app\api\create-order\route.ts
+❌ Missing Tenant Auth: app\api\db-check\route.ts
+❌ Missing Tenant Auth: app\api\email-system\accounts\[id]\route.ts
+❌ Missing Tenant Auth: app\api\email-system\analytics\route.ts
+❌ Missing Tenant Auth: app\api\email-system\contacts\route.ts
+❌ Missing Tenant Auth: app\api\email-system\label-emails\route.ts
+❌ Missing Tenant Auth: app\api\email-system\labels\route.ts
+❌ Missing Tenant Auth: app\api\email-system\process-scheduled\route.ts
+❌ Missing Tenant Auth: app\api\email-system\rules\route.ts
+❌ Missing Tenant Auth: app\api\email-system\schedule\route.ts
+❌ Missing Tenant Auth: app\api\email-system\sync\route.ts
+❌ Missing Tenant Auth: app\api\emails\track\open\[id]\route.ts
+❌ Missing Tenant Auth: app\api\fetch-payment-details\route.ts
+❌ Missing Tenant Auth: app\api\health\route.ts
+❌ Missing Tenant Auth: app\api\init-db\route.ts
+❌ Missing Tenant Auth: app\api\master\impersonate\route.ts
+❌ Missing Tenant Auth: app\api\master\settings\route.ts
+❌ Missing Tenant Auth: app\api\master\stats\route.ts
+❌ Missing Tenant Auth: app\api\master\tenants\route.ts
+❌ Missing Tenant Auth: app\api\master\tenants\[id]\route.ts
+❌ Missing Tenant Auth: app\api\migrate\profile\route.ts
+❌ Missing Tenant Auth: app\api\migrate-v2\route.ts
+❌ Missing Tenant Auth: app\api\pages\[slug]\view\route.ts
+❌ Missing Tenant Auth: app\api\payment-success\route.ts
+❌ Missing Tenant Auth: app\api\proxy-image\route.ts
+❌ Missing Tenant Auth: app\api\seed\route.ts
+❌ Missing Tenant Auth: app\api\setup-tasks-schema\assignee\route.ts
+❌ Missing Tenant Auth: app\api\setup-tasks-schema\route.ts
+❌ Missing Tenant Auth: app\api\setup-tasks-schema\status-tracking\route.ts
+❌ Missing Tenant Auth: app\api\track-click\route.ts
+❌ Missing Tenant Auth: app\api\tracking\click\[token]\route.ts
+❌ Missing Tenant Auth: app\api\tracking\open\[token]\route.ts
+❌ Missing Tenant Auth: app\api\upload\route.ts
+
+Summary:
+✅ Protected Routes: 38
+❌ Potential Risks: 65

@@ -1,23 +1,100 @@
 version: '3.8'
 
 services:
-  db:
+  # ===========================================
+  # MySQL Database
+  # ===========================================
+  mysql:
     image: mysql:8.0
-    container_name: fliphat_crm_db
-    restart: always
+    container_name: fliphatspro-mysql
+    restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: admin
-      MYSQL_DATABASE: newyear
-      MYSQL_USER: admin
-      MYSQL_PASSWORD: admin123
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: fliphatspro
+      MYSQL_USER: flipuser
+      MYSQL_PASSWORD: flippass123
     ports:
-      - "3307:3306"
+      - "3306:3306"
     volumes:
-      - db_data:/var/lib/mysql
+      - mysql_data:/var/lib/mysql
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_general_ci
+      --default-authentication-plugin=mysql_native_password
     healthcheck:
-      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
-      timeout: 20s
-      retries: 10
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-prootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================
+  # Redis (for sessions, caching, queues)
+  # ===========================================
+  redis:
+    image: redis:7-alpine
+    container_name: fliphatspro-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================
+  # phpMyAdmin (optional, for local development)
+  # ===========================================
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: fliphatspro-phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: root
+      PMA_PASSWORD: rootpassword
+    ports:
+      - "8080:80"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # ===========================================
+  # Next.js App (production mode)
+  # ===========================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fliphatspro-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: flipuser
+      DB_PASSWORD: flippass123
+      DB_NAME: fliphatspro
+      DATABASE_URL: mysql://flipuser:flippass123@mysql:3306/fliphatspro
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-change-in-production}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./public/uploads:/app/public/uploads
 
 volumes:
-  db_data:
+  mysql_data:
+  redis_data:
+
+networks:
+  default:
+    name: fliphatspro-network
